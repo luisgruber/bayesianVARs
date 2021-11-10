@@ -1,11 +1,19 @@
 # specify Priors ----------------------------------------------------------
 
-specify_PHI_DLprior <- function(theta_dirichlet = c("a" = 0.5),
-                                hyperhyper = FALSE){
+#' Specify hyperparameters for Dirichlet-Laplace prior on VAR coefficients
+#'
+#' @param a numeric constant. Concentration parameter, that dictates the shrinkage. Only necessary if ´hyperhyper = FALSE'.
+#' @param hyperhyper bool. TRUE: Discrete uniform hyperprior on a. FALSE: `a' has to be defined.
+#'
+#' @return list
+#' @export
+specify_PHI_DLprior <- function(a=0.5, hyperhyper = FALSE){
+  theta_dirichlet <-  c("a" = a)
   return(list(theta_dirichlet = theta_dirichlet,
               hyperhyper=hyperhyper))
 }
 
+#' @export
 specify_PHI_DLprior_new <- function(type = "own/cross", a_1=0.5, a_2=1/10,
                                     hyperhyper = FALSE){
   #type: "global": one shrinkage parameter for all coefficients;
@@ -25,6 +33,7 @@ specify_PHI_DLprior_new <- function(type = "own/cross", a_1=0.5, a_2=1/10,
               hyperhyper=hyperhyper))
 }
 
+#' @export
 specify_L_DLprior <- function(theta_dirichlet = c("b" = 0.5),
                               hyperhyper = FALSE){
   return(list(theta_dirichlet = theta_dirichlet,
@@ -130,7 +139,7 @@ pred_eval <- function(h, Y_obs, mod, PHI_draws, L_draws, VoI, SV = TRUE){
       for (k in seq_len(h)) {
         mu_h <- mus[i,] + phis[i,]*(h_fore - mus[i,])
         sigma_h <- sigs[i, ]
-        h_fore <- rnorm(M, mean = mu_h, sd= sigma_h)
+        h_fore <- stats::rnorm(M, mean = mu_h, sd= sigma_h)
 
         # compute SIGMA[t+h]
         Sigma[,,k] <- t(L_inv) %*% diag(exp(h_fore)) %*% L_inv
@@ -149,10 +158,10 @@ pred_eval <- function(h, Y_obs, mod, PHI_draws, L_draws, VoI, SV = TRUE){
     # Predictive likelihoods
     PL[i] <- mvtnorm::dmvnorm(as.vector(Y_obs[1,]),pred_mean_temp,Sigma[,,1])
     PL_joint[i,1] <-  mvtnorm::dmvnorm(as.vector(Y_obs[1,VoI]),pred_mean_temp[VoI],Sigma[VoI,VoI,1])
-    PL_marginal[i,1,] <-  dnorm(as.vector(Y_obs[1, VoI]), pred_mean_temp[VoI], sqrt(diag(Sigma[VoI,VoI,1])))
+    PL_marginal[i,1,] <-  stats::dnorm(as.vector(Y_obs[1, VoI]), pred_mean_temp[VoI], sqrt(diag(Sigma[VoI,VoI,1])))
 
     # Predictions
-    predictions[i,1,] <- tryCatch(pred_mean_temp + t(chol(Sigma[,,1]))%*%rnorm(M), error=function(e) MASS::mvrnorm(1, pred_mean_temp, Sigma[,,1]))
+    predictions[i,1,] <- tryCatch(pred_mean_temp + t(chol(Sigma[,,1]))%*%stats::rnorm(M), error=function(e) MASS::mvrnorm(1, pred_mean_temp, Sigma[,,1]))
 
     ## h-step ahead
     X_fore_h <- X_fore1
@@ -180,9 +189,9 @@ pred_eval <- function(h, Y_obs, mod, PHI_draws, L_draws, VoI, SV = TRUE){
         names(pred_mean_temp) <- variables
 
         PL_joint[i, kk+1] <-  mvtnorm::dmvnorm(as.vector(Y_obs[kk+1, VoI]),pred_mean_temp[VoI],Sigma[VoI,VoI,kk+1])
-        PL_marginal[i, kk+1,] <-  dnorm(as.vector(Y_obs[kk+1, VoI]), pred_mean_temp[VoI], sqrt(diag(Sigma[VoI,VoI,kk+1])))
+        PL_marginal[i, kk+1,] <-  stats::dnorm(as.vector(Y_obs[kk+1, VoI]), pred_mean_temp[VoI], sqrt(diag(Sigma[VoI,VoI,kk+1])))
 
-        predictions[i, kk+1,] <- tryCatch(pred_mean_temp + t(chol(Sigma[,,kk+1]))%*%rnorm(M), error=function(e) MASS::mvrnorm(1, pred_mean_temp, Sigma[,,kk+1]))
+        predictions[i, kk+1,] <- tryCatch(pred_mean_temp + t(chol(Sigma[,,kk+1]))%*%stats::rnorm(M), error=function(e) MASS::mvrnorm(1, pred_mean_temp, Sigma[,,kk+1]))
 
       }
 
