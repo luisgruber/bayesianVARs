@@ -6,3 +6,11 @@ my_gig <- function(n, lambda, chi, psi) {
     .Call(`_bayesianVARs_my_gig`, n, lambda, chi, psi)
 }
 
+draw_PHI <- function(PHI, PHI_prior, Y, X, L, d, V_i, K, M) {
+    .Call(`_bayesianVARs_draw_PHI`, PHI, PHI_prior, Y, X, L, d, V_i, K, M)
+}
+
+draw_L <- function(Ytilde, V_i, d) {
+    .Call(`_bayesianVARs_draw_L`, Ytilde, V_i, d)
+}
+

@@ -7,9 +7,14 @@
 specify_PHI_DLprior(a = 0.5, hyperhyper = FALSE)
 }
 \arguments{
-\item{a}{numeric constant. Concentration parameter, that dictates the shrinkage. Only necessary if ´hyperhyper = FALSE'.}
+\item{a}{single non-negative number, indicating the concentration parameter of
+the DL prior. Only necessary if \code{hyperhyper=FALSE}. Good properties somewhere in
+the interval \code{[1/n,1/2]}, where \code{n} is the number of VAR coefficients.
+Smaller values imply heavier regularization towards zero.}
 
-\item{hyperhyper}{bool. TRUE: Discrete uniform hyperprior on a. FALSE: `a' has to be defined.}
+\item{hyperhyper}{logical. \code{TRUE} imposes a discrete uniform hyperprior on
+the concentration parameter on the interval \code{[1/n,1/2]} with 1000 support points.
+If set to \code{FALSE}, \code{a} has to be specified.}
 }
 \value{
 list

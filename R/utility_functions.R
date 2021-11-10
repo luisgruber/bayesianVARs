@@ -2,8 +2,13 @@
 
 #' Specify hyperparameters for Dirichlet-Laplace prior on VAR coefficients
 #'
-#' @param a numeric constant. Concentration parameter, that dictates the shrinkage. Only necessary if ´hyperhyper = FALSE'.
-#' @param hyperhyper bool. TRUE: Discrete uniform hyperprior on a. FALSE: `a' has to be defined.
+#' @param a single non-negative number, indicating the concentration parameter of
+#' the DL prior. Only necessary if \code{hyperhyper=FALSE}. Good properties somewhere in
+#' the interval \code{[1/n,1/2]}, where \code{n} is the number of VAR coefficients.
+#' Smaller values imply heavier regularization towards zero.
+#' @param hyperhyper logical. \code{TRUE} imposes a discrete uniform hyperprior on
+#' the concentration parameter on the interval \code{[1/n,1/2]} with 1000 support points.
+#' If set to \code{FALSE}, \code{a} has to be specified.
 #'
 #' @return list
 #' @export
@@ -13,25 +18,6 @@ specify_PHI_DLprior <- function(a=0.5, hyperhyper = FALSE){
               hyperhyper=hyperhyper))
 }
 
-#' @export
-specify_PHI_DLprior_new <- function(type = "own/cross", a_1=0.5, a_2=1/10,
-                                    hyperhyper = FALSE){
-  #type: "global": one shrinkage parameter for all coefficients;
-  #"own/cross": seperate shrinkage parameters for own- and crosslags;
-  #"lagwise-own/cross": seperate shrinkage parameters for own- and crosslags for every lag
-  #a_1: if type=="global": global shrinkage parameter;
-  #if type=="own/cross: shrinkage parameter for own lags;
-  #if type=="lagwise-own/cross": shrinkage parameters for own lags, vector of length p;
-  #a_2: if type=="global": redundant (NULL);
-  #if type=="own/cross: shrinkage parameter for cross lags;
-  #if type=="lagwise-own/cross": shrinkage parameters for cross lags, vector of length p;
-  #hyperhyper: discrete uniform hyperprior on the shrinkage hyperparameters: no need to specify a_1 and a_2;
-
-  return(list(type=type,
-              a_1=a_1,
-              a_2=a_2,
-              hyperhyper=hyperhyper))
-}
 
 #' @export
 specify_L_DLprior <- function(theta_dirichlet = c("b" = 0.5),

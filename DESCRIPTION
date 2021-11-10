@@ -22,4 +22,5 @@ Imports:
     stats
 LinkingTo: 
     Rcpp,
-    GIGrvg
+    GIGrvg,
+    RcppArmadillo
