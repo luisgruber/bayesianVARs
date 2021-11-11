@@ -19,7 +19,8 @@ Imports:
     MASS,
     mvtnorm,
     Rcpp,
-    stats
+    stats,
+    stochvol
 LinkingTo: 
     Rcpp,
     GIGrvg,

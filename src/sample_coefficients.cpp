@@ -8,7 +8,7 @@ arma::mat draw_PHI(arma::mat PHI, arma::mat PHI_prior, arma::mat Y, arma::mat X,
                    arma::mat L, arma::mat d, arma::vec V_i, int K, int M) {
 
   // Import MASS::mvrnorm function
-  Environment MASS = Environment("package:MASS");
+  Environment MASS = Environment::namespace_env("MASS");
   Function Mrmvnorm = MASS["mvrnorm"];
   //Environment base = Environment("package:base");
   //Function Rchol = base["chol"];
@@ -72,7 +72,7 @@ arma::mat draw_PHI(arma::mat PHI, arma::mat PHI_prior, arma::mat Y, arma::mat X,
 arma::mat draw_L(arma::mat Ytilde, arma::vec V_i, arma::mat d) {
 
   // Import MASS::mvrnorm function
-  Environment MASS = Environment("package:MASS");
+  Environment MASS = Environment::namespace_env("MASS");
   Function Mrmvnorm = MASS["mvrnorm"];
 
   int M = Ytilde.n_cols;
