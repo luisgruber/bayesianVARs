@@ -24,4 +24,5 @@ Imports:
 LinkingTo: 
     Rcpp,
     GIGrvg,
-    RcppArmadillo
+    RcppArmadillo,
+    stochvol

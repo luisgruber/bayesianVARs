@@ -11,6 +11,24 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// bvar_cpp
+List bvar_cpp(arma::mat str_resid, const int draws, const int burnin, const int M, const int T, const List sv_spec, arma::mat h, arma::mat sv_para);
+RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP str_residSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP MSEXP, SEXP TSEXP, SEXP sv_specSEXP, SEXP hSEXP, SEXP sv_paraSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type str_resid(str_residSEXP);
+    Rcpp::traits::input_parameter< const int >::type draws(drawsSEXP);
+    Rcpp::traits::input_parameter< const int >::type burnin(burninSEXP);
+    Rcpp::traits::input_parameter< const int >::type M(MSEXP);
+    Rcpp::traits::input_parameter< const int >::type T(TSEXP);
+    Rcpp::traits::input_parameter< const List >::type sv_spec(sv_specSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type h(hSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type sv_para(sv_paraSEXP);
+    rcpp_result_gen = Rcpp::wrap(bvar_cpp(str_resid, draws, burnin, M, T, sv_spec, h, sv_para));
+    return rcpp_result_gen;
+END_RCPP
+}
 // my_gig
 NumericMatrix my_gig(int n, NumericVector lambda, NumericVector chi, NumericVector psi);
 RcppExport SEXP _bayesianVARs_my_gig(SEXP nSEXP, SEXP lambdaSEXP, SEXP chiSEXP, SEXP psiSEXP) {
@@ -57,11 +75,24 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// myuvec
+arma::mat myuvec(arma::mat y);
+RcppExport SEXP _bayesianVARs_myuvec(SEXP ySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type y(ySEXP);
+    rcpp_result_gen = Rcpp::wrap(myuvec(y));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 8},
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
     {"_bayesianVARs_draw_PHI", (DL_FUNC) &_bayesianVARs_draw_PHI, 9},
     {"_bayesianVARs_draw_L", (DL_FUNC) &_bayesianVARs_draw_L, 3},
+    {"_bayesianVARs_myuvec", (DL_FUNC) &_bayesianVARs_myuvec, 1},
     {NULL, NULL, 0}
 };
 

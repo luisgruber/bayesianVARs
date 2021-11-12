@@ -33,7 +33,6 @@
 #'
 #' @return Something
 #' @export
-#' @importFrom stochvol specify_priors svsample_fast_cpp
 bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", PHI_hyper = NULL,
                  L_prior = "DL", L_hyper = NULL, draws, burnin, SV = TRUE,
                  SV_hyper = NULL, standardize = TRUE) {
