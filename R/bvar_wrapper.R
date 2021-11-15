@@ -1,8 +1,98 @@
 #' @export
-bvar_fast <- function(y, draws, burnin, sv_spec){
+bvar_fast <- function(Yraw,
+                      p,
+                      intercept = FALSE,
+                      standardize = TRUE,
+                      persistence = 0,
+                      draws,
+                      burnin,
+                      sv_spec,
+                      progressbar=TRUE
+                      ){
 
-  M <- ncol(y)
-  T <- nrow(y)
+# Data preliminaries ------------------------------------------------------
+
+
+  # M: number of variables, T: number of observations used for estimation,
+  # K: number of covariates per equation, n: number of VAR coefficients,
+  # n_L: number of free off-diagonal elements in L
+  # Y: Yraw without first p observations, X: lagged values of Yraw
+
+  M <- ncol(Yraw)
+  Traw <- nrow(Yraw)
+  Y_tmp <- as.matrix(Yraw)
+  if (any(is.na(Y_tmp))){
+    stop("\nNAs in Yraw.\n")
+  }
+  if (ncol(Y_tmp) < 2) {
+    stop("The matrix 'Yraw' should contain at least two variables. \n")
+  }
+  if (is.null(colnames(Y_tmp))) {
+    colnames(Y_tmp) <- paste("y", 1:ncol(Y_tmp), sep = "")
+    warning(paste("No column names supplied in Yraw, using:",
+                  paste(colnames(Y_tmp), collapse = ", "), ", instead.\n"))
+  }
+  colnames(Y_tmp) <- make.names(colnames(Y_tmp))
+  # embed: get lagged values
+  X <- embed(Y_tmp, dimension = p + 1)[, -(1:M)]
+  if(intercept){
+    cbind(X,1)
+  }
+  colnames(X) <- paste0(colnames(Y_tmp), ".l", sort(rep(1:p,M)))
+  Y <- Y_tmp[-c(1:p), ]
+
+  mu_Y <- colMeans(Y)
+  sd_Y <- apply(Y, 2 ,sd)
+  if(standardize==TRUE){
+
+    Y <- scale(Y)
+    if(intercept){
+      X[,-ncol(X)] <- scale(X[,-ncol(X)])
+    }else X <- scale(X)
+
+  }
+
+  T <- Traw - p
+  K <- ncol(X)
+  if(T!=nrow(Y) | T!=nrow(X)){
+    stop("Something went wrong: T != nrow(Y). \n")
+  }
+  n <- K*M
+  n_L <- (M^2 - M)/2
+
+# Hyperparameter settigns -------------------------------------------------
+
+  if(persistence == 0) {
+
+    PHI0 <- matrix(0, K, M)
+
+  }else {
+
+    PHI0 <- matrix(0, K, M)
+    PHI0[1:M, 1:M] <- diag(M)*persistence
+
+  }
+
+  V_i <- rep(1, n)
+  V_i_L <- rep(1, n_L)
+
+# Initialize --------------------------------------------------------------
+
+  # Posterior mean of a flat conjugate Normal inverse Wishart prior
+  # exists even when OLS estimate does not exist (in situations where T < K)
+  # N(0, 10^3) on PHI, and invWish(I, M+2) on Sigma
+  XX <- crossprod(X)
+  V_post_flat <- tryCatch(solve(diag(1/rep(10^3, K)) + XX),
+                          error = function(e) chol2inv(chol(diag(1/rep(10^3, K)) + XX)))
+  PHI <- V_post_flat %*% (diag(1/rep(10^3, K))%*%PHI0 + t(X)%*%Y)
+  S_post <- diag(M) + crossprod(Y - X%*%PHI) + t(PHI - PHI0) %*%
+    diag(1/rep(10^3, K)) %*% (PHI - PHI0)
+  Sigma <- (S_post)/(M +2 + T - M - 1)
+  U <- chol(Sigma)
+  D <- diag(U)^2
+  L_i <- U/sqrt(D)
+  L <- backsolve(L_i, diag(M))
+
 
   if(is.null(sv_spec)){
     sv_spec <- list(priormu = c(0,100),
@@ -18,15 +108,34 @@ bvar_fast <- function(y, draws, burnin, sv_spec){
 
   h_init <- matrix(rep(-10, T*M), T,M)
 
-  res <- bvar_cpp(y,
-                  draws,
-                  burnin,
+  res <- bvar_cpp(Y,
+                  X,
                   M,
                   T,
+                  K,
+                  draws,
+                  burnin,
+                  PHI,
+                  PHI0,
+                  L,
+                  V_i,
+                  V_i_L,
                   #expert,
                   sv_spec,
                   h_init,
-                  sv_para_init
+                  sv_para_init,
+                  progressbar
                   )
+
+  #Rcpp timer is in nanoseconds
+  #concersion to secs per iteration
+  res$bench <- diff(res$bench)/(10^(9)*(draws+burnin))
+  attributes(res$bench) <- list("names" = "secs/itr")
+  dimnames(res$PHI_draws)[2] <- list(colnames(X))
+  dimnames(res$PHI_draws)[3] <- list(colnames(Y))
+  dimnames(res$L_draws)[2] <- dimnames(res$L_draws)[3] <- list(colnames(Y))
+  res$Y <- Y
+  res$X <- X
+
   res
 }

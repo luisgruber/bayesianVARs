@@ -39,8 +39,6 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
 
   #standardize: scales data (after Y (matrix of responses) and X (design matrix) are created) to have zero mean and variance 1.
 
-  start_time <- Sys.time()
-
   tot <- draws + burnin
   pb <- txtProgressBar(min = 1, max = tot, initial = 0, style = 3)
 
@@ -428,8 +426,7 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
 
   }
 
-  autotune <- TRUE
-
+  start_time <- Sys.time()
   # Sampler -----------------------------------------------------------------
 
   for (rep in seq_len(tot)) {#seq_len(tot)
@@ -687,7 +684,8 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
   timer <- Sys.time() - start_time
   close(pb)
   cat("Finished MCMC after ", format(round(timer, 2)), ".\n", sep = "")
-
+  bench <- as.numeric(timer/tot)
+  attributes(bench) <- list("names" = "secs/itr")
   # covariables for one-step ahead predictions
   if(intercept){
     X_fore <- c(as.vector(t(Y[T:(T-p+1),])), 1)
@@ -709,6 +707,7 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
               mu_Y=mu_Y,
               sd_Y=sd_Y,
               standardize=standardize,
-              intercept = intercept
+              intercept = intercept,
+              bench=bench
   ))
 }

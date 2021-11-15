@@ -12,20 +12,28 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // bvar_cpp
-List bvar_cpp(arma::mat str_resid, const int draws, const int burnin, const int M, const int T, const List sv_spec, arma::mat h, arma::mat sv_para);
-RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP str_residSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP MSEXP, SEXP TSEXP, SEXP sv_specSEXP, SEXP hSEXP, SEXP sv_paraSEXP) {
+List bvar_cpp(const arma::mat Y, const arma::mat X, const int M, const int T, const int K, const int draws, const int burnin, arma::mat PHI, arma::mat PHI_prior, arma::mat L, arma::vec V_i, arma::vec V_i_L, const List sv_spec, arma::mat h, arma::mat sv_para, const bool progressbar);
+RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP YSEXP, SEXP XSEXP, SEXP MSEXP, SEXP TSEXP, SEXP KSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP PHISEXP, SEXP PHI_priorSEXP, SEXP LSEXP, SEXP V_iSEXP, SEXP V_i_LSEXP, SEXP sv_specSEXP, SEXP hSEXP, SEXP sv_paraSEXP, SEXP progressbarSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type str_resid(str_residSEXP);
-    Rcpp::traits::input_parameter< const int >::type draws(drawsSEXP);
-    Rcpp::traits::input_parameter< const int >::type burnin(burninSEXP);
+    Rcpp::traits::input_parameter< const arma::mat >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const arma::mat >::type X(XSEXP);
     Rcpp::traits::input_parameter< const int >::type M(MSEXP);
     Rcpp::traits::input_parameter< const int >::type T(TSEXP);
+    Rcpp::traits::input_parameter< const int >::type K(KSEXP);
+    Rcpp::traits::input_parameter< const int >::type draws(drawsSEXP);
+    Rcpp::traits::input_parameter< const int >::type burnin(burninSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type PHI(PHISEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type PHI_prior(PHI_priorSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type L(LSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type V_i(V_iSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type V_i_L(V_i_LSEXP);
     Rcpp::traits::input_parameter< const List >::type sv_spec(sv_specSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type h(hSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type sv_para(sv_paraSEXP);
-    rcpp_result_gen = Rcpp::wrap(bvar_cpp(str_resid, draws, burnin, M, T, sv_spec, h, sv_para));
+    Rcpp::traits::input_parameter< const bool >::type progressbar(progressbarSEXP);
+    rcpp_result_gen = Rcpp::wrap(bvar_cpp(Y, X, M, T, K, draws, burnin, PHI, PHI_prior, L, V_i, V_i_L, sv_spec, h, sv_para, progressbar));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -75,24 +83,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// myuvec
-arma::mat myuvec(arma::mat y);
-RcppExport SEXP _bayesianVARs_myuvec(SEXP ySEXP) {
+// gibbs_cpp
+arma::mat gibbs_cpp(int N, int thin);
+RcppExport SEXP _bayesianVARs_gibbs_cpp(SEXP NSEXP, SEXP thinSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type y(ySEXP);
-    rcpp_result_gen = Rcpp::wrap(myuvec(y));
+    Rcpp::traits::input_parameter< int >::type N(NSEXP);
+    Rcpp::traits::input_parameter< int >::type thin(thinSEXP);
+    rcpp_result_gen = Rcpp::wrap(gibbs_cpp(N, thin));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 8},
+    {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 16},
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
     {"_bayesianVARs_draw_PHI", (DL_FUNC) &_bayesianVARs_draw_PHI, 9},
     {"_bayesianVARs_draw_L", (DL_FUNC) &_bayesianVARs_draw_L, 3},
-    {"_bayesianVARs_myuvec", (DL_FUNC) &_bayesianVARs_myuvec, 1},
+    {"_bayesianVARs_gibbs_cpp", (DL_FUNC) &_bayesianVARs_gibbs_cpp, 2},
     {NULL, NULL, 0}
 };
 

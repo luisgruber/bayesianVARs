@@ -25,4 +25,7 @@ LinkingTo:
     Rcpp,
     GIGrvg,
     RcppArmadillo,
-    stochvol
+    stochvol,
+    RcppProgress
+Depends: 
+    R (>= 2.10)
