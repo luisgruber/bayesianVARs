@@ -12,8 +12,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // bvar_cpp
-List bvar_cpp(const arma::mat Y, const arma::mat X, const int M, const int T, const int K, const int draws, const int burnin, arma::mat PHI, arma::mat PHI_prior, arma::mat L, arma::vec V_i, arma::vec V_i_L, const List sv_spec, arma::mat h, arma::mat sv_para, const bool progressbar);
-RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP YSEXP, SEXP XSEXP, SEXP MSEXP, SEXP TSEXP, SEXP KSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP PHISEXP, SEXP PHI_priorSEXP, SEXP LSEXP, SEXP V_iSEXP, SEXP V_i_LSEXP, SEXP sv_specSEXP, SEXP hSEXP, SEXP sv_paraSEXP, SEXP progressbarSEXP) {
+List bvar_cpp(const arma::mat Y, const arma::mat X, const int M, const int T, const int K, const int draws, const int burnin, arma::mat PHI, const arma::mat PHI0, const std::string priorPHI, const double DL_a, const std::string priorL, const double DL_b, arma::mat L, arma::vec V_i, arma::vec V_i_L, const List sv_spec, arma::mat h, arma::mat sv_para, const bool progressbar);
+RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP YSEXP, SEXP XSEXP, SEXP MSEXP, SEXP TSEXP, SEXP KSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP PHISEXP, SEXP PHI0SEXP, SEXP priorPHISEXP, SEXP DL_aSEXP, SEXP priorLSEXP, SEXP DL_bSEXP, SEXP LSEXP, SEXP V_iSEXP, SEXP V_i_LSEXP, SEXP sv_specSEXP, SEXP hSEXP, SEXP sv_paraSEXP, SEXP progressbarSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -25,7 +25,11 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int >::type draws(drawsSEXP);
     Rcpp::traits::input_parameter< const int >::type burnin(burninSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type PHI(PHISEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type PHI_prior(PHI_priorSEXP);
+    Rcpp::traits::input_parameter< const arma::mat >::type PHI0(PHI0SEXP);
+    Rcpp::traits::input_parameter< const std::string >::type priorPHI(priorPHISEXP);
+    Rcpp::traits::input_parameter< const double >::type DL_a(DL_aSEXP);
+    Rcpp::traits::input_parameter< const std::string >::type priorL(priorLSEXP);
+    Rcpp::traits::input_parameter< const double >::type DL_b(DL_bSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type L(LSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type V_i(V_iSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type V_i_L(V_i_LSEXP);
@@ -33,7 +37,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::mat >::type h(hSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type sv_para(sv_paraSEXP);
     Rcpp::traits::input_parameter< const bool >::type progressbar(progressbarSEXP);
-    rcpp_result_gen = Rcpp::wrap(bvar_cpp(Y, X, M, T, K, draws, burnin, PHI, PHI_prior, L, V_i, V_i_L, sv_spec, h, sv_para, progressbar));
+    rcpp_result_gen = Rcpp::wrap(bvar_cpp(Y, X, M, T, K, draws, burnin, PHI, PHI0, priorPHI, DL_a, priorL, DL_b, L, V_i, V_i_L, sv_spec, h, sv_para, progressbar));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -84,24 +88,23 @@ BEGIN_RCPP
 END_RCPP
 }
 // gibbs_cpp
-arma::mat gibbs_cpp(int N, int thin);
-RcppExport SEXP _bayesianVARs_gibbs_cpp(SEXP NSEXP, SEXP thinSEXP) {
+arma::mat gibbs_cpp(arma::mat x);
+RcppExport SEXP _bayesianVARs_gibbs_cpp(SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type N(NSEXP);
-    Rcpp::traits::input_parameter< int >::type thin(thinSEXP);
-    rcpp_result_gen = Rcpp::wrap(gibbs_cpp(N, thin));
+    Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(gibbs_cpp(x));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 16},
+    {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 20},
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
     {"_bayesianVARs_draw_PHI", (DL_FUNC) &_bayesianVARs_draw_PHI, 9},
     {"_bayesianVARs_draw_L", (DL_FUNC) &_bayesianVARs_draw_L, 3},
-    {"_bayesianVARs_gibbs_cpp", (DL_FUNC) &_bayesianVARs_gibbs_cpp, 2},
+    {"_bayesianVARs_gibbs_cpp", (DL_FUNC) &_bayesianVARs_gibbs_cpp, 1},
     {NULL, NULL, 0}
 };
 

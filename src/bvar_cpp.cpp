@@ -15,7 +15,11 @@ List bvar_cpp(const arma::mat Y,
               const int draws,
               const int burnin,
               arma::mat PHI,
-              arma::mat PHI_prior,
+              const arma::mat PHI0,
+              const std::string priorPHI,
+              const double DL_a,
+              const std::string priorL,
+              const double DL_b,
               arma::mat L,
               arma::vec V_i,
               arma::vec V_i_L,
@@ -23,7 +27,24 @@ List bvar_cpp(const arma::mat Y,
               arma::mat h,
               arma::mat sv_para,
               const bool progressbar){
+  //-----------------------
+  const double n = K*M;
+  arma::mat PHI_diff;
+  arma::mat V_prior = arma::reshape(V_i, K, M);
 
+  arma::vec psi(n, arma::fill::value(1.0));
+  double zeta=10;
+  arma::vec theta(n, arma::fill::value(1.0));
+  //double tmp4samplingzeta;
+  //arma::mat theta_prep(K,M);
+
+
+  uvec L_upper_indices = trimatu_ind( size(L),  1);
+  arma::vec l = L(L_upper_indices);
+  const double n_L = l.size();
+  arma::vec psi_L(n_L, arma::fill::value(1.0));
+  double zeta_L=10;
+  arma::vec theta_L(n_L, arma::fill::value(1.0));
 
   //-----------------------------SV-settings----------------------------------//
   // Import sv_spec
@@ -66,6 +87,14 @@ List bvar_cpp(const arma::mat Y,
   arma::cube sv_para_draws(draws, 4,M);
   arma::cube PHI_draws(draws, K, M);
   arma::cube L_draws(draws, M, M);
+  int hyperparameter_size;
+  if(priorPHI == "DL"){
+    hyperparameter_size = 1 + 2*n;
+  }
+  if(priorL == "DL"){
+    hyperparameter_size += 1 + 2*n_L;
+  }
+  arma::mat hyperparameter_draws(draws, hyperparameter_size);
 
 
   //-----------------------------------SAMPLER--------------------------------//
@@ -78,17 +107,70 @@ List bvar_cpp(const arma::mat Y,
   for(int rep = 0; rep < tot; rep++){
 
     //----1) Draw PHI (reduced form VAR coefficients)
-    sample_PHI(PHI, PHI_prior,  Y,  X,L,  d, V_i, K,  M);
+
+    sample_PHI(PHI, PHI0, Y, X, L, d, V_prior, K, M);
+
+    if(priorPHI == "DL"){
+      // coefficients must not be zero, otherwise problems with do_rgig1
+      for (int ii = 0; ii<K; ii++) {
+        for (int jj = 0; jj<M; jj++){
+          if(PHI(ii,jj) == 0) {
+            if(R::rbinom( 1, 0.5 )==0){
+              PHI(ii,jj) = 1e-100;
+            }else{
+              PHI(ii,jj) = -1e-100;
+            }
+          }else
+           if(PHI(ii,jj) < 1e-100 && PHI(ii,jj) > 0){
+          PHI(ii,jj) = 1e-100;
+            }else if (PHI(ii,jj) > -1e-100 && PHI(ii,jj) < 0){
+            PHI(ii,jj) = -1e-100;
+          }
+        }
+      }
+    }
+    PHI_diff = PHI - PHI0;
 
     //----2) Sample hyperparameter of hierarchical priors
+
+    if(priorPHI == "DL"){
+
+     sample_V_i_DL(V_i, PHI_diff, DL_a , zeta, psi, theta);
+    }
+    V_prior = reshape(V_i, K, M);
+
     //----3) Draw Sigma_t = inv(L)'*D_t*inv(L), where L is upper unitriangular
     //       and D diagonal
     //----3a) Draw free off-diagonal elements in L
+
+
     arma::mat resid = Y - X*PHI;
     sample_L(L, resid, V_i_L, d);
+
+    if(priorL == "DL"){
+
+      for (int jj = 0; jj<M; jj++){
+        for (int ii = 0; ii<jj; ii++) {
+            if(L(ii,jj) == 0) {
+              if(R::rbinom( 1, 0.5 )==0){
+                L(ii,jj) = 1e-100;
+              }else{
+                L(ii,jj) = -1e-100;
+              }
+            }else
+              if(L(ii,jj) < 1e-100 && L(ii,jj) > 0){
+                L(ii,jj) = 1e-100;
+              }else if (L(ii,jj) > -1e-100 && L(ii,jj) < 0){
+                L(ii,jj) = -1e-100;
+              }
+          }
+        }
+    }
+
     //----3b) Draw elements of D_t
     //        in case of SV use package stochvol
     arma::mat str_resid = resid*L; // structural (orthogonalized) residuals
+
     const arma::mat resid_norm = log(square(str_resid)); // + offset??
     for(int j=0; j < M; j++){
       arma::vec h_j  = h.unsafe_col(j);  // unsafe_col reuses memory, h will automatically be overwritten
@@ -102,6 +184,12 @@ List bvar_cpp(const arma::mat Y,
     }
     d = exp(h);
 
+    //----4) Draw hyperparameters of hierarchical priors
+    if(priorL == "DL"){
+      l = L(L_upper_indices);
+      sample_V_i_DL(V_i_L, l, DL_b , zeta_L, psi_L, theta_L);
+    }
+
     //-------Store draws after burnin
     if(rep >= burnin){
 
@@ -109,6 +197,12 @@ List bvar_cpp(const arma::mat Y,
       L_draws.row(rep-burnin) = L;
       sv_latent_draws.row(rep-burnin) = h;
       sv_para_draws.row((rep-burnin)) = sv_para;
+      hyperparameter_draws(rep-burnin, 0) = zeta;
+      hyperparameter_draws(rep-burnin, span(1,(n))) = trans(psi.as_col());
+      hyperparameter_draws(rep-burnin, span(n+1,(2*n))) = trans(theta.as_col());
+      hyperparameter_draws(rep-burnin, 2*n+1) = zeta_L;
+      hyperparameter_draws(rep-burnin, span(2*n+2,2*n+1+n_L)) = trans(psi_L.as_col());
+      hyperparameter_draws(rep-burnin, span(2*n+2+n_L,hyperparameter_size-1)) = trans(theta_L.as_col());
 
     }
 
@@ -122,6 +216,7 @@ List bvar_cpp(const arma::mat Y,
     Named("L_draws") = L_draws,
     Named("sv_latent") = sv_latent_draws,
     Named("sv_para_draws") = sv_para_draws,
+    Named("hyperparameter_draws") = hyperparameter_draws,
     Named("bench") = time
   );
 

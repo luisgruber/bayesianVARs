@@ -4,8 +4,11 @@ bvar_fast <- function(Yraw,
                       intercept = FALSE,
                       standardize = TRUE,
                       persistence = 0,
+                      priorPHI,
+                      priorL,
                       draws,
                       burnin,
+                      SV=TRUE,
                       sv_spec,
                       progressbar=TRUE
                       ){
@@ -73,8 +76,97 @@ bvar_fast <- function(Yraw,
 
   }
 
-  V_i <- rep(1, n)
+
   V_i_L <- rep(1, n_L)
+
+  if(SV == TRUE & is.null(sv_spec)){
+    sv_spec <- list(priormu = c(0,100),
+                    priorphi = c(20, 1.5),
+                    priorsigma2 = c(0.5,0.5)#,
+                    #priorh0 = -1 #h0 from stationary distribution
+    )
+  }
+
+
+  #specify_priorPHI <- function(prior, DL_a,
+  #                             SSVS_c0, SSVS_c1, SSVS_semiautomatic,
+  #                             HMP_lambda1, HMP_lambda2,
+  #                             V_i = NULL){
+
+  #  if(!(prior %in% c("DL", "HMP", "SSVS", "normal"))){
+  #    stop("Argument 'prior' must be one of
+  #         'DL', 'SSVS', 'HMP' or 'normal'.")
+  #  }
+
+  #}
+
+  if(!(priorPHI$prior %in% c("DL", "HMP", "SSVS", "normal"))){
+    stop("Argument 'priorPHI$prior' must be one of
+           'DL', 'SSVS', 'HMP' or 'normal'. \n")
+  }
+
+  if(is.null(priorPHI$V_i)){
+    V_i <- rep(1, n)}
+  a <- 0.5
+
+  if(priorPHI$prior == "normal"){
+    if(is.null(priorPHI$V_i)){
+      warning("Prior variances for VAR coefficients not specified.
+              Using 'rep(1,n)', where 'n' is the number of coefficients. \n")
+    }else{
+      if(length(priorPHI$V_i) > 1 & (length(priorPHI$V_i) < n | length(priorPHI$V_i) > n) ){
+        stop("Length of 'priorPHI$V_i' does not match number of VAR coefficients:
+        Specify either one prior variance (single numeric value) that will be
+             recycled for all coefficients, or a numeric vector which length
+             equals the number of VAR coefficients. \n")
+      }
+      V_i <- rep(priorPHI$V_i, length = n)
+      if(any(V_i<=0)){
+        stop("Prior variances (elements of 'priorPHI$V_i') must be strictly
+             positive. \n")
+      }
+    }
+  }else if(priorPHI$prior == "DL"){
+    if(is.numeric(priorPHI$DL_a)){
+      a <-  priorPHI$DL_a
+    }else if(priorPHI$DL_a == "hyperprior"){
+
+
+    }
+
+  }else if(priorPHI$prior == "SSVS"){
+    c0 <- priorPHI$SSVS_c0
+  }
+
+  if(priorL$prior == "normal"){
+    if(is.null(priorL$V_i)){
+      warning("Prior variances for VAR coefficients not specified.
+              Using 'rep(1,n)', where 'n' is the number of coefficients. \n")
+    }else{
+      if(length(priorL$V_i) > 1 & (length(priorL$V_i) < n_L | length(priorL$V_i) > n_L) ){
+        stop("Length of 'priorL$V_i' does not match number of free off-diagonal elements in L:
+        Specify either one prior variance (single numeric value) that will be
+             recycled for all coefficients, or a numeric vector which length
+             equals the number of free off-diagonal elements in L \n")
+      }
+      V_i_L <- rep(priorL$V_i, length = n_L)
+      if(any(V_i_L<=0)){
+        stop("Prior variances (elements of 'priorL$V_i') must be strictly
+             positive. \n")
+      }
+    }
+  }else if(priorL$prior == "DL"){
+    if(is.numeric(priorL$DL_b)){
+      b <-  priorL$DL_b
+    }else if(priorL$DL_b == "hyperprior"){
+
+
+    }
+
+  }else if(priorL$prior == "SSVS"){
+    c0 <- priorL$SSVS_c0
+  }
+
 
 # Initialize --------------------------------------------------------------
 
@@ -90,17 +182,9 @@ bvar_fast <- function(Yraw,
   Sigma <- (S_post)/(M +2 + T - M - 1)
   U <- chol(Sigma)
   D <- diag(U)^2
-  L_i <- U/sqrt(D)
-  L <- backsolve(L_i, diag(M))
+  L_inv <- U/sqrt(D)
+  L <- backsolve(L_inv, diag(M))
 
-
-  if(is.null(sv_spec)){
-    sv_spec <- list(priormu = c(0,100),
-                    priorphi = c(20, 1.5),
-                    priorsigma2 = c(0.5,0.5)#,
-                    #priorh0 = -1 #h0 from stationary distribution
-                    )
-  }
 
   sv_para_init <- matrix(data= c(rep(-10,M), rep(0.9,M), rep(0.2,M), rep(-10,M)),
                                 nrow = 4, ncol = M, byrow = TRUE)
@@ -117,6 +201,10 @@ bvar_fast <- function(Yraw,
                   burnin,
                   PHI,
                   PHI0,
+                  priorPHI$prior,
+                  a,
+                  priorL$prior,
+                  b,
                   L,
                   V_i,
                   V_i_L,
@@ -128,7 +216,7 @@ bvar_fast <- function(Yraw,
                   )
 
   #Rcpp timer is in nanoseconds
-  #concersion to secs per iteration
+  #conversion to secs per iteration
   res$bench <- diff(res$bench)/(10^(9)*(draws+burnin))
   attributes(res$bench) <- list("names" = "secs/itr")
   dimnames(res$PHI_draws)[2] <- list(colnames(X))

@@ -1,7 +1,37 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
+
 using namespace Rcpp;
 using namespace arma;
+
+// Import rgig from R package GIGrvg
+double do_rgig1(double lambda, double chi, double psi) {
+
+  double res;
+  // circumvent GIGrvg in these cases
+  if ((chi < (11 * DOUBLE_EPS)) & (lambda != 0)) {
+    /* special cases which are basically Gamma and Inverse Gamma distribution */
+    if (lambda > 0.0) {
+      res = R::rgamma(lambda, 2.0/psi);
+    }
+    else {
+      res = 1.0/R::rgamma(-lambda, 2.0/chi); // fixed
+    }
+  } else if ((psi < (11 * DOUBLE_EPS)) & (lambda != 0)) {
+    /* special cases which are basically Gamma and Inverse Gamma distribution */
+    if (lambda > 0.0) {
+      res = R::rgamma(lambda, 2.0/psi);  // fixed
+    } else {
+      res = 1.0/R::rgamma(-lambda, 2.0/chi); // fixed
+    }
+  } else {
+    SEXP (*fun)(int, double, double, double) = NULL;
+    if (!fun) fun = (SEXP(*)(int, double, double, double)) R_GetCCallable("GIGrvg", "do_rgig");
+
+    res = as<double>(fun(1, lambda, chi, psi));
+  }
+  return res;
+}
 
 // draw_PHI samples VAR coefficients using the corrected triangular
 // algorithm as in Carrier, Chan, Clark & Marcellino (2021)
@@ -78,16 +108,13 @@ arma::mat draw_PHI(arma::mat PHI, arma::mat PHI_prior, arma::mat Y, arma::mat X,
 // for use within smapler written in Rcpp
 void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
                 const arma::mat& X, const arma::mat& L, const arma::mat& d,
-                const arma::vec& V_i, const int& K, const int& M) {
+                const arma::mat& V_prior, const int& K, const int& M) {
 
   // Import MASS::mvrnorm function
   Environment MASS = Environment::namespace_env("MASS");
   Function Mrmvnorm = MASS["mvrnorm"];
   //Environment base = Environment("package:base");
   //Function Rchol = base["chol"];
-
-
-  arma::mat V_prior = reshape(V_i, K, M);
 
   for(int i = 0; i < M; i++){
 
@@ -265,4 +292,23 @@ void sample_L(arma::mat& L, arma::mat& Ytilde, arma::vec& V_i, arma::mat& d) {
 
   }
 
+}
+
+void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, const double& a ,
+                   double& zeta, arma::vec& psi, arma::vec&theta){
+
+  double n = coefs.size();
+  double tmp4samplingzeta = 0;
+  arma::vec theta_prep(n);
+
+    for(int j = 0; j < n; j++){
+      psi(j) = 1./do_rgig1(-0.5, 1, (coefs(j) * coefs(j)) /
+        ( zeta * zeta * theta(j) * theta(j)));
+      tmp4samplingzeta += fabs(coefs(j))/theta(j) ;
+      theta_prep(j) = do_rgig1(a-1., 2*fabs(coefs(j)), 1);
+    }
+
+  zeta = do_rgig1(n*(a-1.), 2*tmp4samplingzeta,1);
+  theta = theta_prep / arma::accu(theta_prep);
+  V_i = psi % theta%theta * zeta*zeta  ;
 }
