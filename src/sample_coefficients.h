@@ -15,6 +15,12 @@ void sample_L(arma::mat& L, arma::mat& Ytilde, arma::vec& V_i, arma::mat& d);
 void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, const double& a ,
                    double& zeta, arma::vec& psi, arma::vec&theta);
 
+arma::colvec ddir_prep(arma::colvec x, arma::mat prep1, arma::rowvec prep2);
+
+void sample_DL_hyper(double& a, const arma::vec& theta, const arma::mat& prep1,
+                     const arma::rowvec& prep2, const double& zeta,
+                     arma::vec& a_vec);
+
 double do_rgig1(double lambda, double chi, double psi);
 
 #endif

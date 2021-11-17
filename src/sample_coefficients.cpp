@@ -107,7 +107,7 @@ arma::mat draw_PHI(arma::mat PHI, arma::mat PHI_prior, arma::mat Y, arma::mat X,
 // algorithm as in Carrier, Chan, Clark & Marcellino (2021)
 // for use within smapler written in Rcpp
 void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
-                const arma::mat& X, const arma::mat& L, const arma::mat& d,
+                const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,
                 const arma::mat& V_prior, const int& K, const int& M) {
 
   // Import MASS::mvrnorm function
@@ -122,7 +122,7 @@ void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
 
     arma::mat PHI_0 = PHI;
     PHI_0.col(i).zeros();
-    arma::vec normalizer = vectorise( pow(d.cols(i, M-1), 0.5)  );
+    arma::vec normalizer = vectorise( d_sqrt.cols(i, M-1)  );
     arma::vec Y_new = vectorise( (Y - X * PHI_0) * L.cols(i, M-1) ) / normalizer;
     arma::mat X_new_tmp = arma::kron(L( span(i,i), span(i, M-1)).t(), X);
     arma::mat X_new = X_new_tmp.each_col() / normalizer;
@@ -234,7 +234,7 @@ arma::mat draw_L(arma::mat Ytilde, arma::vec V_i, arma::mat d) {
   return(L);
 }
 
-void sample_L(arma::mat& L, arma::mat& Ytilde, arma::vec& V_i, arma::mat& d) {
+void sample_L(arma::mat& L, arma::mat& Ytilde, arma::vec& V_i, arma::mat& d_sqrt) {
 
   // Import MASS::mvrnorm function
   Environment MASS = Environment::namespace_env("MASS");
@@ -247,14 +247,14 @@ void sample_L(arma::mat& L, arma::mat& Ytilde, arma::vec& V_i, arma::mat& d) {
 
   for(int i = 1; i < M; i++){
 
-    vec normalizer = vectorise( pow(d.col(i), 0.5));
+    vec normalizer = vectorise( d_sqrt.col(i) );
     mat Z = -1 * (Ytilde.cols(0, i-1).each_col() / normalizer);
     vec c = vectorise(Ytilde.col(i)) / normalizer;
 
     mat V_p_inv = diagmat(1/V_i.subvec(ind, ind+i-1));
 
     // Compute V_post
-    //mat V_post = (V_p_inv + Z.t()*Z).i(); // unstable
+    // mat V_post = (V_p_inv + Z.t()*Z).i(); // unstable
     // compute inverse via the QR decomposition (similar to chol2inv in R)
     arma::mat V_post_tmp = chol(V_p_inv + Z.t()*Z, "upper"); //V_p_inv
     mat Q;
@@ -311,4 +311,28 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, const double& a ,
   zeta = do_rgig1(n*(a-1.), 2*tmp4samplingzeta,1);
   theta = theta_prep / arma::accu(theta_prep);
   V_i = psi % theta%theta * zeta*zeta  ;
+}
+
+arma::colvec ddir_prep(arma::colvec x, arma::mat prep1, arma::rowvec prep2){
+
+  arma::rowvec logd = sum(prep1.each_col() % log(x), 0) + prep2;
+
+  return(logd.t());
+}
+
+void sample_DL_hyper(double& a, const arma::vec& theta, const arma::mat& prep1,
+                     const arma::rowvec& prep2, const double& zeta,
+                     arma::vec& a_vec){
+  const int n = theta.size();
+  arma::vec logprobs = ddir_prep(theta, prep1, prep2);
+  for(int j=0; j<1000; j++){
+    logprobs(j) += R::dgamma(zeta, n*a_vec(j), 1/0.5, true); // R::dgamma uses scale
+  }
+
+  arma::vec w = exp(logprobs - logprobs.max());
+  arma::vec weights = w/sum(w);
+  arma::ivec iv(1000);
+  R::rmultinom(1, weights.begin(), 1000, iv.begin());
+  arma::uvec i = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
+  a = a_vec(i(0));
 }

@@ -107,7 +107,7 @@ bvar_fast <- function(Yraw,
 
   if(is.null(priorPHI$V_i)){
     V_i <- rep(1, n)}
-  a <- 0.5
+
 
   if(priorPHI$prior == "normal"){
     if(is.null(priorPHI$V_i)){
@@ -127,11 +127,13 @@ bvar_fast <- function(Yraw,
       }
     }
   }else if(priorPHI$prior == "DL"){
-    if(is.numeric(priorPHI$DL_a)){
+    if(priorPHI$DL_a == "hyperprior"){
+
+      priorPHI$prior <- "DL_h"
+      a <- 0.5 #initial value
+
+    }else if(is.numeric(priorPHI$DL_a)){
       a <-  priorPHI$DL_a
-    }else if(priorPHI$DL_a == "hyperprior"){
-
-
     }
 
   }else if(priorPHI$prior == "SSVS"){
@@ -159,8 +161,8 @@ bvar_fast <- function(Yraw,
     if(is.numeric(priorL$DL_b)){
       b <-  priorL$DL_b
     }else if(priorL$DL_b == "hyperprior"){
-
-
+      priorL$prior = "DL_h"
+      b <- 0.5
     }
 
   }else if(priorL$prior == "SSVS"){

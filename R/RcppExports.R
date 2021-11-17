@@ -18,7 +18,7 @@ draw_L <- function(Ytilde, V_i, d) {
     .Call(`_bayesianVARs_draw_L`, Ytilde, V_i, d)
 }
 
-gibbs_cpp <- function(x) {
-    .Call(`_bayesianVARs_gibbs_cpp`, x)
+oneMultinomCalt <- function(probs) {
+    .Call(`_bayesianVARs_oneMultinomCalt`, probs)
 }
 
