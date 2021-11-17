@@ -23,4 +23,8 @@ void sample_DL_hyper(double& a, const arma::vec& theta, const arma::mat& prep1,
 
 double do_rgig1(double lambda, double chi, double psi);
 
+void sample_V_i_SSVS(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
+                     const arma::vec coeffs, const arma::vec tau0,
+                     const arma::vec tau_1, const double s_a, const double s_b);
+
 #endif

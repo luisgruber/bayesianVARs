@@ -87,7 +87,7 @@ bvar_fast <- function(Yraw,
     )
   }
 
-
+  a <- s_a <- s_b <- tau_1 <- tau_0 <- 0.5
   #specify_priorPHI <- function(prior, DL_a,
   #                             SSVS_c0, SSVS_c1, SSVS_semiautomatic,
   #                             HMP_lambda1, HMP_lambda2,
@@ -137,7 +137,14 @@ bvar_fast <- function(Yraw,
     }
 
   }else if(priorPHI$prior == "SSVS"){
+
     c0 <- priorPHI$SSVS_c0
+    c1 <- priorPHI$SSVS_c1
+    tau_0 <- rep(c0, n)
+    tau_1 <- rep(c1, n)
+    s_a <- priorPHI$SSVS_s_a
+    s_b <- priorPHI$SSVS_s_b
+
   }
 
   if(priorL$prior == "normal"){
@@ -205,6 +212,10 @@ bvar_fast <- function(Yraw,
                   PHI0,
                   priorPHI$prior,
                   a,
+                  s_a,
+                  s_b,
+                  tau_0,
+                  tau_1,
                   priorL$prior,
                   b,
                   L,

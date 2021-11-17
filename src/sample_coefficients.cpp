@@ -336,3 +336,29 @@ void sample_DL_hyper(double& a, const arma::vec& theta, const arma::mat& prep1,
   arma::uvec i = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
   a = a_vec(i(0));
 }
+
+void sample_V_i_SSVS(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
+                     const arma::vec coeffs, const arma::vec tau_0,
+                     const arma::vec tau_1, const double s_a, const double s_b){
+
+  int n = coeffs.size();
+  // log densities of normals
+  arma::vec u_i1 = -log(tau_1) - 0.5 * square((coeffs)/tau_1) + log(p_i);
+  arma::vec u_i2 = -log(tau_0) - 0.5 * square((coeffs)/tau_0) + log(1 - p_i);
+
+  arma::vec logdif = u_i2 - u_i1;
+  arma::vec gst = 1/(1 + exp(logdif));
+
+  for(int j=0; j<n; ++j){
+
+    gammas(j) = R::rbinom(1,gst(j));
+
+    if(gammas(j)==1){
+      V_i(j) = tau_1(j)*tau_1(j);
+    }else{
+      V_i(j) = tau_0(j)*tau_0(j);
+    }
+    p_i(j) = R::rbeta(s_a + gammas(j), s_b + 1 - gammas(j));
+  }
+
+}

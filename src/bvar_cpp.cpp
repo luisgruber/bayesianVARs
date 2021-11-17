@@ -18,6 +18,10 @@ List bvar_cpp(const arma::mat Y,
               const arma::mat PHI0,
               const std::string priorPHI,
               double DL_a, // no const because of DL_hyper
+              const double SSVS_s_a,
+              const double SSVS_s_b,
+              const arma::vec tau_0,
+              const arma::vec tau_1,
               const std::string priorL,
               double DL_b, // no const because of DL_hyper
               arma::mat L,
@@ -34,7 +38,8 @@ List bvar_cpp(const arma::mat Y,
   arma::mat V_prior = arma::reshape(V_i, K, M);
 
   //----------------------Initialization of hyperpriors-----------------------//
-  // DL prior on PHI
+
+  //---- DL prior on PHI
   arma::vec psi(n, arma::fill::value(1.0));
   double zeta=10;
   arma::vec theta(n, arma::fill::value(1.0));
@@ -59,8 +64,11 @@ List bvar_cpp(const arma::mat Y,
       arma::sum(arma::lgamma(a_mat.t()),0));
 
   }
+  //---- SSVS on PHI
+  arma::vec gammas(n, arma::fill::zeros);
+  arma::vec p_i(n, arma::fill::value(0.5));
 
-  // DL prior on PHI
+  //---- DL prior on L
   uvec L_upper_indices = trimatu_ind( size(L),  1);
   arma::vec l = L(L_upper_indices);
   const double n_L = l.size();
@@ -133,6 +141,8 @@ List bvar_cpp(const arma::mat Y,
   int hyperparameter_size;
   if(priorPHI == "DL" || priorPHI == "DL_h"){
     hyperparameter_size = 2 + 2*n;
+  }else if(priorPHI == "SSVS"){
+    hyperparameter_size = 2*n;
   }
   if(priorL == "DL" || priorL == "DL_h"){
     hyperparameter_size += 2 + 2*n_L;
@@ -176,7 +186,7 @@ List bvar_cpp(const arma::mat Y,
     }
     PHI_diff = PHI - PHI0;
 
-    //----2) Sample hyperparameter of hierarchical priors
+    //----2) Sample hyperparameters of hierarchical priors (prior variances V_i)
 
     if(priorPHI == "DL" || priorPHI == "DL_h"){
 
@@ -184,7 +194,15 @@ List bvar_cpp(const arma::mat Y,
        sample_DL_hyper(DL_a, theta, prep1, prep2, zeta, a_vec);
      }
      sample_V_i_DL(V_i, PHI_diff, DL_a , zeta, psi, theta);
+
+    }else if(priorPHI == "SSVS"){
+
+      if(rep > 0.1*burnin){
+        sample_V_i_SSVS(V_i, gammas, p_i, PHI_diff, tau_0, tau_1, SSVS_s_a, SSVS_s_b);
+
+      }
     }
+
     V_prior = reshape(V_i, K, M);
 
     //----3) Draw Sigma_t = inv(L)'*D_t*inv(L), where L is upper unitriangular
@@ -259,6 +277,11 @@ List bvar_cpp(const arma::mat Y,
         hyperparameter_draws(rep-burnin, span(2*n+2+n_L,hyperparameter_size-3)) = trans(theta_L.as_col());
         hyperparameter_draws(rep-burnin, hyperparameter_size-2) = DL_a;
         hyperparameter_draws(rep-burnin, hyperparameter_size-1) = DL_b;
+
+      }else if(priorPHI == "SSVS"){
+
+        hyperparameter_draws(rep-burnin, span(0, (n-1))) = gammas;
+        hyperparameter_draws(rep-burnin, span(n, (hyperparameter_size-1))) = p_i;
 
       }
 
