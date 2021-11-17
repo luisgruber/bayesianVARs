@@ -127,11 +127,12 @@ bvar_fast <- function(Yraw,
       }
     }
   }else if(priorPHI$prior == "DL"){
-    if(is.numeric(priorPHI$DL_a)){
+    if(priorPHI$DL_a == "hyperprior"){
+
+      priorPHI$prior <- "DL_h"
+
+    }else if(is.numeric(priorPHI$DL_a)){
       a <-  priorPHI$DL_a
-    }else if(priorPHI$DL_a == "hyperprior"){
-
-
     }
 
   }else if(priorPHI$prior == "SSVS"){

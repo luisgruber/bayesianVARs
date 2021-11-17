@@ -12,7 +12,7 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // bvar_cpp
-List bvar_cpp(const arma::mat Y, const arma::mat X, const int M, const int T, const int K, const int draws, const int burnin, arma::mat PHI, const arma::mat PHI0, const std::string priorPHI, const double DL_a, const std::string priorL, const double DL_b, arma::mat L, arma::vec V_i, arma::vec V_i_L, const List sv_spec, arma::mat h, arma::mat sv_para, const bool progressbar);
+List bvar_cpp(const arma::mat Y, const arma::mat X, const int M, const int T, const int K, const int draws, const int burnin, arma::mat PHI, const arma::mat PHI0, const std::string priorPHI, double DL_a, const std::string priorL, const double DL_b, arma::mat L, arma::vec V_i, arma::vec V_i_L, const List sv_spec, arma::mat h, arma::mat sv_para, const bool progressbar);
 RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP YSEXP, SEXP XSEXP, SEXP MSEXP, SEXP TSEXP, SEXP KSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP PHISEXP, SEXP PHI0SEXP, SEXP priorPHISEXP, SEXP DL_aSEXP, SEXP priorLSEXP, SEXP DL_bSEXP, SEXP LSEXP, SEXP V_iSEXP, SEXP V_i_LSEXP, SEXP sv_specSEXP, SEXP hSEXP, SEXP sv_paraSEXP, SEXP progressbarSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -27,7 +27,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::mat >::type PHI(PHISEXP);
     Rcpp::traits::input_parameter< const arma::mat >::type PHI0(PHI0SEXP);
     Rcpp::traits::input_parameter< const std::string >::type priorPHI(priorPHISEXP);
-    Rcpp::traits::input_parameter< const double >::type DL_a(DL_aSEXP);
+    Rcpp::traits::input_parameter< double >::type DL_a(DL_aSEXP);
     Rcpp::traits::input_parameter< const std::string >::type priorL(priorLSEXP);
     Rcpp::traits::input_parameter< const double >::type DL_b(DL_bSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type L(LSEXP);
@@ -87,14 +87,14 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// gibbs_cpp
-arma::mat gibbs_cpp(arma::mat x);
-RcppExport SEXP _bayesianVARs_gibbs_cpp(SEXP xSEXP) {
+// oneMultinomCalt
+arma::uvec oneMultinomCalt(arma::vec probs);
+RcppExport SEXP _bayesianVARs_oneMultinomCalt(SEXP probsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(gibbs_cpp(x));
+    Rcpp::traits::input_parameter< arma::vec >::type probs(probsSEXP);
+    rcpp_result_gen = Rcpp::wrap(oneMultinomCalt(probs));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -104,7 +104,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
     {"_bayesianVARs_draw_PHI", (DL_FUNC) &_bayesianVARs_draw_PHI, 9},
     {"_bayesianVARs_draw_L", (DL_FUNC) &_bayesianVARs_draw_L, 3},
-    {"_bayesianVARs_gibbs_cpp", (DL_FUNC) &_bayesianVARs_gibbs_cpp, 1},
+    {"_bayesianVARs_oneMultinomCalt", (DL_FUNC) &_bayesianVARs_oneMultinomCalt, 1},
     {NULL, NULL, 0}
 };
 

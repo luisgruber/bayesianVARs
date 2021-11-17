@@ -312,3 +312,27 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, const double& a ,
   theta = theta_prep / arma::accu(theta_prep);
   V_i = psi % theta%theta * zeta*zeta  ;
 }
+
+arma::colvec ddir_prep(arma::colvec x, arma::mat prep1, arma::rowvec prep2){
+
+  arma::rowvec logd = sum(prep1.each_col() % log(x), 0) + prep2;
+
+  return(logd.t());
+}
+
+void sample_DL_hyper(double& a, const arma::vec& theta, const arma::mat& prep1,
+                     const arma::rowvec& prep2, const double& zeta,
+                     arma::vec& a_vec){
+  const int n = theta.size();
+  arma::vec logprobs = ddir_prep(theta, prep1, prep2);
+  for(int j=0; j<1000; j++){
+    logprobs(j) += R::dgamma(zeta, n*a_vec(j), 1/0.5, true); // R::dgamma uses scale
+  }
+
+  arma::vec w = exp(logprobs - logprobs.max());
+  arma::vec weights = w/sum(w);
+  arma::ivec iv(1000);
+  R::rmultinom(1, weights.begin(), 1000, iv.begin());
+  arma::uvec i = arma::find(iv == 1,1);
+  a = a_vec(i(0));
+}

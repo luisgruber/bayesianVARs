@@ -17,7 +17,7 @@ List bvar_cpp(const arma::mat Y,
               arma::mat PHI,
               const arma::mat PHI0,
               const std::string priorPHI,
-              const double DL_a,
+              double DL_a, // no const because of DL_hyper
               const std::string priorL,
               const double DL_b,
               arma::mat L,
@@ -27,18 +27,39 @@ List bvar_cpp(const arma::mat Y,
               arma::mat h,
               arma::mat sv_para,
               const bool progressbar){
-  //-----------------------
-  const double n = K*M;
-  arma::mat PHI_diff;
+
+  //-----------------------Preliminaries--------------------------------------//
+  const double n = K*M; // number of VAR coefficients
+  arma::mat PHI_diff; // will hold PHI - PHI0
   arma::mat V_prior = arma::reshape(V_i, K, M);
 
+  //----------------------Initialization of hyperpriors-----------------------//
+  // DL prior on PHI
   arma::vec psi(n, arma::fill::value(1.0));
   double zeta=10;
   arma::vec theta(n, arma::fill::value(1.0));
-  //double tmp4samplingzeta;
-  //arma::mat theta_prep(K,M);
+  // with hyperprior on a
+  arma::vec a_vec(1000);
+  arma::rowvec prep2(1000);
+  arma::mat a_mat(1000,n);
+  arma::mat prep1(n,1000);
+  if(priorPHI == "DL_h"){
+    double dist = 0.5 - 1/static_cast<double>(n); // grid should range from 1/n to 0.5
+    double stps = dist / (1000-1); // compute stepsize
 
+    a_vec(0) = 1/static_cast<double>(n);
+    for(int i=1; i<1000; ++i){
+      a_vec(i) = a_vec(i-1) + stps;
+    }
+    a_mat.each_col() = a_vec;
+    // some precalculations for the conditional posterior
+    prep1 = (a_mat).t() - 1;
+    prep2 = vectorise(arma::lgamma(arma::sum(a_mat.t(),0)) -
+      arma::sum(arma::lgamma(a_mat.t()),0));
 
+  }
+
+  // DL prior on PHI
   uvec L_upper_indices = trimatu_ind( size(L),  1);
   arma::vec l = L(L_upper_indices);
   const double n_L = l.size();
@@ -88,8 +109,8 @@ List bvar_cpp(const arma::mat Y,
   arma::cube PHI_draws(draws, K, M);
   arma::cube L_draws(draws, M, M);
   int hyperparameter_size;
-  if(priorPHI == "DL"){
-    hyperparameter_size = 1 + 2*n;
+  if(priorPHI == "DL" || priorPHI == "DL_h"){
+    hyperparameter_size = 2 + 2*n;
   }
   if(priorL == "DL"){
     hyperparameter_size += 1 + 2*n_L;
@@ -133,8 +154,11 @@ List bvar_cpp(const arma::mat Y,
 
     //----2) Sample hyperparameter of hierarchical priors
 
-    if(priorPHI == "DL"){
+    if(priorPHI == "DL" || priorPHI == "DL_h"){
 
+     if(priorPHI == "DL_h"){
+       sample_DL_hyper(DL_a, theta, prep1, prep2, zeta, a_vec);
+     }
      sample_V_i_DL(V_i, PHI_diff, DL_a , zeta, psi, theta);
     }
     V_prior = reshape(V_i, K, M);
@@ -202,8 +226,8 @@ List bvar_cpp(const arma::mat Y,
       hyperparameter_draws(rep-burnin, span(n+1,(2*n))) = trans(theta.as_col());
       hyperparameter_draws(rep-burnin, 2*n+1) = zeta_L;
       hyperparameter_draws(rep-burnin, span(2*n+2,2*n+1+n_L)) = trans(psi_L.as_col());
-      hyperparameter_draws(rep-burnin, span(2*n+2+n_L,hyperparameter_size-1)) = trans(theta_L.as_col());
-
+      hyperparameter_draws(rep-burnin, span(2*n+2+n_L,hyperparameter_size-2)) = trans(theta_L.as_col());
+      hyperparameter_draws(rep-burnin, hyperparameter_size-1) = DL_a;
     }
 
     p.increment();
