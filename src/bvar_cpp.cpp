@@ -22,18 +22,25 @@ List bvar_cpp(const arma::mat Y,
               const List sv_spec,
               arma::mat h,
               arma::mat sv_para,
+              const arma::imat i_mat,
+              const arma::ivec i_vec,
               const bool progressbar){
 
   //-----------------------Preliminaries--------------------------------------//
   const double n = K*M; // number of VAR coefficients
-  arma::mat PHI_diff; // will hold PHI - PHI0
+  arma::mat PHI_diff; // will hold PHI - PHI0#
+  arma::vec phi_diff = vectorise(PHI_diff);
+  const arma::uvec i_ol = arma::find(i_vec > 0); // indicator for ownlags
+  const arma::uvec i_cl = arma::find(i_vec < 0); // indicator for crosslags
+  const int n_ol = i_ol.size(); // nr. of ownlags
+  const int n_cl = i_cl.size(); // nr. of crosslags
 
 
   //----------------------Initialization of hyperpriors-----------------------//
 
 
   std::string priorPHI = priorPHI_in["prior"];
-  arma::vec V_i(n, arma::fill::value(1));
+  arma::vec V_i(n, arma::fill::value(0.1));
 
   arma::mat V_prior = arma::reshape(V_i, K, M);
 
@@ -92,6 +99,20 @@ List bvar_cpp(const arma::mat Y,
   arma::vec gammas(n, arma::fill::zeros);
   arma::vec p_i(n, arma::fill::value(0.5));
 
+  //---- HMP on PHI
+  double lambda_1=0.04;
+  double lambda_2=0.0016;
+  NumericVector V_i_prep_in;
+  NumericVector s_r_1_in;
+  NumericVector s_r_2_in;
+  if(priorPHI == "HMP"){
+     V_i_prep_in = priorPHI_in["V_i_prep"];
+     s_r_1_in = priorPHI_in["lambda_1"];
+     s_r_2_in = priorPHI_in["lambda_2"];
+  }
+  arma::vec V_i_prep(V_i_prep_in.begin(), V_i_prep_in.length(), false);
+  arma::vec s_r_1(s_r_1_in.begin(), s_r_1_in.length(), false);
+  arma::vec s_r_2(s_r_2_in.begin(), s_r_2_in.length(), false);
 
   //-------------- L
   std::string priorL = priorL_in["prior"];
@@ -185,7 +206,8 @@ List bvar_cpp(const arma::mat Y,
     hyperparameter_size = 2 + 2*n;
   }else if(priorPHI == "SSVS"){
     hyperparameter_size = 2*n;
-
+  }else if(priorPHI == "HMP"){
+    hyperparameter_size = 2;
   }
   if(priorL == "DL" || priorL == "DL_h"){
     hyperparameter_size += 2 + 2*n_L;
@@ -243,6 +265,12 @@ List bvar_cpp(const arma::mat Y,
       if(rep > 0.1*burnin){
         sample_V_i_SSVS(V_i, gammas, p_i, PHI_diff, tau_0, tau_1, SSVS_s_a, SSVS_s_b);
 
+      }
+    }else if(priorPHI == "HMP"){
+
+      if(rep > 0.1*burnin){
+      sample_V_i_HMP(lambda_1, lambda_2, V_i, s_r_1(1), s_r_1(2), s_r_2(1),
+                     s_r_2(2), (PHI_diff), V_i_prep, n_ol, n_cl, i_ol, i_cl);
       }
     }
 
@@ -327,6 +355,10 @@ List bvar_cpp(const arma::mat Y,
         hyperparameter_draws(rep-burnin, span(n, (hyperparameter_size-1))) = p_i;
 
       }
+      else if(priorPHI == "HMP"){
+        hyperparameter_draws(rep-burnin, 0) = lambda_1;
+        hyperparameter_draws(rep-burnin, 1) = lambda_2;
+      }
     }
 
     p.increment();
@@ -340,10 +372,7 @@ List bvar_cpp(const arma::mat Y,
     Named("sv_latent") = sv_latent_draws,
     Named("sv_para_draws") = sv_para_draws,
     Named("hyperparameter_draws") = hyperparameter_draws,
-    Named("bench") = time,
-    Named("DL_a") = DL_a,
-    Named("priorPHI") = priorPHI,
-    Named("priorPHI_in") = priorPHI_in
+    Named("bench") = time
   );
 
   return out;

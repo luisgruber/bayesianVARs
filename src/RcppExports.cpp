@@ -12,8 +12,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // bvar_cpp
-List bvar_cpp(const arma::mat Y, const arma::mat X, const int M, const int T, const int K, const int draws, const int burnin, arma::mat PHI, const arma::mat PHI0, const List priorPHI_in, const List priorL_in, arma::mat L, const List sv_spec, arma::mat h, arma::mat sv_para, const bool progressbar);
-RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP YSEXP, SEXP XSEXP, SEXP MSEXP, SEXP TSEXP, SEXP KSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP PHISEXP, SEXP PHI0SEXP, SEXP priorPHI_inSEXP, SEXP priorL_inSEXP, SEXP LSEXP, SEXP sv_specSEXP, SEXP hSEXP, SEXP sv_paraSEXP, SEXP progressbarSEXP) {
+List bvar_cpp(const arma::mat Y, const arma::mat X, const int M, const int T, const int K, const int draws, const int burnin, arma::mat PHI, const arma::mat PHI0, const List priorPHI_in, const List priorL_in, arma::mat L, const List sv_spec, arma::mat h, arma::mat sv_para, const arma::imat i_mat, const arma::ivec i_vec, const bool progressbar);
+RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP YSEXP, SEXP XSEXP, SEXP MSEXP, SEXP TSEXP, SEXP KSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP PHISEXP, SEXP PHI0SEXP, SEXP priorPHI_inSEXP, SEXP priorL_inSEXP, SEXP LSEXP, SEXP sv_specSEXP, SEXP hSEXP, SEXP sv_paraSEXP, SEXP i_matSEXP, SEXP i_vecSEXP, SEXP progressbarSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -32,8 +32,10 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const List >::type sv_spec(sv_specSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type h(hSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type sv_para(sv_paraSEXP);
+    Rcpp::traits::input_parameter< const arma::imat >::type i_mat(i_matSEXP);
+    Rcpp::traits::input_parameter< const arma::ivec >::type i_vec(i_vecSEXP);
     Rcpp::traits::input_parameter< const bool >::type progressbar(progressbarSEXP);
-    rcpp_result_gen = Rcpp::wrap(bvar_cpp(Y, X, M, T, K, draws, burnin, PHI, PHI0, priorPHI_in, priorL_in, L, sv_spec, h, sv_para, progressbar));
+    rcpp_result_gen = Rcpp::wrap(bvar_cpp(Y, X, M, T, K, draws, burnin, PHI, PHI0, priorPHI_in, priorL_in, L, sv_spec, h, sv_para, i_mat, i_vec, progressbar));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -83,24 +85,30 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// oneMultinomCalt
-arma::vec oneMultinomCalt(List l_in);
-RcppExport SEXP _bayesianVARs_oneMultinomCalt(SEXP l_inSEXP) {
+// sample_V_i_HMP
+List sample_V_i_HMP(const double s1, const double r1, const double s2, const double r2, const arma::vec PHI_diff, const arma::ivec i_vec, const arma::vec V_i_prep);
+RcppExport SEXP _bayesianVARs_sample_V_i_HMP(SEXP s1SEXP, SEXP r1SEXP, SEXP s2SEXP, SEXP r2SEXP, SEXP PHI_diffSEXP, SEXP i_vecSEXP, SEXP V_i_prepSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< List >::type l_in(l_inSEXP);
-    rcpp_result_gen = Rcpp::wrap(oneMultinomCalt(l_in));
+    Rcpp::traits::input_parameter< const double >::type s1(s1SEXP);
+    Rcpp::traits::input_parameter< const double >::type r1(r1SEXP);
+    Rcpp::traits::input_parameter< const double >::type s2(s2SEXP);
+    Rcpp::traits::input_parameter< const double >::type r2(r2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec >::type PHI_diff(PHI_diffSEXP);
+    Rcpp::traits::input_parameter< const arma::ivec >::type i_vec(i_vecSEXP);
+    Rcpp::traits::input_parameter< const arma::vec >::type V_i_prep(V_i_prepSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_V_i_HMP(s1, r1, s2, r2, PHI_diff, i_vec, V_i_prep));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 16},
+    {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 18},
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
     {"_bayesianVARs_draw_PHI", (DL_FUNC) &_bayesianVARs_draw_PHI, 9},
     {"_bayesianVARs_draw_L", (DL_FUNC) &_bayesianVARs_draw_L, 3},
-    {"_bayesianVARs_oneMultinomCalt", (DL_FUNC) &_bayesianVARs_oneMultinomCalt, 1},
+    {"_bayesianVARs_sample_V_i_HMP", (DL_FUNC) &_bayesianVARs_sample_V_i_HMP, 7},
     {NULL, NULL, 0}
 };
 

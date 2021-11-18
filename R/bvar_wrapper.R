@@ -63,6 +63,22 @@ bvar_fast <- function(Yraw,
   n <- K*M
   n_L <- (M^2 - M)/2
 
+# Indicator matrix --------------------------------------------------------
+
+  if(intercept){
+    i_intercept <- rep(0,M)
+  }else i_intercept <- NULL
+
+  i_mat_1 <- diag(M)
+  i_mat_1[upper.tri(i_mat_1)] <-
+    i_mat_1[lower.tri(i_mat_1)] <- -1
+  i_mat <- NULL
+  for (j in seq_len(p)) {
+    i_mat <- rbind(i_mat, i_mat_1 * j)
+  }
+  i_mat <- rbind(i_mat, i_intercept)
+  i_vec <- as.vector(i_mat)
+
 # Hyperparameter settigns -------------------------------------------------
 
   if(persistence == 0) {
@@ -94,6 +110,10 @@ bvar_fast <- function(Yraw,
     priorPHI$SSVS_tau1 <- rep(priorPHI$SSVS_c1, n)
   }else if(priorPHI$prior == "normal"){
     priorPHI$V_i <- rep(priorPHI$V_i, length = n)
+  }else if(priorPHI$prior == "HMP"){
+    sigma_sq <- MP_sigma_sq(Yraw, 6, standardize)
+    # prepare prior variances down to lambdas
+    priorPHI$V_i_prep <- MP_V_prior_prep(sigma_sq, K, M, intercept)
   }
 
   if(priorL$prior == "DL"){
@@ -150,10 +170,11 @@ bvar_fast <- function(Yraw,
                   priorPHI,
                   priorL,
                   L,
-                  #expert,
                   sv_spec,
                   h_init,
                   sv_para_init,
+                  i_mat,
+                  i_vec,
                   progressbar
                   )
 
