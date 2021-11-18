@@ -88,6 +88,7 @@ bvar_fast <- function(Yraw,
   if(priorPHI$prior == "DL"){
     if(priorPHI$DL_a == "1/K") priorPHI$DL_a <- 1/K
     if(priorPHI$DL_a == "1/n") priorPHI$DL_a <- 1/n
+
   }else if(priorPHI$prior == "SSVS"){
     priorPHI$SSVS_tau0 <- rep(priorPHI$SSVS_c0, n)
     priorPHI$SSVS_tau1 <- rep(priorPHI$SSVS_c1, n)

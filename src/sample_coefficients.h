@@ -21,6 +21,12 @@ void sample_DL_hyper(double& a, const arma::vec& theta, const arma::mat& prep1,
                      const arma::rowvec& prep2, const double& zeta,
                      arma::vec& a_vec);
 
+arma::colvec ddir_prep(arma::colvec x, arma::mat prep1, arma::rowvec prep2);
+
+void sample_DL_hyper(double& a, const arma::vec& theta, const arma::mat& prep1,
+                     const arma::rowvec& prep2, const double& zeta,
+                     arma::vec& a_vec);
+
 double do_rgig1(double lambda, double chi, double psi);
 
 void sample_V_i_SSVS(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
