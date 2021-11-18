@@ -16,17 +16,9 @@ List bvar_cpp(const arma::mat Y,
               const int burnin,
               arma::mat PHI,
               const arma::mat PHI0,
-              const std::string priorPHI,
-              double DL_a, // no const because of DL_hyper
-              const double SSVS_s_a,
-              const double SSVS_s_b,
-              const arma::vec tau_0,
-              const arma::vec tau_1,
-              const std::string priorL,
-              double DL_b, // no const because of DL_hyper
+              const List priorPHI_in,
+              const List priorL_in,
               arma::mat L,
-              arma::vec V_i,
-              arma::vec V_i_L,
               const List sv_spec,
               arma::mat h,
               arma::mat sv_para,
@@ -35,11 +27,26 @@ List bvar_cpp(const arma::mat Y,
   //-----------------------Preliminaries--------------------------------------//
   const double n = K*M; // number of VAR coefficients
   arma::mat PHI_diff; // will hold PHI - PHI0
-  arma::mat V_prior = arma::reshape(V_i, K, M);
+
 
   //----------------------Initialization of hyperpriors-----------------------//
 
+
+  std::string priorPHI = priorPHI_in["prior"];
+  arma::vec V_i(n, arma::fill::value(1));
+  arma::mat V_prior = arma::reshape(V_i, K, M);
+
+  if(priorPHI == "normal"){
+    arma::vec V_i_in = priorPHI_in["V_i"];
+    V_i = V_i_in;
+  }
+
   //---- DL prior on PHI
+   double DL_a;
+   if(priorPHI == "DL" || priorPHI == "DL_h"){
+    double DL_a_in = priorPHI_in["DL_a"];
+    DL_a = DL_a_in;
+   }
   arma::vec psi(n, arma::fill::value(1.0));
   double zeta=10;
   arma::vec theta(n, arma::fill::value(1.0));
@@ -65,13 +72,41 @@ List bvar_cpp(const arma::mat Y,
 
   }
   //---- SSVS on PHI
+  arma::vec tau_0;
+  arma::vec tau_1;
+  double SSVS_s_a;
+  double SSVS_s_b;
+  if(priorPHI == "SSVS"){
+    arma::vec tau_0_in = priorPHI_in["SSVS_tau0"];
+    tau_0 = tau_0_in;
+    arma::vec tau_1_in = priorPHI_in["SSVS_tau1"];
+    tau_1 = tau_1_in;
+    double SSVS_s_a_in = priorPHI_in["SSVS_s_a"];
+    SSVS_s_a = SSVS_s_a_in;
+    double SSVS_s_b_in = priorPHI_in["SSVS_s_b"];
+    SSVS_s_b = SSVS_s_b_in;
+  }
   arma::vec gammas(n, arma::fill::zeros);
   arma::vec p_i(n, arma::fill::value(0.5));
 
-  //---- DL prior on L
+  //-------------- L
+  std::string priorL = priorL_in["prior"];
   uvec L_upper_indices = trimatu_ind( size(L),  1);
   arma::vec l = L(L_upper_indices);
   const double n_L = l.size();
+  arma::vec V_i_L(n_L, arma::fill::value(1));
+
+  if(priorL == "normal"){
+    arma::vec V_i_L_in = priorL_in["V_i"];
+    V_i_L = V_i_L_in;
+  }
+
+  //---- DL prior on L
+   double DL_b;
+   if(priorL == "DL" || priorL == "DL_h"){
+     double DL_b_in = priorL_in["DL_b"];
+     DL_b = DL_b_in;
+   }
   arma::vec psi_L(n_L, arma::fill::value(1.0));
   double zeta_L=10;
   arma::vec theta_L(n_L, arma::fill::value(1.0));
@@ -138,6 +173,7 @@ List bvar_cpp(const arma::mat Y,
   arma::cube sv_para_draws(draws, 4,M);
   arma::cube PHI_draws(draws, K, M);
   arma::cube L_draws(draws, M, M);
+
   int hyperparameter_size;
   if(priorPHI == "DL" || priorPHI == "DL_h"){
     hyperparameter_size = 2 + 2*n;
@@ -298,7 +334,10 @@ List bvar_cpp(const arma::mat Y,
     Named("sv_latent") = sv_latent_draws,
     Named("sv_para_draws") = sv_para_draws,
     Named("hyperparameter_draws") = hyperparameter_draws,
-    Named("bench") = time
+    Named("bench") = time,
+    Named("DL_a") = DL_a,
+    Named("priorPHI") = priorPHI,
+    Named("priorPHI_in") = priorPHI_in
   );
 
   return out;

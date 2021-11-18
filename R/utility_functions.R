@@ -1,5 +1,80 @@
 # specify Priors ----------------------------------------------------------
 
+#' @export
+specify_priorPHI <- function(prior, DL_a = "1/K",
+                             SSVS_c0 = 0.01, SSVS_c1 = 100, SSVS_semiautomatic = TRUE, SSVS_sa = 0.5, SSVS_sb = 0.5,
+                             HMP_lambda1 = 0.01, HMP_lambda2 = 0.01,
+                             V_i = NULL){
+  if(!(prior %in% c("DL", "HMP", "SSVS", "normal"))){
+    stop("Argument 'prior' must be one of 'DL', 'SSVS', 'HMP' or 'normal'. \n")
+  }
+
+  if(prior == "DL"){
+    text <- c("Argument 'DL_a' must be either a single positive numeric or one of 'hyperprior',
+           '1/K' or '1/n'. \n ")
+    if(is.numeric(DL_a) & DL_a <= 0) stop(text)
+    if(length(DL_a)>1) stop(text)
+    if(is.character(DL_a) & !(DL_a %in% c("hyperprior", "1/K", "1/n"))){
+      stop(text)
+    }
+    if(DL_a == "hyperprior"){
+      prior <- "DL_h"
+      DL_a <- 0.5 # initial value
+    }
+    out <- list(prior = prior, DL_a = DL_a)
+
+  }else if(prior == "SSVS"){
+    if(!(SSVS_c0>0 & SSVS_c1>0)){
+      stop("'SSVS_c0' and 'SSVS_c1' must be positive numeric values.")
+    }
+    out <- list(prior = prior, SSVS_c0=SSVS_c0, SSVS_c1=SSVS_c1,
+                semiautomatic=SSVS_semiautomatic, SSVS_s_a=SSVS_sa, SSVS_s_b=SSVS_sb)
+  }else if(prior == "normal"){
+    if(is.null(V_i)){
+      V_i <- 10
+    }
+    out <- list(prior=prior, V_i=V_i)
+  }
+  out
+}
+
+#' @export
+specify_priorL <- function(prior, DL_b = "1/n",
+                             SSVS_c0 = 0.001, SSVS_c1 = 1, SSVS_sa = 0.5, SSVS_sb = 0.5,
+                             HMP_lambda1 = 0.01,
+                             V_i = NULL){
+  if(!(prior %in% c("DL", "HMP", "SSVS", "normal"))){
+    stop("Argument 'prior' must be one of 'DL', 'SSVS', 'HMP' or 'normal'. \n")
+  }
+
+  if(prior == "DL"){
+    text <- c("Argument 'DL_b' must be either a single positive numeric or one of 'hyperprior',
+           or '1/n'. \n ")
+    if(is.numeric(DL_b) & DL_b <= 0) stop(text)
+    if(length(DL_b)>1) stop(text)
+    if(is.character(DL_b) & !(DL_b %in% c("hyperprior", "1/n"))){
+      stop(text)
+    }
+    if(DL_b == "hyperprior"){
+      prior <- "DL_h"
+      DL_b <- 0.5 # initial value
+    }
+    out <- list(prior = prior, DL_b = DL_b)
+
+  }else if(prior == "SSVS"){
+    if(!(SSVS_c0>0 & SSVS_c1>0)){
+      stop("'SSVS_c0' and 'SSVS_c1' must be positive numeric values.")
+    }
+    out <- list(prior = prior, SSVS_c0=SSVS_c0, SSVS_c1=SSVS_c1, SSVS_s_a=SSVS_sa, SSVS_s_b=SSVS_sb)
+  }else if(prior == "normal"){
+    if(is.null(V_i)){
+      V_i <- 1
+    }
+    out <- list(prior=prior, V_i=V_i)
+  }
+  out
+}
+
 #' Specify hyperparameters for Dirichlet-Laplace prior on VAR coefficients
 #'
 #' @param a single non-negative number, indicating the concentration parameter of

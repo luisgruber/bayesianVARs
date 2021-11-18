@@ -12,8 +12,8 @@ void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
 
 void sample_L(arma::mat& L, arma::mat& Ytilde, arma::vec& V_i, arma::mat& d);
 
-void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, const double& a ,
-                   double& zeta, arma::vec& psi, arma::vec&theta);
+void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, const double a ,
+                   double& zeta, arma::vec& psi, arma::vec& theta);
 
 arma::colvec ddir_prep(arma::colvec x, arma::mat prep1, arma::rowvec prep2);
 

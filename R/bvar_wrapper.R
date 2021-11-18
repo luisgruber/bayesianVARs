@@ -76,8 +76,34 @@ bvar_fast <- function(Yraw,
 
   }
 
+  ##V_i_L <- rep(1, n_L) cpp
 
-  V_i_L <- rep(1, n_L)
+  if(!(priorPHI$prior %in% c("DL", "DL_h", "HMP", "SSVS", "normal"))){
+    stop("Argument 'priorPHI$prior' must be one of
+           'DL', 'SSVS', 'HMP' or 'normal'. \n")
+  }
+
+  ##if(is.null(priorPHI$V_i)){ cpp
+  ##  V_i <- rep(1, n)}
+  if(priorPHI$prior == "DL"){
+    if(priorPHI$DL_a == "1/K") priorPHI$DL_a <- 1/K
+    if(priorPHI$DL_a == "1/n") priorPHI$DL_a <- 1/n
+  }else if(priorPHI$prior == "SSVS"){
+    priorPHI$SSVS_tau0 <- rep(priorPHI$SSVS_c0, n)
+    priorPHI$SSVS_tau1 <- rep(priorPHI$SSVS_c1, n)
+  }else if(priorPHI$prior == "normal"){
+    priorPHI$V_i <- rep(priorPHI$V_i, length = n)
+  }
+
+  if(priorL$prior == "DL"){
+    if(priorL$DL_b == "1/n") priorL$DL_b <- 1/n_L
+  }else if(priorL$prior == "SSVS"){
+    priorL$SSVS_tau0 <- rep(priorL$SSVS_c0, n)
+    priorL$SSVS_tau1 <- rep(priorL$SSVS_c1, n)
+  }else if(priorL$prior == "normal"){
+    priorL$V_i <- rep(priorL$V_i, length = n_L)
+  }
+
 
   if(SV == TRUE & is.null(sv_spec)){
     sv_spec <- list(priormu = c(0,100),
@@ -86,96 +112,6 @@ bvar_fast <- function(Yraw,
                     #priorh0 = -1 #h0 from stationary distribution
     )
   }
-
-  a <- s_a <- s_b <- tau_1 <- tau_0 <- 0.5
-  #specify_priorPHI <- function(prior, DL_a,
-  #                             SSVS_c0, SSVS_c1, SSVS_semiautomatic,
-  #                             HMP_lambda1, HMP_lambda2,
-  #                             V_i = NULL){
-
-  #  if(!(prior %in% c("DL", "HMP", "SSVS", "normal"))){
-  #    stop("Argument 'prior' must be one of
-  #         'DL', 'SSVS', 'HMP' or 'normal'.")
-  #  }
-
-  #}
-
-  if(!(priorPHI$prior %in% c("DL", "HMP", "SSVS", "normal"))){
-    stop("Argument 'priorPHI$prior' must be one of
-           'DL', 'SSVS', 'HMP' or 'normal'. \n")
-  }
-
-  if(is.null(priorPHI$V_i)){
-    V_i <- rep(1, n)}
-
-
-  if(priorPHI$prior == "normal"){
-    if(is.null(priorPHI$V_i)){
-      warning("Prior variances for VAR coefficients not specified.
-              Using 'rep(1,n)', where 'n' is the number of coefficients. \n")
-    }else{
-      if(length(priorPHI$V_i) > 1 & (length(priorPHI$V_i) < n | length(priorPHI$V_i) > n) ){
-        stop("Length of 'priorPHI$V_i' does not match number of VAR coefficients:
-        Specify either one prior variance (single numeric value) that will be
-             recycled for all coefficients, or a numeric vector which length
-             equals the number of VAR coefficients. \n")
-      }
-      V_i <- rep(priorPHI$V_i, length = n)
-      if(any(V_i<=0)){
-        stop("Prior variances (elements of 'priorPHI$V_i') must be strictly
-             positive. \n")
-      }
-    }
-  }else if(priorPHI$prior == "DL"){
-    if(priorPHI$DL_a == "hyperprior"){
-
-      priorPHI$prior <- "DL_h"
-      a <- 0.5 #initial value
-
-    }else if(is.numeric(priorPHI$DL_a)){
-      a <-  priorPHI$DL_a
-    }
-
-  }else if(priorPHI$prior == "SSVS"){
-
-    c0 <- priorPHI$SSVS_c0
-    c1 <- priorPHI$SSVS_c1
-    tau_0 <- rep(c0, n)
-    tau_1 <- rep(c1, n)
-    s_a <- priorPHI$SSVS_s_a
-    s_b <- priorPHI$SSVS_s_b
-
-  }
-
-  if(priorL$prior == "normal"){
-    if(is.null(priorL$V_i)){
-      warning("Prior variances for VAR coefficients not specified.
-              Using 'rep(1,n)', where 'n' is the number of coefficients. \n")
-    }else{
-      if(length(priorL$V_i) > 1 & (length(priorL$V_i) < n_L | length(priorL$V_i) > n_L) ){
-        stop("Length of 'priorL$V_i' does not match number of free off-diagonal elements in L:
-        Specify either one prior variance (single numeric value) that will be
-             recycled for all coefficients, or a numeric vector which length
-             equals the number of free off-diagonal elements in L \n")
-      }
-      V_i_L <- rep(priorL$V_i, length = n_L)
-      if(any(V_i_L<=0)){
-        stop("Prior variances (elements of 'priorL$V_i') must be strictly
-             positive. \n")
-      }
-    }
-  }else if(priorL$prior == "DL"){
-    if(is.numeric(priorL$DL_b)){
-      b <-  priorL$DL_b
-    }else if(priorL$DL_b == "hyperprior"){
-      priorL$prior = "DL_h"
-      b <- 0.5
-    }
-
-  }else if(priorL$prior == "SSVS"){
-    c0 <- priorL$SSVS_c0
-  }
-
 
 # Initialize --------------------------------------------------------------
 
@@ -210,17 +146,9 @@ bvar_fast <- function(Yraw,
                   burnin,
                   PHI,
                   PHI0,
-                  priorPHI$prior,
-                  a,
-                  s_a,
-                  s_b,
-                  tau_0,
-                  tau_1,
-                  priorL$prior,
-                  b,
+                  priorPHI,
+                  priorL,
                   L,
-                  V_i,
-                  V_i_L,
                   #expert,
                   sv_spec,
                   h_init,

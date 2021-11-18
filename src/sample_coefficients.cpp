@@ -294,8 +294,8 @@ void sample_L(arma::mat& L, arma::mat& Ytilde, arma::vec& V_i, arma::mat& d_sqrt
 
 }
 
-void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, const double& a ,
-                   double& zeta, arma::vec& psi, arma::vec&theta){
+void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, const double a ,
+                   double& zeta, arma::vec& psi, arma::vec& theta){
 
   double n = coefs.size();
   double tmp4samplingzeta = 0;
