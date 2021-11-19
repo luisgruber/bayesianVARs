@@ -228,7 +228,7 @@ List bvar_cpp(const arma::mat Y,
 
     //----1) Draw PHI (reduced form VAR coefficients)
 
-    sample_PHI(PHI, PHI0, Y, X, L, d_sqrt, V_prior, K, M);
+    sample_PHI(PHI, PHI0, Y, X, L, d_sqrt, V_prior, K, M, false);
 
     if(priorPHI == "DL"){
       // if regularization gets extreme, often there appear zeros (numerical issue)

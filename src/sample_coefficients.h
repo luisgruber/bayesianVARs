@@ -10,7 +10,7 @@ arma::vec mvrnorm1(arma::vec mu, arma::mat Sigma, double tol = 1e-06);
 
 void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
                 const arma::mat& X, const arma::mat& L, const arma::mat& d,
-                const arma::mat& V_prior, const int& K, const int& M);
+                const arma::mat& V_prior, const int& K, const int& M, bool subs);
 
 void sample_L(arma::mat& L, arma::mat& Ytilde, arma::vec& V_i, arma::mat& d);
 

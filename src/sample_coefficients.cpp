@@ -13,10 +13,12 @@ arma::vec mvrnorm1(arma::vec mu, arma::mat Sigma, double tol = 1e-06){
   }
 
   arma::mat U(p,p);
-  arma::rowvec X(p);
   bool chol_succes = arma::chol(U, Sigma, "upper" );
+  arma::rowvec X(p);
   if(chol_succes){
+
     X = mu.t() + rnormvec * U;
+
   }else{
     // imitate R's eigen(x, symmetric = TRUE)
     arma::mat Sigma_sym = symmatl(Sigma);
@@ -86,7 +88,6 @@ arma::mat draw_PHI(arma::mat PHI, arma::mat PHI_prior, arma::mat Y, arma::mat X,
   //Environment base = Environment("package:base");
   //Function Rchol = base["chol"];
 
-
   arma::mat V_prior = reshape(V_i, K, M);
 
   for(int i = 0; i < M; i++){
@@ -147,17 +148,11 @@ arma::mat draw_PHI(arma::mat PHI, arma::mat PHI_prior, arma::mat Y, arma::mat X,
 // for use within smapler written in Rcpp
 void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
                 const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,
-                const arma::mat& V_prior, const int& K, const int& M) {
-
-  // Import MASS::mvrnorm function
-  Environment MASS = Environment::namespace_env("MASS");
-  Function Mrmvnorm = MASS["mvrnorm"];
-  //Environment base = Environment("package:base");
-  //Function Rchol = base["chol"];
+                const arma::mat& V_prior, const int& K, const int& M, bool subs) {
 
   for(int i = 0; i < M; i++){
 
-    arma::mat V_p_inv = diagmat(1/V_prior.col(i));
+    arma::mat V_prior_inv = diagmat(1/V_prior.col(i));
 
     arma::mat PHI_0 = PHI;
     PHI_0.col(i).zeros();
@@ -166,42 +161,35 @@ void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
     arma::mat X_new_tmp = arma::kron(L( span(i,i), span(i, M-1)).t(), X);
     arma::mat X_new = X_new_tmp.each_col() / normalizer;
 
-    // Compute V_post
-    //arma::mat V_post = ( V_p_inv + X_new.t()*X_new ).i(); //unstable
-    // compute inverse via the QR decomposition (similar to chol2inv in R)
-    arma::mat V_post_tmp = chol(V_p_inv + X_new.t()*X_new, "upper");
-    mat Q;
-    mat R;
-    qr(Q, R, V_post_tmp);
-    mat S = inv(trimatu(R));
-    mat V_post= S * S.t();
+    // 'subs' avoids the direct computation of the inverse needed for V_post
+    // maybe in very large dimensions a little bit more efficient
+    // not thouroughly tested, hence not used in the sampler
+    arma::mat V_post_inv_chol = chol(V_prior_inv + X_new.t()*X_new, "upper");
+    if(subs){
+      arma::vec phi_post_prep = V_prior_inv*PHI_prior.col(i) + X_new.t()*Y_new;
+      arma::colvec phi_post_tmp = arma::solve(trimatl(V_post_inv_chol.t()), phi_post_prep);
+      arma::colvec phi_post = arma::solve(trimatu(V_post_inv_chol), phi_post_tmp);
 
-    arma::colvec phi_post = V_post * (V_p_inv*PHI_prior.col(i) + X_new.t()*Y_new);
-
-    mat V_post_chol(K,K);
-    bool chol_success = chol(V_post_chol, V_post,"lower");
-
-    // Fall back on MASS::mvnorm  if armadillo fails
-    if(chol_success == true){
-
-      arma::colvec randnvec(K);
-
-      for(int j = 0; j < K; j++) {
-
-        randnvec(j) = R::rnorm(0, 1);
-
+      arma::colvec rnormvec(K);
+      for(int j = 0; j < K; ++j){
+        rnormvec(j) = R::rnorm(0,1);
       }
+      PHI.col(i) = phi_post + solve(trimatu(V_post_inv_chol), rnormvec);
+    }else{
 
-      PHI.col(i) = phi_post + V_post_chol * randnvec;
+      //arma::mat V_post = ( V_prior_inv + X_new.t()*X_new ).i(); //unstable
+      // compute inverse via the QR decomposition (similar to chol2inv in R)
+      //arma::mat V_post_tmp = chol(V_prior_inv + X_new.t()*X_new, "upper");
+      mat Q;
+      mat R;
+      qr(Q, R, V_post_inv_chol);
+      mat S = inv(trimatu(R));
+      mat V_post= S * S.t();
 
-    }else if(chol_success == false){
+      arma::colvec phi_post = V_post * (V_prior_inv*PHI_prior.col(i) + X_new.t()*Y_new);
 
-      NumericVector tmp = Mrmvnorm(1, Named("mu")=phi_post, Named("Sigma")=V_post); //, Named("tol")=100
-      PHI.col(i) = as<arma::colvec>(tmp);//arma::mvnrnd(phi_post, V_post)
-
-
+      PHI.col(i) = mvrnorm1(phi_post, V_post, 1e-06);
     }
-
   }
 }
 
@@ -275,10 +263,6 @@ arma::mat draw_L(arma::mat Ytilde, arma::vec V_i, arma::mat d) {
 
 void sample_L(arma::mat& L, arma::mat& Ytilde, arma::vec& V_i, arma::mat& d_sqrt) {
 
-  // Import MASS::mvrnorm function
-  Environment MASS = Environment::namespace_env("MASS");
-  Function Mrmvnorm = MASS["mvrnorm"];
-
   int M = Ytilde.n_cols;
   //mat L(M,M,fill::eye);
 
@@ -304,28 +288,7 @@ void sample_L(arma::mat& L, arma::mat& Ytilde, arma::vec& V_i, arma::mat& d_sqrt
 
     colvec l_post = V_post * (Z.t()*c);
 
-    mat V_post_chol(i,i);
-    bool chol_success = chol(V_post_chol, V_post,"lower");
-
-    // Fall back on MASS::mvnorm  if armadillo fails
-    if(chol_success == false){
-
-      NumericVector tmp = Mrmvnorm(1, l_post, V_post);
-      L(span(0,i-1), span(i,i)) = as<arma::colvec>(tmp);//arma::mvnrnd(l_post, V_post)
-
-    }else if(chol_success == true){
-
-      arma::colvec randnvec(i);
-
-      for(int j = 0; j < i; j++) {
-
-        randnvec(j) = R::rnorm(0, 1);
-
-      }
-
-      L(span(0,i-1), span(i,i)) = l_post + V_post_chol * randnvec;
-
-    }
+    L(span(0,i-1), span(i,i)) = mvrnorm1(l_post, V_post);
 
     ind = ind+i;
 

@@ -185,6 +185,20 @@ bvar_fast <- function(Yraw,
   dimnames(res$PHI)[2] <- list(colnames(X))
   dimnames(res$PHI)[3] <- list(colnames(Y))
   dimnames(res$L)[2] <- dimnames(res$L)[3] <- list(colnames(Y))
+  phinames <- as.vector((vapply(seq_len(M), function(i) paste0(colnames(Y)[i], "~", colnames(X)), character(M))))
+  if(priorPHI$prior %in% c("DL","DL_h")){
+    colnames(res$phi_hyperparameter) <- c("zeta", paste0("psi: ", phinames), paste0("theta: ", phinames), "a")
+
+  }
+  lnames <- NULL
+  for(j in 2:M){
+    lnames <- c(lnames, paste0(colnames(Y)[j],"~", colnames(Y)[1:(j-1)]))
+  }
+  if(priorL$prior %in% c("DL","DL_h")){
+    colnames(res$l_hyperparameter) <- c("zeta", paste0("psi: ", lnames), paste0("theta: ", lnames), "b")
+  }
+  res$phi_hyperparameter <- as.data.frame(res$phi_hyperparameter)
+  res$l_hyperparameter <- as.data.frame(res$l_hyperparameter)
   res$Y <- Y
   res$X <- X
 
