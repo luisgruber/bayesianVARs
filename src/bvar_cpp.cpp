@@ -29,23 +29,23 @@ List bvar_cpp(const arma::mat Y,
   //-----------------------Preliminaries--------------------------------------//
   const double n = K*M; // number of VAR coefficients
   arma::mat PHI_diff; // will hold PHI - PHI0#
-  arma::vec phi_diff = vectorise(PHI_diff);
   const arma::uvec i_ol = arma::find(i_vec > 0); // indicator for ownlags
   const arma::uvec i_cl = arma::find(i_vec < 0); // indicator for crosslags
   const int n_ol = i_ol.size(); // nr. of ownlags
   const int n_cl = i_cl.size(); // nr. of crosslags
 
 
-  //----------------------Initialization of hyperpriors-----------------------//
+//--------------------Initialization of hyperparameters-----------------------//
 
-
+//---- PHI
   std::string priorPHI = priorPHI_in["prior"];
-  arma::vec V_i(n, arma::fill::value(0.1));
-
+  // V_i holds prior variances
+  arma::vec V_i(n, arma::fill::value(0.0016));
   arma::mat V_prior = arma::reshape(V_i, K, M);
 
   if(priorPHI == "normal"){
     arma::vec V_i_in = priorPHI_in["V_i"];
+    //in case of 'normal' V_i is fixed at user specified values
     V_i = V_i_in;
   }
 
@@ -60,10 +60,10 @@ List bvar_cpp(const arma::mat Y,
   double zeta=10;
   arma::vec theta(n, arma::fill::value(1.0));
 
-  // in case of hyperprior on a
-  arma::vec a_vec(1000);
+  // in case of hyperprior on a (discrete uniform)
+  arma::vec a_vec(1000); // will hold grid of possible a
   arma::rowvec prep2(1000);
-  arma::mat a_mat(1000,n);
+  arma::mat a_mat(1000,n); // grid as matrix
   arma::mat prep1(n,1000);
   if(priorPHI == "DL_h"){
     double dist = 0.5 - 1/static_cast<double>(n); // grid should range from 1/n to 0.5
@@ -114,7 +114,7 @@ List bvar_cpp(const arma::mat Y,
   arma::vec s_r_1(s_r_1_in.begin(), s_r_1_in.length(), false);
   arma::vec s_r_2(s_r_2_in.begin(), s_r_2_in.length(), false);
 
-  //-------------- L
+//-------------- L
   std::string priorL = priorL_in["prior"];
 
   uvec L_upper_indices = trimatu_ind( size(L),  1);
@@ -200,19 +200,21 @@ List bvar_cpp(const arma::mat Y,
   arma::cube PHI_draws(draws, K, M);
   arma::cube L_draws(draws, M, M);
 
-  int hyperparameter_size;
-
+  int phi_hyperparameter_size;
   if(priorPHI == "DL" || priorPHI == "DL_h"){
-    hyperparameter_size = 2 + 2*n;
+    phi_hyperparameter_size = 2. + 2*n; // a + zeta + n(theta + psi)
   }else if(priorPHI == "SSVS"){
-    hyperparameter_size = 2*n;
+    phi_hyperparameter_size = 2*n; // n(gammas + p_i)
   }else if(priorPHI == "HMP"){
-    hyperparameter_size = 2;
+    phi_hyperparameter_size = 2; // lambda_1 + lambda_2
   }
+  arma::mat phi_hyperparameter_draws(draws, phi_hyperparameter_size);
+
+  int l_hyperparameter_size;
   if(priorL == "DL" || priorL == "DL_h"){
-    hyperparameter_size += 2 + 2*n_L;
+    l_hyperparameter_size = 2. + 2*n_L;
   }
-  arma::mat hyperparameter_draws(draws, hyperparameter_size);
+  arma::mat l_hyperparameter_draws(draws, l_hyperparameter_size);
 
 
   //-----------------------------------SAMPLER--------------------------------//
@@ -280,7 +282,6 @@ List bvar_cpp(const arma::mat Y,
     //       and D diagonal
     //----3a) Draw free off-diagonal elements in L
 
-
     arma::mat resid = Y - X*PHI;
     sample_L(L, resid, V_i_L, d_sqrt);
 
@@ -340,24 +341,29 @@ List bvar_cpp(const arma::mat Y,
 
       if(priorPHI == "DL" || priorPHI == "DL_h"){
 
-        hyperparameter_draws(rep-burnin, 0) = zeta;
-        hyperparameter_draws(rep-burnin, span(1,(n))) = trans(psi.as_col());
-        hyperparameter_draws(rep-burnin, span(n+1,(2*n))) = trans(theta.as_col());
-        hyperparameter_draws(rep-burnin, 2*n+1) = zeta_L;
-        hyperparameter_draws(rep-burnin, span(2*n+2,2*n+1+n_L)) = trans(psi_L.as_col());
-        hyperparameter_draws(rep-burnin, span(2*n+2+n_L,hyperparameter_size-3)) = trans(theta_L.as_col());
-        hyperparameter_draws(rep-burnin, hyperparameter_size-2) = DL_a;
-        hyperparameter_draws(rep-burnin, hyperparameter_size-1) = DL_b;
+        phi_hyperparameter_draws(rep-burnin, 0) = zeta;
+        phi_hyperparameter_draws(rep-burnin, span(1,(n))) = trans(psi.as_col());
+        phi_hyperparameter_draws(rep-burnin, span(n+1.,(2*n))) = trans(theta.as_col());
+        phi_hyperparameter_draws(rep-burnin, phi_hyperparameter_size-1.) = DL_a;
 
       }else if(priorPHI == "SSVS"){
 
-        hyperparameter_draws(rep-burnin, span(0, (n-1))) = gammas;
-        hyperparameter_draws(rep-burnin, span(n, (hyperparameter_size-1))) = p_i;
+        phi_hyperparameter_draws(rep-burnin, span(0, (n-1.))) = gammas;
+        phi_hyperparameter_draws(rep-burnin, span(n, (phi_hyperparameter_size-1.))) = p_i;
 
       }
       else if(priorPHI == "HMP"){
-        hyperparameter_draws(rep-burnin, 0) = lambda_1;
-        hyperparameter_draws(rep-burnin, 1) = lambda_2;
+        phi_hyperparameter_draws(rep-burnin, 0) = lambda_1;
+        phi_hyperparameter_draws(rep-burnin, 1) = lambda_2;
+      }
+
+      if(priorL == "DL" || priorL == "DL_h"){
+
+        l_hyperparameter_draws(rep-burnin, 0) = zeta_L;
+        l_hyperparameter_draws(rep-burnin, span(1,n_L)) = trans(psi_L.as_col());
+        l_hyperparameter_draws(rep-burnin, span(n_L+1.,2*n_L)) = trans(theta_L.as_col());
+        l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-1.) = DL_b;
+
       }
     }
 
@@ -367,11 +373,12 @@ List bvar_cpp(const arma::mat Y,
   NumericVector time(timer);
 
   List out = List::create(
-    Named("PHI_draws") = PHI_draws,
-    Named("L_draws") = L_draws,
+    Named("PHI") = PHI_draws,
+    Named("L") = L_draws,
     Named("sv_latent") = sv_latent_draws,
-    Named("sv_para_draws") = sv_para_draws,
-    Named("hyperparameter_draws") = hyperparameter_draws,
+    Named("sv_para") = sv_para_draws,
+    Named("phi_hyperparameter") = phi_hyperparameter_draws,
+    Named("l_hyperparameter") = l_hyperparameter_draws,
     Named("bench") = time
   );
 

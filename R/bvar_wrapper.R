@@ -182,9 +182,9 @@ bvar_fast <- function(Yraw,
   #conversion to secs per iteration
   res$bench <- diff(res$bench)/(10^(9)*(draws+burnin))
   attributes(res$bench) <- list("names" = "secs/itr")
-  dimnames(res$PHI_draws)[2] <- list(colnames(X))
-  dimnames(res$PHI_draws)[3] <- list(colnames(Y))
-  dimnames(res$L_draws)[2] <- dimnames(res$L_draws)[3] <- list(colnames(Y))
+  dimnames(res$PHI)[2] <- list(colnames(X))
+  dimnames(res$PHI)[3] <- list(colnames(Y))
+  dimnames(res$L)[2] <- dimnames(res$L)[3] <- list(colnames(Y))
   res$Y <- Y
   res$X <- X
 
