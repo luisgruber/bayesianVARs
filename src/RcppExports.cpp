@@ -85,20 +85,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// sample_V_i_HMP
-List sample_V_i_HMP(const double s1, const double r1, const double s2, const double r2, const arma::vec PHI_diff, const arma::ivec i_vec, const arma::vec V_i_prep);
-RcppExport SEXP _bayesianVARs_sample_V_i_HMP(SEXP s1SEXP, SEXP r1SEXP, SEXP s2SEXP, SEXP r2SEXP, SEXP PHI_diffSEXP, SEXP i_vecSEXP, SEXP V_i_prepSEXP) {
+// mvrnormtest
+arma::vec mvrnormtest(arma::vec mu, arma::mat Sigma, double tol);
+RcppExport SEXP _bayesianVARs_mvrnormtest(SEXP muSEXP, SEXP SigmaSEXP, SEXP tolSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const double >::type s1(s1SEXP);
-    Rcpp::traits::input_parameter< const double >::type r1(r1SEXP);
-    Rcpp::traits::input_parameter< const double >::type s2(s2SEXP);
-    Rcpp::traits::input_parameter< const double >::type r2(r2SEXP);
-    Rcpp::traits::input_parameter< const arma::vec >::type PHI_diff(PHI_diffSEXP);
-    Rcpp::traits::input_parameter< const arma::ivec >::type i_vec(i_vecSEXP);
-    Rcpp::traits::input_parameter< const arma::vec >::type V_i_prep(V_i_prepSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_V_i_HMP(s1, r1, s2, r2, PHI_diff, i_vec, V_i_prep));
+    Rcpp::traits::input_parameter< arma::vec >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Sigma(SigmaSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    rcpp_result_gen = Rcpp::wrap(mvrnormtest(mu, Sigma, tol));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -108,7 +104,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
     {"_bayesianVARs_draw_PHI", (DL_FUNC) &_bayesianVARs_draw_PHI, 9},
     {"_bayesianVARs_draw_L", (DL_FUNC) &_bayesianVARs_draw_L, 3},
-    {"_bayesianVARs_sample_V_i_HMP", (DL_FUNC) &_bayesianVARs_sample_V_i_HMP, 7},
+    {"_bayesianVARs_mvrnormtest", (DL_FUNC) &_bayesianVARs_mvrnormtest, 3},
     {NULL, NULL, 0}
 };
 

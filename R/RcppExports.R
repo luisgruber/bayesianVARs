@@ -18,7 +18,7 @@ draw_L <- function(Ytilde, V_i, d) {
     .Call(`_bayesianVARs_draw_L`, Ytilde, V_i, d)
 }
 
-sample_V_i_HMP <- function(s1, r1, s2, r2, PHI_diff, i_vec, V_i_prep) {
-    .Call(`_bayesianVARs_sample_V_i_HMP`, s1, r1, s2, r2, PHI_diff, i_vec, V_i_prep)
+mvrnormtest <- function(mu, Sigma, tol = 1e-06) {
+    .Call(`_bayesianVARs_mvrnormtest`, mu, Sigma, tol)
 }
 

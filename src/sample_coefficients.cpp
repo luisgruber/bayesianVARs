@@ -4,6 +4,45 @@
 using namespace Rcpp;
 using namespace arma;
 
+arma::vec mvrnorm1(arma::vec mu, arma::mat Sigma, double tol = 1e-06){
+
+  int p = mu.size();
+  arma::rowvec rnormvec(p);
+  for(int j = 0; j < p; ++j){
+    rnormvec(j) = R::rnorm(0,1);
+  }
+
+  arma::mat U(p,p);
+  arma::rowvec X(p);
+  bool chol_succes = arma::chol(U, Sigma, "upper" );
+  if(chol_succes){
+    X = mu.t() + rnormvec * U;
+  }else{
+    // imitate R's eigen(x, symmetric = TRUE)
+    arma::mat Sigma_sym = symmatl(Sigma);
+    arma::vec eigval; // arma stores in ascending order!!!
+    arma::mat eigvec;
+    arma::eig_sym(eigval, eigvec, Sigma_sym);
+    // check positive definiteness
+    for(int j=0; j<p; ++j ){
+      if(eigval(j) <= -tol*abs(eigval((p-1.)))){
+        Rcpp::stop("'Sigma' is not positive definite");
+      }
+    }
+
+    arma::colvec pmax(p);
+    arma::mat pmat(p,2, arma::fill::zeros);
+    pmat.col(0) = eigval;
+    pmax = max(pmat, 1);
+
+    arma::mat rmat = diagmat(sqrt(pmax));
+
+    X = mu.t() +  rnormvec * eigvec * rmat;
+  }
+
+  return X.t();
+}
+
 // Import rgig from R package GIGrvg
 double do_rgig1(double lambda, double chi, double psi) {
 
