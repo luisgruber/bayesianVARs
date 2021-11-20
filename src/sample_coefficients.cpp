@@ -48,9 +48,17 @@ arma::vec mvrnorm1(arma::vec mu, arma::mat Sigma, double tol = 1e-06){
 // Import rgig from R package GIGrvg
 double do_rgig1(double lambda, double chi, double psi) {
 
+  if ( !(R_FINITE(lambda) && R_FINITE(chi) && R_FINITE(psi)) ||
+       (chi <  0. || psi < 0)      ||
+       (chi == 0. && lambda <= 0.) ||
+       (psi == 0. && lambda >= 0.) ) {
+    Rcpp::stop("invalid parameters for GIG distribution: lambda=%g, chi=%g, psi=%g",
+               lambda, chi, psi);
+  }
+
   double res;
   // circumvent GIGrvg in these cases
-  if ((chi < (11 * DOUBLE_EPS)) & (lambda != 0)) {
+  if ((chi < (11 * DOUBLE_EPS))) {
     /* special cases which are basically Gamma and Inverse Gamma distribution */
     if (lambda > 0.0) {
       res = R::rgamma(lambda, 2.0/psi);
@@ -58,7 +66,7 @@ double do_rgig1(double lambda, double chi, double psi) {
     else {
       res = 1.0/R::rgamma(-lambda, 2.0/chi); // fixed
     }
-  } else if ((psi < (11 * DOUBLE_EPS)) & (lambda != 0)) {
+  } else if ((psi < (11 * DOUBLE_EPS)) ) {
     /* special cases which are basically Gamma and Inverse Gamma distribution */
     if (lambda > 0.0) {
       res = R::rgamma(lambda, 2.0/psi);  // fixed
@@ -302,10 +310,16 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, const double a ,
   double n = coefs.size();
   double tmp4samplingzeta = 0;
   arma::vec theta_prep(n);
-
+  //double gig_psi;
     for(int j = 0; j < n; j++){
+      //try{
+        //gig_psi = (coefs(j) * coefs(j)) /
+          //( zeta * zeta * theta(j) * theta(j));
       psi(j) = 1./do_rgig1(-0.5, 1, (coefs(j) * coefs(j)) /
         ( zeta * zeta * theta(j) * theta(j)));
+      //} catch (...) {
+      //  ::Rf_error("phi=%i, zeta=%i, theta=%i; gig_psi%i.", coefs(j), zeta, theta(j), gig_psi);
+      //}
       tmp4samplingzeta += fabs(coefs(j))/theta(j) ;
       theta_prep(j) = do_rgig1(a-1., 2*fabs(coefs(j)), 1);
     }
@@ -377,5 +391,15 @@ void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const do
 
   V_i(i_ol) = lambda_1 * V_i_prep(i_ol);
   V_i(i_cl) = lambda_2 * V_i_prep(i_cl);
+
+}
+
+void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double s1,
+                    const double r1, const arma::vec l){
+
+  int n = l.size();
+  lambda_3 = do_rgig1(s1 - n/2, sum(square(l)/V_i_L), 2*r1 );
+
+  V_i_L = lambda_3;
 
 }

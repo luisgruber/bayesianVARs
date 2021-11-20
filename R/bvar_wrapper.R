@@ -101,38 +101,7 @@ bvar_fast <- function(Yraw,
 
   ##if(is.null(priorPHI$V_i)){ cpp
   ##  V_i <- rep(1, n)}
-  if(priorPHI$prior == "DL"){
-    if(priorPHI$DL_a == "1/K") priorPHI$DL_a <- 1/K
-    if(priorPHI$DL_a == "1/n") priorPHI$DL_a <- 1/n
 
-  }else if(priorPHI$prior == "SSVS"){
-    priorPHI$SSVS_tau0 <- rep(priorPHI$SSVS_c0, n)
-    priorPHI$SSVS_tau1 <- rep(priorPHI$SSVS_c1, n)
-  }else if(priorPHI$prior == "normal"){
-    priorPHI$V_i <- rep(priorPHI$V_i, length = n)
-  }else if(priorPHI$prior == "HMP"){
-    sigma_sq <- MP_sigma_sq(Yraw, 6, standardize)
-    # prepare prior variances down to lambdas
-    priorPHI$V_i_prep <- MP_V_prior_prep(sigma_sq, K, M, intercept)
-  }
-
-  if(priorL$prior == "DL"){
-    if(priorL$DL_b == "1/n") priorL$DL_b <- 1/n_L
-  }else if(priorL$prior == "SSVS"){
-    priorL$SSVS_tau0 <- rep(priorL$SSVS_c0, n)
-    priorL$SSVS_tau1 <- rep(priorL$SSVS_c1, n)
-  }else if(priorL$prior == "normal"){
-    priorL$V_i <- rep(priorL$V_i, length = n_L)
-  }
-
-
-  if(SV == TRUE & is.null(sv_spec)){
-    sv_spec <- list(priormu = c(0,100),
-                    priorphi = c(20, 1.5),
-                    priorsigma2 = c(0.5,0.5)#,
-                    #priorh0 = -1 #h0 from stationary distribution
-    )
-  }
 
 # Initialize --------------------------------------------------------------
 
@@ -142,11 +111,11 @@ bvar_fast <- function(Yraw,
   XX <- crossprod(X)
   V_post_flat <- tryCatch(solve(diag(1/rep(10^3, K)) + XX),
                           error = function(e) chol2inv(chol(diag(1/rep(10^3, K)) + XX)))
-  PHI <- V_post_flat %*% (diag(1/rep(10^3, K))%*%PHI0 + t(X)%*%Y)
-  S_post <- diag(M) + crossprod(Y - X%*%PHI) + t(PHI - PHI0) %*%
-    diag(1/rep(10^3, K)) %*% (PHI - PHI0)
-  Sigma <- (S_post)/(M +2 + T - M - 1)
-  U <- chol(Sigma)
+  PHI_flat <- V_post_flat %*% (diag(1/rep(10^3, K))%*%PHI0 + t(X)%*%Y)
+  S_post <- diag(M) + crossprod(Y - X%*%PHI_flat) + t(PHI_flat - PHI0) %*%
+    diag(1/rep(10^3, K)) %*% (PHI_flat - PHI0)
+  Sigma_flat <- (S_post)/(M +2 + T - M - 1)
+  U <- chol(Sigma_flat)
   D <- diag(U)^2
   L_inv <- U/sqrt(D)
   L <- backsolve(L_inv, diag(M))
@@ -158,6 +127,50 @@ bvar_fast <- function(Yraw,
 
   h_init <- matrix(rep(-10, T*M), T,M)
 
+  if(priorPHI$prior == "DL"){
+    if(priorPHI$DL_a == "1/K") priorPHI$DL_a <- 1/K
+    if(priorPHI$DL_a == "1/n") priorPHI$DL_a <- 1/n
+
+  }else if(priorPHI$prior == "SSVS"){
+
+    if(priorPHI$semiautomatic) {
+
+      # standard errors of flat phi posterior estimates
+      sigma_phi <- sqrt(diag(Sigma_flat %x% V_post_flat))
+
+      # scale tau with variances
+      priorPHI$SSVS_tau0 <- priorPHI$SSVS_c0*sigma_phi
+      priorPHI$SSVS_tau1 <- priorPHI$SSVS_c1*sigma_phi
+    }else{
+      priorPHI$SSVS_tau0 <- rep(priorPHI$SSVS_c0, n)
+      priorPHI$SSVS_tau1 <- rep(priorPHI$SSVS_c1, n)
+    }
+
+  }else if(priorPHI$prior == "normal"){
+    priorPHI$V_i <- rep(priorPHI$V_i, length = n)
+  }else if(priorPHI$prior == "HMP"){
+    sigma_sq <- MP_sigma_sq(Yraw, 6, standardize)
+    # prepare prior variances down to lambdas
+    priorPHI$V_i_prep <- MP_V_prior_prep(sigma_sq, K, M, intercept)
+  }
+
+  if(priorL$prior == "DL"){
+    if(priorL$DL_b == "1/n") priorL$DL_b <- 1/n_L
+  }else if(priorL$prior == "SSVS"){
+    priorL$SSVS_tau0 <- rep(priorL$SSVS_c0, n_L)
+    priorL$SSVS_tau1 <- rep(priorL$SSVS_c1, n_L)
+  }else if(priorL$prior == "normal"){
+    priorL$V_i <- rep(priorL$V_i, length = n_L)
+  }
+
+  if(SV == TRUE & is.null(sv_spec)){
+    sv_spec <- list(priormu = c(0,100),
+                    priorphi = c(20, 1.5),
+                    priorsigma2 = c(0.5,0.5)#,
+                    #priorh0 = -1 #h0 from stationary distribution
+    )
+  }
+
   res <- bvar_cpp(Y,
                   X,
                   M,
@@ -165,7 +178,7 @@ bvar_fast <- function(Yraw,
                   K,
                   draws,
                   burnin,
-                  PHI,
+                  PHI_flat,
                   PHI0,
                   priorPHI,
                   priorL,
@@ -189,6 +202,11 @@ bvar_fast <- function(Yraw,
   if(priorPHI$prior %in% c("DL","DL_h")){
     colnames(res$phi_hyperparameter) <- c("zeta", paste0("psi: ", phinames), paste0("theta: ", phinames), "a")
 
+  }else if(priorPHI$prior == "SSVS"){
+    colnames(res$phi_hyperparameter) <- c(paste0("gamma: ", phinames), paste0("p_i: ", phinames))
+
+  }else if(priorPHI$prior == "HMP"){
+    colnames(res$phi_hyperparameter) <- c("lambda_1", "lambda_2")
   }
   lnames <- NULL
   for(j in 2:M){
@@ -196,6 +214,10 @@ bvar_fast <- function(Yraw,
   }
   if(priorL$prior %in% c("DL","DL_h")){
     colnames(res$l_hyperparameter) <- c("zeta", paste0("psi: ", lnames), paste0("theta: ", lnames), "b")
+  }else if(priorL$prior == "SSVS"){
+    colnames(res$l_hyperparameter) <- c(paste0("gamma: ", lnames), paste0("p_i: ", lnames))
+  }else if(priorL$prior == "HMP"){
+    colnames(res$l_hyperparameter) <- c("lambda_3")
   }
   res$phi_hyperparameter <- as.data.frame(res$phi_hyperparameter)
   res$l_hyperparameter <- as.data.frame(res$l_hyperparameter)

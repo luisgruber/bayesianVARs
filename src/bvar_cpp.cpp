@@ -26,14 +26,17 @@ List bvar_cpp(const arma::mat Y,
               const arma::ivec i_vec,
               const bool progressbar){
 
-  //-----------------------Preliminaries--------------------------------------//
-  const double n = K*M; // number of VAR coefficients
-  arma::mat PHI_diff; // will hold PHI - PHI0#
+//-------------------------Preliminaries--------------------------------------//
+
+  const double n = K*M; // number of VAR coefficients // ??? without intercept
+  arma::mat PHI_diff; // will hold PHI - PHI0
   const arma::uvec i_ol = arma::find(i_vec > 0); // indicator for ownlags
   const arma::uvec i_cl = arma::find(i_vec < 0); // indicator for crosslags
   const int n_ol = i_ol.size(); // nr. of ownlags
   const int n_cl = i_cl.size(); // nr. of crosslags
-
+  const arma::uvec i_ocl= arma::find(i_vec != 0.); // indicator for all coefficients except intercept
+  const arma::uvec i_i= arma::find(i_vec == 0.);
+  //const int intercept 0 oder 1 (als Funktionsargument) ???
 
 //--------------------Initialization of hyperparameters-----------------------//
 
@@ -41,7 +44,12 @@ List bvar_cpp(const arma::mat Y,
   std::string priorPHI = priorPHI_in["prior"];
   // V_i holds prior variances
   arma::vec V_i(n, arma::fill::value(0.0016));
+  //arma::vec V_i_pint(n+M); // ??? V_i plus intercept prior variances
+  //V_i_pint(i_ocl) = V_i; // ???
+  //V_i_pint(i_i) = V_i_intercept;
+
   arma::mat V_prior = arma::reshape(V_i, K, M);
+  //arma::mat V_prior = arma::reshape(V_i_pint, K + intercept, M);
 
   if(priorPHI == "normal"){
     arma::vec V_i_in = priorPHI_in["V_i"];
@@ -158,6 +166,32 @@ List bvar_cpp(const arma::mat Y,
 
   }
 
+  //---- SSVS on L
+  arma::vec tau_0_L;
+  arma::vec tau_1_L;
+  double SSVS_s_a_L;
+  double SSVS_s_b_L;
+  if(priorPHI == "SSVS"){
+    arma::vec tau_0_L_in = priorL_in["SSVS_tau0"];
+    tau_0_L = tau_0_L_in;
+    arma::vec tau_1_L_in = priorL_in["SSVS_tau1"];
+    tau_1_L = tau_1_L_in;
+    double SSVS_s_a_L_in = priorL_in["SSVS_s_a"];
+    SSVS_s_a_L = SSVS_s_a_L_in;
+    double SSVS_s_b_L_in = priorL_in["SSVS_s_b"];
+    SSVS_s_b_L = SSVS_s_b_L_in;
+  }
+  arma::vec gammas_L(n_L, arma::fill::zeros);
+  arma::vec p_i_L(n_L, arma::fill::value(0.5));
+
+  //---- HMP on L
+  double lambda_3 = 0.001;
+  NumericVector s_r_3_in;
+  if(priorL == "HMP"){
+    s_r_3_in = priorL_in["lambda_3"];
+  }
+  arma::vec s_r_3(s_r_3_in.begin(), s_r_3_in.length(), false);
+
   //-----------------------------SV-settings----------------------------------//
   // Import sv_spec
   NumericVector sv_priormu = sv_spec["priormu"] ;
@@ -197,7 +231,7 @@ List bvar_cpp(const arma::mat Y,
 
   arma::cube sv_latent_draws(draws, T, M);
   arma::cube sv_para_draws(draws, 4,M);
-  arma::cube PHI_draws(draws, K, M);
+  arma::cube PHI_draws(draws, K, M); // ??? K + intercept
   arma::cube L_draws(draws, M, M);
 
   int phi_hyperparameter_size;
@@ -213,6 +247,10 @@ List bvar_cpp(const arma::mat Y,
   int l_hyperparameter_size;
   if(priorL == "DL" || priorL == "DL_h"){
     l_hyperparameter_size = 2. + 2*n_L;
+  }else if(priorL == "SSVS"){
+    l_hyperparameter_size = 2*n_L;
+  }else if(priorL == "HMP"){
+    l_hyperparameter_size = 1;
   }
   arma::mat l_hyperparameter_draws(draws, l_hyperparameter_size);
 
@@ -243,14 +281,15 @@ List bvar_cpp(const arma::mat Y,
               PHI(ii,jj) = -1e-100;
             }
           }else
-           if(PHI(ii,jj) < 1e-100 && PHI(ii,jj) > 0){
-          PHI(ii,jj) = 1e-100;
+            if(PHI(ii,jj) < 1e-100 && PHI(ii,jj) > 0){
+              PHI(ii,jj) = 1e-100;
             }else if (PHI(ii,jj) > -1e-100 && PHI(ii,jj) < 0){
-            PHI(ii,jj) = -1e-100;
-          }
+              PHI(ii,jj) = -1e-100;
+            }
         }
       }
     }
+
     PHI_diff = PHI - PHI0;
 
     //----2) Sample hyperparameters of hierarchical priors (prior variances V_i)
@@ -260,6 +299,7 @@ List bvar_cpp(const arma::mat Y,
      if(priorPHI == "DL_h"){
        sample_DL_hyper(DL_a, theta, prep1, prep2, zeta, a_vec);
      }
+
      sample_V_i_DL(V_i, PHI_diff, DL_a , zeta, psi, theta);
 
     }else if(priorPHI == "SSVS"){
@@ -271,10 +311,12 @@ List bvar_cpp(const arma::mat Y,
     }else if(priorPHI == "HMP"){
 
       if(rep > 0.1*burnin){
-      sample_V_i_HMP(lambda_1, lambda_2, V_i, s_r_1(1), s_r_1(2), s_r_2(1),
-                     s_r_2(2), (PHI_diff), V_i_prep, n_ol, n_cl, i_ol, i_cl);
+      sample_V_i_HMP(lambda_1, lambda_2, V_i, s_r_1(0), s_r_1(1), s_r_2(0),
+                     s_r_2(1), (PHI_diff), V_i_prep, n_ol, n_cl, i_ol, i_cl);
       }
     }
+
+    //V_i_pint(i_ocl) = V_i;
 
     V_prior = reshape(V_i, K, M);
 
@@ -323,12 +365,22 @@ List bvar_cpp(const arma::mat Y,
     d_sqrt = exp(h/2);
 
     //----4) Draw hyperparameters of hierarchical priors
+    l = L(L_upper_indices);
     if(priorL == "DL" || priorL == "DL_h"){
-      l = L(L_upper_indices);
+
       if(priorL == "DL_h"){
         sample_DL_hyper(DL_b, theta_L, prep1_L, prep2_L, zeta_L, b_vec);
       }
       sample_V_i_DL(V_i_L, l, DL_b , zeta_L, psi_L, theta_L);
+
+    }else if(priorL == "SSVS"){
+
+      sample_V_i_SSVS(V_i_L, gammas_L, p_i_L, l, tau_0_L, tau_1_L, SSVS_s_a_L, SSVS_s_b_L);
+
+    }else if(priorL == "HMP"){
+
+      sample_V_i_L_HMP(lambda_3, V_i_L, s_r_3(0), s_r_3(1), l);
+
     }
 
     //-------Store draws after burnin
@@ -351,8 +403,7 @@ List bvar_cpp(const arma::mat Y,
         phi_hyperparameter_draws(rep-burnin, span(0, (n-1.))) = gammas;
         phi_hyperparameter_draws(rep-burnin, span(n, (phi_hyperparameter_size-1.))) = p_i;
 
-      }
-      else if(priorPHI == "HMP"){
+      }else if(priorPHI == "HMP"){
         phi_hyperparameter_draws(rep-burnin, 0) = lambda_1;
         phi_hyperparameter_draws(rep-burnin, 1) = lambda_2;
       }
@@ -364,6 +415,14 @@ List bvar_cpp(const arma::mat Y,
         l_hyperparameter_draws(rep-burnin, span(n_L+1.,2*n_L)) = trans(theta_L.as_col());
         l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-1.) = DL_b;
 
+      }else if(priorPHI == "SSVS"){
+
+        l_hyperparameter_draws(rep-burnin, span(0, (n_L-1.))) = gammas_L;
+        l_hyperparameter_draws(rep-burnin, span(n_L, (l_hyperparameter_size-1.))) = p_i_L;
+
+      }else if(priorL == "HMP"){
+
+        l_hyperparameter_draws(rep-burnin, 0) = lambda_3;
       }
     }
 
@@ -379,7 +438,12 @@ List bvar_cpp(const arma::mat Y,
     Named("sv_para") = sv_para_draws,
     Named("phi_hyperparameter") = phi_hyperparameter_draws,
     Named("l_hyperparameter") = l_hyperparameter_draws,
-    Named("bench") = time
+    Named("bench") = time,
+    Named("i_ocl") = i_ocl, // ???
+    Named("i_i") = i_i, // ???
+    Named("s_r_3") = s_r_3, // ???
+    Named("tau0") = tau_0, // ???
+    Named("tau1") = tau_1// ???
   );
 
   return out;

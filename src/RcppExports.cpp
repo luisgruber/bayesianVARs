@@ -86,15 +86,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // mvrnormtest
-arma::vec mvrnormtest(arma::vec mu, arma::mat Sigma, double tol);
-RcppExport SEXP _bayesianVARs_mvrnormtest(SEXP muSEXP, SEXP SigmaSEXP, SEXP tolSEXP) {
+double mvrnormtest();
+RcppExport SEXP _bayesianVARs_mvrnormtest() {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::vec >::type mu(muSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Sigma(SigmaSEXP);
-    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
-    rcpp_result_gen = Rcpp::wrap(mvrnormtest(mu, Sigma, tol));
+    rcpp_result_gen = Rcpp::wrap(mvrnormtest());
     return rcpp_result_gen;
 END_RCPP
 }
@@ -104,7 +101,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
     {"_bayesianVARs_draw_PHI", (DL_FUNC) &_bayesianVARs_draw_PHI, 9},
     {"_bayesianVARs_draw_L", (DL_FUNC) &_bayesianVARs_draw_L, 3},
-    {"_bayesianVARs_mvrnormtest", (DL_FUNC) &_bayesianVARs_mvrnormtest, 3},
+    {"_bayesianVARs_mvrnormtest", (DL_FUNC) &_bayesianVARs_mvrnormtest, 0},
     {NULL, NULL, 0}
 };
 

@@ -41,4 +41,7 @@ void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const do
                     const int n_ol, const int n_cl, const arma::uvec i_ol,
                     const arma::uvec i_cl);
 
+void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double s1,
+                      const double r1, const arma::vec l);
+
 #endif
