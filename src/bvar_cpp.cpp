@@ -14,6 +14,8 @@ List bvar_cpp(const arma::mat Y,
               const int K,
               const int draws,
               const int burnin,
+              const int intercept,
+              const arma::vec priorIntercept,
               arma::mat PHI,
               const arma::mat PHI0,
               const List priorPHI_in,
@@ -35,21 +37,20 @@ List bvar_cpp(const arma::mat Y,
   const int n_ol = i_ol.size(); // nr. of ownlags
   const int n_cl = i_cl.size(); // nr. of crosslags
   const arma::uvec i_ocl= arma::find(i_vec != 0.); // indicator for all coefficients except intercept
-  const arma::uvec i_i= arma::find(i_vec == 0.);
-  //const int intercept 0 oder 1 (als Funktionsargument) ???
+  const arma::uvec i_i= arma::find(i_vec == 0.); // indicator for intercepts
 
 //--------------------Initialization of hyperparameters-----------------------//
 
 //---- PHI
   std::string priorPHI = priorPHI_in["prior"];
-  // V_i holds prior variances
+  // V_i holds prior variances (without intercepts)
   arma::vec V_i(n, arma::fill::value(0.0016));
-  //arma::vec V_i_pint(n+M); // ??? V_i plus intercept prior variances
-  //V_i_pint(i_ocl) = V_i; // ???
-  //V_i_pint(i_i) = V_i_intercept;
+  arma::vec V_i_long(n+M*intercept); // ??? V_i plus intercept prior variances
+  V_i_long(i_ocl) = V_i; // ???
+  V_i_long(i_i) = priorIntercept;
 
-  arma::mat V_prior = arma::reshape(V_i, K, M);
-  //arma::mat V_prior = arma::reshape(V_i_pint, K + intercept, M);
+  //arma::mat V_prior = arma::reshape(V_i, K, M);
+  arma::mat V_prior = arma::reshape(V_i_long, K + intercept, M);
 
   if(priorPHI == "normal"){
     arma::vec V_i_in = priorPHI_in["V_i"];
@@ -117,8 +118,11 @@ List bvar_cpp(const arma::mat Y,
      V_i_prep_in = priorPHI_in["V_i_prep"];
      s_r_1_in = priorPHI_in["lambda_1"];
      s_r_2_in = priorPHI_in["lambda_2"];
-  }
+     }
   arma::vec V_i_prep(V_i_prep_in.begin(), V_i_prep_in.length(), false);
+  if(priorPHI == "HMP"){
+    V_i_long(i_i) = priorIntercept % V_i_prep(i_i);
+  }
   arma::vec s_r_1(s_r_1_in.begin(), s_r_1_in.length(), false);
   arma::vec s_r_2(s_r_2_in.begin(), s_r_2_in.length(), false);
 
@@ -231,7 +235,7 @@ List bvar_cpp(const arma::mat Y,
 
   arma::cube sv_latent_draws(draws, T, M);
   arma::cube sv_para_draws(draws, 4,M);
-  arma::cube PHI_draws(draws, K, M); // ??? K + intercept
+  arma::cube PHI_draws(draws, (K+intercept), M); // ??? K + intercept
   arma::cube L_draws(draws, M, M);
 
   int phi_hyperparameter_size;
@@ -300,25 +304,25 @@ List bvar_cpp(const arma::mat Y,
        sample_DL_hyper(DL_a, theta, prep1, prep2, zeta, a_vec);
      }
 
-     sample_V_i_DL(V_i, PHI_diff, DL_a , zeta, psi, theta);
+     sample_V_i_DL(V_i, PHI_diff(i_ocl), DL_a , zeta, psi, theta);
 
     }else if(priorPHI == "SSVS"){
 
       if(rep > 0.1*burnin){
-        sample_V_i_SSVS(V_i, gammas, p_i, PHI_diff, tau_0, tau_1, SSVS_s_a, SSVS_s_b);
+        sample_V_i_SSVS(V_i, gammas, p_i, PHI_diff(i_ocl), tau_0, tau_1, SSVS_s_a, SSVS_s_b);
 
       }
     }else if(priorPHI == "HMP"){
 
       if(rep > 0.1*burnin){
       sample_V_i_HMP(lambda_1, lambda_2, V_i, s_r_1(0), s_r_1(1), s_r_2(0),
-                     s_r_2(1), (PHI_diff), V_i_prep, n_ol, n_cl, i_ol, i_cl);
+                     s_r_2(1), PHI_diff(i_ocl), V_i_prep, n_ol, n_cl, i_ol, i_cl);
       }
     }
 
-    //V_i_pint(i_ocl) = V_i;
+    V_i_long(i_ocl) = V_i;
 
-    V_prior = reshape(V_i, K, M);
+    V_prior = reshape(V_i_long, K+intercept, M);
 
     //----3) Draw Sigma_t = inv(L)'*D_t*inv(L), where L is upper unitriangular
     //       and D diagonal
@@ -443,7 +447,8 @@ List bvar_cpp(const arma::mat Y,
     Named("i_i") = i_i, // ???
     Named("s_r_3") = s_r_3, // ???
     Named("tau0") = tau_0, // ???
-    Named("tau1") = tau_1// ???
+    Named("tau1") = tau_1,// ???
+    Named("V_i_long") = V_i_long // ???
   );
 
   return out;

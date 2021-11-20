@@ -16,12 +16,16 @@ bvar_fast <- function(Yraw,
 # Data preliminaries ------------------------------------------------------
 
 
-  # M: number of variables, T: number of observations used for estimation,
-  # K: number of covariates per equation, n: number of VAR coefficients,
+  # M: number of variables,
+  # T: number of observations used for estimation,
+  # K: number of covariates per equation (without intercepts!!!),
+  # n: number of VAR coefficients (without intercepts!!!),
   # n_L: number of free off-diagonal elements in L
-  # Y: Yraw without first p observations, X: lagged values of Yraw
+  # Y: Yraw without first p observations,
+  # X: lagged values of Yraw
 
   M <- ncol(Yraw)
+  K <- p*M
   Traw <- nrow(Yraw)
   Y_tmp <- as.matrix(Yraw)
   if (any(is.na(Y_tmp))){
@@ -38,10 +42,11 @@ bvar_fast <- function(Yraw,
   colnames(Y_tmp) <- make.names(colnames(Y_tmp))
   # embed: get lagged values
   X <- embed(Y_tmp, dimension = p + 1)[, -(1:M)]
-  if(intercept){
-    cbind(X,1)
-  }
   colnames(X) <- paste0(colnames(Y_tmp), ".l", sort(rep(1:p,M)))
+  if(is.numeric(intercept)){
+    X <- cbind(X,1)
+    colnames(X)[ncol(X)] <- c("intercept")
+  }
   Y <- Y_tmp[-c(1:p), ]
 
   mu_Y <- colMeans(Y)
@@ -49,14 +54,13 @@ bvar_fast <- function(Yraw,
   if(standardize==TRUE){
 
     Y <- scale(Y)
-    if(intercept){
+    if(is.numeric(intercept)){
       X[,-ncol(X)] <- scale(X[,-ncol(X)])
     }else X <- scale(X)
 
   }
 
   T <- Traw - p
-  K <- ncol(X)
   if(T!=nrow(Y) | T!=nrow(X)){
     stop("Something went wrong: T != nrow(Y). \n")
   }
@@ -81,13 +85,22 @@ bvar_fast <- function(Yraw,
 
 # Hyperparameter settigns -------------------------------------------------
 
+  if(!intercept){
+    intercept <- 0
+    priorIntercept <- vector("numeric")
+  }else{
+    ##some checks???
+    priorIntercept <- rep(intercept, M)
+    intercept <- 1
+  }
+
   if(persistence == 0) {
 
-    PHI0 <- matrix(0, K, M)
+    PHI0 <- matrix(0, K+intercept, M)
 
   }else {
 
-    PHI0 <- matrix(0, K, M)
+    PHI0 <- matrix(0, K+intercept, M)
     PHI0[1:M, 1:M] <- diag(M)*persistence
 
   }
@@ -109,11 +122,11 @@ bvar_fast <- function(Yraw,
   # exists even when OLS estimate does not exist (in situations where T < K)
   # N(0, 10^3) on PHI, and invWish(I, M+2) on Sigma
   XX <- crossprod(X)
-  V_post_flat <- tryCatch(solve(diag(1/rep(10^3, K)) + XX),
-                          error = function(e) chol2inv(chol(diag(1/rep(10^3, K)) + XX)))
-  PHI_flat <- V_post_flat %*% (diag(1/rep(10^3, K))%*%PHI0 + t(X)%*%Y)
+  V_post_flat <- tryCatch(solve(diag(1/rep(10^3, (K+intercept))) + XX),
+                          error = function(e) chol2inv(chol(diag(1/rep(10^3, (K+intercept))) + XX)))
+  PHI_flat <- V_post_flat %*% (diag(1/rep(10^3, (K+intercept)))%*%PHI0 + t(X)%*%Y)
   S_post <- diag(M) + crossprod(Y - X%*%PHI_flat) + t(PHI_flat - PHI0) %*%
-    diag(1/rep(10^3, K)) %*% (PHI_flat - PHI0)
+    diag(1/rep(10^3, (K+intercept))) %*% (PHI_flat - PHI0)
   Sigma_flat <- (S_post)/(M +2 + T - M - 1)
   U <- chol(Sigma_flat)
   D <- diag(U)^2
@@ -151,7 +164,7 @@ bvar_fast <- function(Yraw,
   }else if(priorPHI$prior == "HMP"){
     sigma_sq <- MP_sigma_sq(Yraw, 6, standardize)
     # prepare prior variances down to lambdas
-    priorPHI$V_i_prep <- MP_V_prior_prep(sigma_sq, K, M, intercept)
+    priorPHI$V_i_prep <- MP_V_prior_prep(sigma_sq, (K+intercept), M, intercept>0)
   }
 
   if(priorL$prior == "DL"){
@@ -178,6 +191,8 @@ bvar_fast <- function(Yraw,
                   K,
                   draws,
                   burnin,
+                  intercept,
+                  priorIntercept,
                   PHI_flat,
                   PHI0,
                   priorPHI,
@@ -198,7 +213,7 @@ bvar_fast <- function(Yraw,
   dimnames(res$PHI)[2] <- list(colnames(X))
   dimnames(res$PHI)[3] <- list(colnames(Y))
   dimnames(res$L)[2] <- dimnames(res$L)[3] <- list(colnames(Y))
-  phinames <- as.vector((vapply(seq_len(M), function(i) paste0(colnames(Y)[i], "~", colnames(X)), character(M))))
+  phinames <- as.vector((vapply(seq_len(M), function(i) paste0(colnames(Y)[i], "~", colnames(X[,1:(ncol(X)-intercept)])), character(M))))
   if(priorPHI$prior %in% c("DL","DL_h")){
     colnames(res$phi_hyperparameter) <- c("zeta", paste0("psi: ", phinames), paste0("theta: ", phinames), "a")
 
