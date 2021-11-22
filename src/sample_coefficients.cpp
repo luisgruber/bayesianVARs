@@ -398,8 +398,11 @@ void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double s1,
                     const double r1, const arma::vec l){
 
   int n = l.size();
-  lambda_3 = do_rgig1(s1 - n/2, sum(square(l)/V_i_L), 2*r1 );
+  lambda_3 = do_rgig1(s1 - n/2, sum(square(l)), 2*r1 );
 
-  V_i_L = lambda_3;
+  //for(int j=0; j<n; ++j){
+  //  V_i_L(j) = lambda_3;
+  //}
+  V_i_L.fill(lambda_3);
 
 }

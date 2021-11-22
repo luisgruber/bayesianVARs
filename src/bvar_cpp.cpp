@@ -44,13 +44,10 @@ List bvar_cpp(const arma::mat Y,
 //---- PHI
   std::string priorPHI = priorPHI_in["prior"];
   // V_i holds prior variances (without intercepts)
-  arma::vec V_i(n, arma::fill::value(0.0016));
-  arma::vec V_i_long(n+M*intercept); // ??? V_i plus intercept prior variances
-  V_i_long(i_ocl) = V_i; // ???
-  V_i_long(i_i) = priorIntercept;
+  arma::vec V_i(n);
 
-  //arma::mat V_prior = arma::reshape(V_i, K, M);
-  arma::mat V_prior = arma::reshape(V_i_long, K + intercept, M);
+  arma::vec V_i_long(n+M*intercept); // ??? V_i plus intercept prior variances
+
 
   if(priorPHI == "normal"){
     arma::vec V_i_in = priorPHI_in["V_i"];
@@ -59,15 +56,17 @@ List bvar_cpp(const arma::mat Y,
   }
 
   //---- DL prior on PHI
+  arma::vec psi(n, arma::fill::value(1.0));
+  double zeta=10;
+  arma::vec theta(n, arma::fill::value(1.0));
+
    double DL_a;
    if(priorPHI == "DL" || priorPHI == "DL_h"){
     double DL_a_in = priorPHI_in["DL_a"];
     DL_a = DL_a_in;
-   }
 
-  arma::vec psi(n, arma::fill::value(1.0));
-  double zeta=10;
-  arma::vec theta(n, arma::fill::value(1.0));
+    V_i = psi % theta % theta * zeta * zeta;
+   }
 
   // in case of hyperprior on a (discrete uniform)
   arma::vec a_vec(1000); // will hold grid of possible a
@@ -104,6 +103,8 @@ List bvar_cpp(const arma::mat Y,
     SSVS_s_a = SSVS_s_a_in;
     double SSVS_s_b_in = priorPHI_in["SSVS_s_b"];
     SSVS_s_b = SSVS_s_b_in;
+
+    V_i = tau_0 % tau_0;
   }
   arma::vec gammas(n, arma::fill::zeros);
   arma::vec p_i(n, arma::fill::value(0.5));
@@ -122,9 +123,13 @@ List bvar_cpp(const arma::mat Y,
   arma::vec V_i_prep(V_i_prep_in.begin(), V_i_prep_in.length(), false);
   if(priorPHI == "HMP"){
     V_i_long(i_i) = priorIntercept % V_i_prep(i_i);
+    V_i_long(i_ol) = lambda_1*V_i_prep(i_ol);
+    V_i_long(i_cl) = lambda_2*V_i_prep(i_cl);
+    V_i = V_i_long(i_ocl);
   }
   arma::vec s_r_1(s_r_1_in.begin(), s_r_1_in.length(), false);
   arma::vec s_r_2(s_r_2_in.begin(), s_r_2_in.length(), false);
+
 
 //-------------- L
   std::string priorL = priorL_in["prior"];
@@ -132,22 +137,25 @@ List bvar_cpp(const arma::mat Y,
   uvec L_upper_indices = trimatu_ind( size(L),  1);
   arma::vec l = L(L_upper_indices);
   const double n_L = l.size();
-  arma::vec V_i_L(n_L, arma::fill::value(1));
+  arma::vec V_i_L(n_L);
 
   if(priorL == "normal"){
     arma::vec V_i_L_in = priorL_in["V_i"];
     V_i_L = V_i_L_in;
   }
-
   //---- DL prior on L
-   double DL_b;
-   if(priorL == "DL" || priorL == "DL_h"){
-     double DL_b_in = priorL_in["DL_b"];
-     DL_b = DL_b_in;
-   }
   arma::vec psi_L(n_L, arma::fill::value(1.0));
   double zeta_L=10;
   arma::vec theta_L(n_L, arma::fill::value(1.0));
+
+  double DL_b;
+  if(priorL == "DL" || priorL == "DL_h"){
+    double DL_b_in = priorL_in["DL_b"];
+    DL_b = DL_b_in;
+
+    V_i_L= psi_L% theta_L % theta_L * zeta_L * zeta_L;
+  }
+
   // in case of hyperprior on b
   arma::vec b_vec(1000);
   arma::rowvec prep2_L(1000);
@@ -175,7 +183,7 @@ List bvar_cpp(const arma::mat Y,
   arma::vec tau_1_L;
   double SSVS_s_a_L;
   double SSVS_s_b_L;
-  if(priorPHI == "SSVS"){
+  if(priorL == "SSVS"){
     arma::vec tau_0_L_in = priorL_in["SSVS_tau0"];
     tau_0_L = tau_0_L_in;
     arma::vec tau_1_L_in = priorL_in["SSVS_tau1"];
@@ -184,6 +192,8 @@ List bvar_cpp(const arma::mat Y,
     SSVS_s_a_L = SSVS_s_a_L_in;
     double SSVS_s_b_L_in = priorL_in["SSVS_s_b"];
     SSVS_s_b_L = SSVS_s_b_L_in;
+
+    V_i_L = tau_0_L % tau_0_L;
   }
   arma::vec gammas_L(n_L, arma::fill::zeros);
   arma::vec p_i_L(n_L, arma::fill::value(0.5));
@@ -193,8 +203,15 @@ List bvar_cpp(const arma::mat Y,
   NumericVector s_r_3_in;
   if(priorL == "HMP"){
     s_r_3_in = priorL_in["lambda_3"];
+    arma::vec V_i_L_tmp(n_L, arma::fill::value(1.));
+    V_i_L= lambda_3*V_i_L_tmp;
   }
   arma::vec s_r_3(s_r_3_in.begin(), s_r_3_in.length(), false);
+
+  V_i_long(i_ocl) = V_i; // ???
+  V_i_long(i_i) = priorIntercept;
+  //arma::mat V_prior = arma::reshape(V_i, K, M);
+  arma::mat V_prior = arma::reshape(V_i_long, K + intercept, M);
 
   //-----------------------------SV-settings----------------------------------//
   // Import sv_spec
@@ -238,26 +255,27 @@ List bvar_cpp(const arma::mat Y,
   arma::cube PHI_draws(draws, (K+intercept), M); // ??? K + intercept
   arma::cube L_draws(draws, M, M);
 
-  int phi_hyperparameter_size;
+  int phi_hyperparameter_size(0);
   if(priorPHI == "DL" || priorPHI == "DL_h"){
-    phi_hyperparameter_size = 2. + 2*n; // a + zeta + n(theta + psi)
+    phi_hyperparameter_size += 2. + 2*n; // a + zeta + n(theta + psi)
   }else if(priorPHI == "SSVS"){
-    phi_hyperparameter_size = 2*n; // n(gammas + p_i)
+    phi_hyperparameter_size += 2*n; // n(gammas + p_i)
   }else if(priorPHI == "HMP"){
-    phi_hyperparameter_size = 2; // lambda_1 + lambda_2
+    phi_hyperparameter_size += 2; // lambda_1 + lambda_2
   }
   arma::mat phi_hyperparameter_draws(draws, phi_hyperparameter_size);
 
-  int l_hyperparameter_size;
+  int l_hyperparameter_size(0);
   if(priorL == "DL" || priorL == "DL_h"){
-    l_hyperparameter_size = 2. + 2*n_L;
+    l_hyperparameter_size += 2. + 2*n_L;
   }else if(priorL == "SSVS"){
-    l_hyperparameter_size = 2*n_L;
+    l_hyperparameter_size += 2*n_L;
   }else if(priorL == "HMP"){
-    l_hyperparameter_size = 1;
+    l_hyperparameter_size += 1;
   }
   arma::mat l_hyperparameter_draws(draws, l_hyperparameter_size);
 
+  //L = arma::eye(size(L));
 
   //-----------------------------------SAMPLER--------------------------------//
 
@@ -269,8 +287,11 @@ List bvar_cpp(const arma::mat Y,
   for(int rep = 0; rep < tot; rep++){
 
     //----1) Draw PHI (reduced form VAR coefficients)
-
-    sample_PHI(PHI, PHI0, Y, X, L, d_sqrt, V_prior, K, M, false);
+    try{
+      sample_PHI(PHI, PHI0, Y, X, L, d_sqrt, V_prior, K, M, false);
+    } catch(...){
+      ::Rf_error("PHI rep: %i", rep);
+    }
 
     if(priorPHI == "DL"){
       // if regularization gets extreme, often there appear zeros (numerical issue)
@@ -300,11 +321,11 @@ List bvar_cpp(const arma::mat Y,
 
     if(priorPHI == "DL" || priorPHI == "DL_h"){
 
-     if(priorPHI == "DL_h"){
-       sample_DL_hyper(DL_a, theta, prep1, prep2, zeta, a_vec);
-     }
+      if(priorPHI == "DL_h"){
+        sample_DL_hyper(DL_a, theta, prep1, prep2, zeta, a_vec);
+      }
 
-     sample_V_i_DL(V_i, PHI_diff(i_ocl), DL_a , zeta, psi, theta);
+      sample_V_i_DL(V_i, PHI_diff(i_ocl), DL_a , zeta, psi, theta);
 
     }else if(priorPHI == "SSVS"){
 
@@ -315,8 +336,8 @@ List bvar_cpp(const arma::mat Y,
     }else if(priorPHI == "HMP"){
 
       if(rep > 0.1*burnin){
-      sample_V_i_HMP(lambda_1, lambda_2, V_i, s_r_1(0), s_r_1(1), s_r_2(0),
-                     s_r_2(1), PHI_diff(i_ocl), V_i_prep, n_ol, n_cl, i_ol, i_cl);
+        sample_V_i_HMP(lambda_1, lambda_2, V_i, s_r_1(0), s_r_1(1), s_r_2(0),
+                       s_r_2(1), PHI_diff(i_ocl), V_i_prep, n_ol, n_cl, i_ol, i_cl);
       }
     }
 
@@ -329,26 +350,31 @@ List bvar_cpp(const arma::mat Y,
     //----3a) Draw free off-diagonal elements in L
 
     arma::mat resid = Y - X*PHI;
-    sample_L(L, resid, V_i_L, d_sqrt);
+    try{
+      sample_L(L, resid, V_i_L, d_sqrt);
+    }
+    catch(...){
+      ::Rf_error("L rep: %i", rep);
+    }
 
     if(priorL == "DL"){
 
       for (int jj = 0; jj<M; jj++){
         for (int ii = 0; ii<jj; ii++) {
-            if(L(ii,jj) == 0) {
-              if(R::rbinom( 1, 0.5 )==0){
-                L(ii,jj) = 1e-100;
-              }else{
-                L(ii,jj) = -1e-100;
-              }
-            }else
-              if(L(ii,jj) < 1e-100 && L(ii,jj) > 0){
-                L(ii,jj) = 1e-100;
-              }else if (L(ii,jj) > -1e-100 && L(ii,jj) < 0){
-                L(ii,jj) = -1e-100;
-              }
-          }
+          if(L(ii,jj) == 0) {
+            if(R::rbinom( 1, 0.5 )==0){
+              L(ii,jj) = 1e-100;
+            }else{
+              L(ii,jj) = -1e-100;
+            }
+          }else
+            if(L(ii,jj) < 1e-100 && L(ii,jj) > 0){
+              L(ii,jj) = 1e-100;
+            }else if (L(ii,jj) > -1e-100 && L(ii,jj) < 0){
+              L(ii,jj) = -1e-100;
+            }
         }
+      }
     }
 
     //----3b) Draw elements of D_t
@@ -384,7 +410,6 @@ List bvar_cpp(const arma::mat Y,
     }else if(priorL == "HMP"){
 
       sample_V_i_L_HMP(lambda_3, V_i_L, s_r_3(0), s_r_3(1), l);
-
     }
 
     //-------Store draws after burnin
@@ -419,7 +444,7 @@ List bvar_cpp(const arma::mat Y,
         l_hyperparameter_draws(rep-burnin, span(n_L+1.,2*n_L)) = trans(theta_L.as_col());
         l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-1.) = DL_b;
 
-      }else if(priorPHI == "SSVS"){
+      }else if(priorL == "SSVS"){
 
         l_hyperparameter_draws(rep-burnin, span(0, (n_L-1.))) = gammas_L;
         l_hyperparameter_draws(rep-burnin, span(n_L, (l_hyperparameter_size-1.))) = p_i_L;
@@ -448,7 +473,8 @@ List bvar_cpp(const arma::mat Y,
     Named("s_r_3") = s_r_3, // ???
     Named("tau0") = tau_0, // ???
     Named("tau1") = tau_1,// ???
-    Named("V_i_long") = V_i_long // ???
+    Named("V_i_long") = V_i_long, // ???
+    Named("V_i_L") = V_i_L
   );
 
   return out;
