@@ -69,7 +69,7 @@ bvar_fast <- function(Yraw,
 
 # Indicator matrix --------------------------------------------------------
 
-  if(intercept){
+  if(is.numeric(intercept)){
     i_intercept <- rep(0,M)
   }else i_intercept <- NULL
 

@@ -272,5 +272,8 @@ pred_eval <- function(s, Y_obs, mod, VoI){
               LPL=log(mean(PL)),
               LPL_joint=log(colMeans(PL_joint)),
               LPL_marginal=log(apply(PL_marginal, 2:3, mean)),
-              MSFE=MSFE))
+              MSFE=MSFE,
+              PL = PL,
+              PL_joint = PL_joint,
+              PL_marginal=PL_marginal))
 }
