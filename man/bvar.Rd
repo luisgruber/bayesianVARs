@@ -17,7 +17,9 @@ bvar(
   burnin,
   SV = TRUE,
   SV_hyper = NULL,
-  standardize = TRUE
+  standardize = TRUE,
+  PHI_in = NULL,
+  L_in = NULL
 )
 }
 \arguments{

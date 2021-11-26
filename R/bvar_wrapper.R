@@ -10,7 +10,9 @@ bvar_fast <- function(Yraw,
                       burnin,
                       SV=TRUE,
                       sv_spec,
-                      progressbar=TRUE
+                      progressbar=TRUE,
+                      PHI_in=NULL,
+                      L_in=NULL
                       ){
 
 # Data preliminaries ------------------------------------------------------
@@ -118,20 +120,28 @@ bvar_fast <- function(Yraw,
 
 # Initialize --------------------------------------------------------------
 
-  # Posterior mean of a flat conjugate Normal inverse Wishart prior
-  # exists even when OLS estimate does not exist (in situations where T < K)
-  # N(0, 10^3) on PHI, and invWish(I, M+2) on Sigma
-  XX <- crossprod(X)
-  V_post_flat <- tryCatch(solve(diag(1/rep(10^3, (K+intercept))) + XX),
-                          error = function(e) chol2inv(chol(diag(1/rep(10^3, (K+intercept))) + XX)))
-  PHI_flat <- V_post_flat %*% (diag(1/rep(10^3, (K+intercept)))%*%PHI0 + t(X)%*%Y)
-  S_post <- diag(M) + crossprod(Y - X%*%PHI_flat) + t(PHI_flat - PHI0) %*%
-    diag(1/rep(10^3, (K+intercept))) %*% (PHI_flat - PHI0)
-  Sigma_flat <- (S_post)/(M +2 + T - M - 1)
-  U <- chol(Sigma_flat)
-  D <- diag(U)^2
-  L_inv <- U/sqrt(D)
-  L <- backsolve(L_inv, diag(M))
+  if(priorPHI$prior == "SSVS" | is.null(PHI_in) | is.null(L_in)){
+    # Posterior mean of a flat conjugate Normal inverse Wishart prior
+    # exists even when OLS estimate does not exist (in situations where T < K)
+    # N(0, 10^3) on PHI, and invWish(I, M+2) on Sigma
+    XX <- crossprod(X)
+    V_post_flat <- chol2inv(chol(diag(1/rep(10^3, (K+intercept))) + XX))
+    PHI_flat <- V_post_flat %*% (diag(1/rep(10^3, (K+intercept)))%*%PHI0 + t(X)%*%Y)
+    S_post <- diag(M) + crossprod(Y - X%*%PHI_flat) + t(PHI_flat - PHI0) %*%
+      diag(1/rep(10^3, (K+intercept))) %*% (PHI_flat - PHI0)
+    Sigma_flat <- (S_post)/(M +2 + T - M - 1)
+    U <- chol(Sigma_flat)
+    D <- diag(U)^2
+    L_inv <- U/sqrt(D)
+    L_flat <- backsolve(L_inv, diag(M))
+  }
+
+  if(is.null(PHI_in)){
+    PHI_in <- PHI_flat
+  }
+  if(is.null(L_in)){
+    L_in <- L_flat
+  }
 
 
   sv_para_init <- matrix(data= c(rep(-10,M), rep(0.9,M), rep(0.2,M), rep(-10,M)),
@@ -193,11 +203,11 @@ bvar_fast <- function(Yraw,
                   burnin,
                   intercept,
                   priorIntercept,
-                  PHI_flat,
+                  PHI_in,
                   PHI0,
                   priorPHI,
                   priorL,
-                  L,
+                  L_in,
                   sv_spec,
                   h_init,
                   sv_para_init,

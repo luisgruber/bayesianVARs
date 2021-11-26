@@ -5,6 +5,7 @@
 #include "sample_coefficients.h"
 
 using namespace Rcpp;
+using namespace arma;
 
 //[[Rcpp::export]]
 List bvar_cpp(const arma::mat Y,
@@ -56,9 +57,9 @@ List bvar_cpp(const arma::mat Y,
   }
 
   //---- DL prior on PHI
-  arma::vec psi(n, arma::fill::value(1.0));
+  arma::vec psi(n);psi.fill(1.0);
   double zeta=10;
-  arma::vec theta(n, arma::fill::value(1.0));
+  arma::vec theta(n);theta.fill(1.0);
 
    double DL_a;
    if(priorPHI == "DL" || priorPHI == "DL_h"){
@@ -106,8 +107,8 @@ List bvar_cpp(const arma::mat Y,
 
     V_i = tau_0 % tau_0;
   }
-  arma::vec gammas(n, arma::fill::zeros);
-  arma::vec p_i(n, arma::fill::value(0.5));
+  arma::vec gammas(n, fill::zeros);
+  arma::vec p_i(n); p_i.fill(0.5);
 
   //---- HMP on PHI
   double lambda_1=0.04;
@@ -144,9 +145,9 @@ List bvar_cpp(const arma::mat Y,
     V_i_L = V_i_L_in;
   }
   //---- DL prior on L
-  arma::vec psi_L(n_L, arma::fill::value(1.0));
+  arma::vec psi_L(n_L); psi_L.fill(1.0);
   double zeta_L=10;
-  arma::vec theta_L(n_L, arma::fill::value(1.0));
+  arma::vec theta_L(n_L); theta_L.fill(1.0);
 
   double DL_b;
   if(priorL == "DL" || priorL == "DL_h"){
@@ -195,15 +196,15 @@ List bvar_cpp(const arma::mat Y,
 
     V_i_L = tau_0_L % tau_0_L;
   }
-  arma::vec gammas_L(n_L, arma::fill::zeros);
-  arma::vec p_i_L(n_L, arma::fill::value(0.5));
+  arma::vec gammas_L(n_L, fill::zeros);
+  arma::vec p_i_L(n_L); p_i_L.fill(0.5);
 
   //---- HMP on L
   double lambda_3 = 0.001;
   NumericVector s_r_3_in;
   if(priorL == "HMP"){
     s_r_3_in = priorL_in["lambda_3"];
-    arma::vec V_i_L_tmp(n_L, arma::fill::value(1.));
+    arma::vec V_i_L_tmp(n_L); V_i_L_tmp.fill(1.0);
     V_i_L= lambda_3*V_i_L_tmp;
   }
   arma::vec s_r_3(s_r_3_in.begin(), s_r_3_in.length(), false);
@@ -244,7 +245,7 @@ List bvar_cpp(const arma::mat Y,
   };
 
   // initialize mixing indicators
-  arma::umat mixind(T,M, arma::fill::value(5));
+  arma::umat mixind(T,M); mixind.fill(5);
   //initialize d_sqrt
   arma::mat d_sqrt = arma::exp(h/2);
 
@@ -290,7 +291,7 @@ List bvar_cpp(const arma::mat Y,
     try{
       sample_PHI(PHI, PHI0, Y, X, L, d_sqrt, V_prior, K, M, false);
     } catch(...){
-      ::Rf_error("PHI rep: %i", rep);
+      ::Rf_error("Couldn't sample PHI in rep %i.", rep);
     }
 
     if(priorPHI == "DL"){
@@ -324,8 +325,13 @@ List bvar_cpp(const arma::mat Y,
       if(priorPHI == "DL_h"){
         sample_DL_hyper(DL_a, theta, prep1, prep2, zeta, a_vec);
       }
+      try{
+        sample_V_i_DL(V_i, PHI_diff(i_ocl), DL_a , zeta, psi, theta, priorPHI == "DL_h");
+      }catch(...){
+        //::Rf_error("Couldn't sample V_i (DL prior) in run %i.",  rep);
+        continue;
+      }
 
-      sample_V_i_DL(V_i, PHI_diff(i_ocl), DL_a , zeta, psi, theta);
 
     }else if(priorPHI == "SSVS"){
 
@@ -354,7 +360,7 @@ List bvar_cpp(const arma::mat Y,
       sample_L(L, resid, V_i_L, d_sqrt);
     }
     catch(...){
-      ::Rf_error("L rep: %i", rep);
+      ::Rf_error("Couldn't sample L in rep %i.", rep);
     }
 
     if(priorL == "DL"){
@@ -399,9 +405,15 @@ List bvar_cpp(const arma::mat Y,
     if(priorL == "DL" || priorL == "DL_h"){
 
       if(priorL == "DL_h"){
-        sample_DL_hyper(DL_b, theta_L, prep1_L, prep2_L, zeta_L, b_vec);
+
+          sample_DL_hyper(DL_b, theta_L, prep1_L, prep2_L, zeta_L, b_vec);
       }
-      sample_V_i_DL(V_i_L, l, DL_b , zeta_L, psi_L, theta_L);
+      try{
+         sample_V_i_DL(V_i_L, l, DL_b , zeta_L, psi_L, theta_L, priorL == "DL_h");
+      } catch (...) {
+        //::Rf_error("Couldn't sample V_i_L  in run %i", rep);
+
+      }
 
     }else if(priorL == "SSVS"){
 

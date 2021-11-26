@@ -35,7 +35,7 @@
 #' @export
 bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", PHI_hyper = NULL,
                  L_prior = "DL", L_hyper = NULL, draws, burnin, SV = TRUE,
-                 SV_hyper = NULL, standardize = TRUE) {
+                 SV_hyper = NULL, standardize = TRUE, PHI_in = NULL, L_in = NULL) {
 
   #standardize: scales data (after Y (matrix of responses) and X (design matrix) are created) to have zero mean and variance 1.
 
@@ -343,26 +343,35 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
   # Initial draws -----------------------------------------------------------
 
   # OLS estimates for PHI
-  PHI <- PHI_OLS <- tryCatch(solve(XX)%*%t(X)%*%Y,
-                             error=function(e) MASS::ginv(XX)%*%t(X)%*%Y)
-  PHI[PHI>-1e-100 & PHI <=0] <- -1e-100
-  PHI[PHI < 1e-100 & PHI >=0] <- 1e-100
+  if(is.null(PHI_in)){
+    PHI <- PHI_OLS <- tryCatch(solve(XX)%*%t(X)%*%Y,
+                               error=function(e) MASS::ginv(XX)%*%t(X)%*%Y)
+    PHI[PHI>-1e-100 & PHI <=0] <- -1e-100
+    PHI[PHI < 1e-100 & PHI >=0] <- 1e-100
+
+  }else{
+    PHI <- PHI_in
+  }
   phi <- as.vector(PHI)
 
   Ytilde <- Y - X %*% PHI
-
-  # OLS estimates for Sigma_t (and  L)
-  SSR_OLS <- crossprod(Ytilde)
-  Sigma <- Sigma_OLS <- if(T>K) SSR_OLS/(T-K) else SSR_OLS
-  U <- try(chol(Sigma_OLS), silent = TRUE)
-  if(!inherits(U, "try-error")){
-    D <- diag(U)^2
-    L_i <- U/sqrt(D)
-    L <- backsolve(L_i, diag(M))
+  if(is.null(L_in)){
+    # OLS estimates for Sigma_t (and  L)
+    SSR_OLS <- crossprod(Ytilde)
+    Sigma <- Sigma_OLS <- if(T>K) SSR_OLS/(T-K) else SSR_OLS
+    U <- try(chol(Sigma_OLS), silent = TRUE)
+    if(!inherits(U, "try-error")){
+      D <- diag(U)^2
+      L_i <- U/sqrt(D)
+      L <- backsolve(L_i, diag(M))
+    }else{
+      L <- diag(M)
+      L[upper.tri(L)] <- rnorm(n_l)
+    }
   }else{
-    L <- diag(M)
-    L[upper.tri(L)] <- rnorm(n_l)
+    L <- L_in
   }
+
 
   l <- L[upper.tri(L)]
   if(SV == FALSE) {
@@ -702,8 +711,8 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
               p=p,
               variables=variables,
               X_fore=X_fore,
-              PHI_OLS=PHI_OLS,
-              Sigma_OLS=Sigma_OLS,
+              #PHI_OLS=PHI_OLS,
+              #Sigma_OLS=Sigma_OLS,
               mu_Y=mu_Y,
               sd_Y=sd_Y,
               standardize=standardize,

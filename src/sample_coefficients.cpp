@@ -154,9 +154,9 @@ arma::mat draw_PHI(arma::mat PHI, arma::mat PHI_prior, arma::mat Y, arma::mat X,
 // draw_PHI samples VAR coefficients using the corrected triangular
 // algorithm as in Carrier, Chan, Clark & Marcellino (2021)
 // for use within smapler written in Rcpp
-void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
-                const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,
-                const arma::mat& V_prior, const int& K, const int& M, bool subs) {
+void sample_PHI(arma::mat& PHI, const arma::mat PHI_prior, const arma::mat Y,
+                const arma::mat X, const arma::mat L, const arma::mat d_sqrt,
+                const arma::mat V_prior, const int K, const int M, bool subs) {
 
   for(int i = 0; i < M; i++){
 
@@ -269,7 +269,7 @@ arma::mat draw_L(arma::mat Ytilde, arma::vec V_i, arma::mat d) {
   return(L);
 }
 
-void sample_L(arma::mat& L, arma::mat& Ytilde, arma::vec& V_i, arma::mat& d_sqrt) {
+void sample_L(arma::mat& L, arma::mat Ytilde, const arma::vec V_i, const arma::mat d_sqrt) {
 
   int M = Ytilde.n_cols;
   //mat L(M,M,fill::eye);
@@ -305,7 +305,7 @@ void sample_L(arma::mat& L, arma::mat& Ytilde, arma::vec& V_i, arma::mat& d_sqrt
 }
 
 void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, const double a ,
-                   double& zeta, arma::vec& psi, arma::vec& theta){
+                   double& zeta, arma::vec& psi, arma::vec& theta, bool hyper){
 
   double n = coefs.size();
   double tmp4samplingzeta = 0;
@@ -326,7 +326,11 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, const double a ,
 
   zeta = do_rgig1(n*(a-1.), 2*tmp4samplingzeta,1);
   theta = theta_prep / arma::accu(theta_prep);
-  V_i = psi % theta%theta * zeta*zeta  ;
+  V_i = psi % theta%theta * zeta*zeta;
+  arma::uvec xmin = arma::find(V_i < DOUBLE_XMIN);
+  if(hyper){
+    V_i(xmin).fill(DOUBLE_XMIN);
+  }
 }
 
 arma::colvec ddir_prep(arma::colvec x, arma::mat prep1, arma::rowvec prep2){
@@ -336,13 +340,13 @@ arma::colvec ddir_prep(arma::colvec x, arma::mat prep1, arma::rowvec prep2){
   return(logd.t());
 }
 
-void sample_DL_hyper(double& a, const arma::vec& theta, const arma::mat& prep1,
-                     const arma::rowvec& prep2, const double& zeta,
-                     arma::vec& a_vec){
+void sample_DL_hyper(double& a, const arma::vec theta, const arma::mat prep1,
+                     const arma::rowvec prep2, const double zeta,
+                     arma::vec a_vec){
   const int n = theta.size();
   arma::vec logprobs = ddir_prep(theta, prep1, prep2);
   for(int j=0; j<1000; j++){
-    logprobs(j) += R::dgamma(zeta, n*a_vec(j), 1/0.5, true); // R::dgamma uses scale
+    logprobs(j) += R::dgamma(zeta, n*a_vec(j), 1./0.5, true); // R::dgamma uses scale
   }
 
   arma::vec w = exp(logprobs - logprobs.max());
