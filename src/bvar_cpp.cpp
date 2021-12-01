@@ -59,7 +59,7 @@ List bvar_cpp(const arma::mat Y,
   //---- DL prior on PHI
   arma::vec psi(n);psi.fill(1.0);
   double zeta=10;
-  arma::vec theta(n);theta.fill(1.0);
+  arma::vec theta(n);theta.fill(1/static_cast<double>(n));
 
    double DL_a;
    if(priorPHI == "DL" || priorPHI == "DL_h"){
@@ -70,26 +70,39 @@ List bvar_cpp(const arma::mat Y,
    }
 
   // in case of hyperprior on a (discrete uniform)
-  arma::vec a_vec(1000); // will hold grid of possible a
-  arma::rowvec prep2(1000);
-  arma::mat a_mat(1000,n); // grid as matrix
-  arma::mat prep1(n,1000);
+  //arma::vec a_vec(1000); // will hold grid of possible a
+  //arma::rowvec prep2(1000);
+  //arma::mat a_mat(1000,n); // grid as matrix
+  //arma::mat prep1(n,1000);
+  NumericVector a_vec_in;
+  NumericVector prep2_in;
+  NumericMatrix a_mat_in(1000,n);
+  NumericMatrix prep1_in(n,1000);
   if(priorPHI == "DL_h"){
-    double dist = 0.5 - 1/static_cast<double>(n); // grid should range from 1/n to 0.5
-    double stps = dist / (1000-1); // compute stepsize
+    a_vec_in = priorPHI_in["a_vec"];
+    prep2_in = priorPHI_in["prep2"];
+    a_mat_in = wrap(priorPHI_in["a_mat"]);
+    prep1_in = wrap(priorPHI_in["prep1"]);
+    //double dist = 0.5 - 1/static_cast<double>(n); // grid should range from 1/n to 0.5
+    //double stps = dist / (1000-1); // compute stepsize
 
-    a_vec(0) = 1/static_cast<double>(n);
-    for(int i=1; i<1000; ++i){
-      a_vec(i) = a_vec(i-1) + stps;
-    }
-    a_mat.each_col() = a_vec;
+    //a_vec(0) = 1/static_cast<double>(n);
+    //for(int i=1; i<1000; ++i){
+    //  a_vec(i) = a_vec(i-1) + stps;
+    //}
+    //a_mat.each_col() = a_vec;
     // some precalculations for the conditional posterior
     // for faster evaluation of Dirichlet density
-    prep1 = (a_mat).t() - 1;
-    prep2 = vectorise(arma::lgamma(arma::sum(a_mat.t(),0)) -
-      arma::sum(arma::lgamma(a_mat.t()),0));
+    //prep1 = (a_mat).t() - 1;
+    //prep2 = vectorise(arma::lgamma(arma::sum(a_mat.t(),0)) -
+    //  arma::sum(arma::lgamma(a_mat.t()),0));
 
   }
+  arma::vec a_vec(a_vec_in.begin(), a_vec_in.length(), false);
+  arma::rowvec prep2(prep2_in.begin(), prep2_in.length(), false);
+  arma::mat a_mat(a_mat_in.begin(), a_mat_in.nrow(), a_mat_in.ncol(), false);
+  arma::mat prep1(prep1_in.begin(), prep1_in.nrow(), prep1_in.ncol(), false);
+
   //---- SSVS on PHI
   arma::vec tau_0;
   arma::vec tau_1;
@@ -147,7 +160,7 @@ List bvar_cpp(const arma::mat Y,
   //---- DL prior on L
   arma::vec psi_L(n_L); psi_L.fill(1.0);
   double zeta_L=10;
-  arma::vec theta_L(n_L); theta_L.fill(1.0);
+  arma::vec theta_L(n_L); theta_L.fill(1/static_cast<double>(n_L));
 
   double DL_b;
   if(priorL == "DL" || priorL == "DL_h"){
@@ -158,26 +171,38 @@ List bvar_cpp(const arma::mat Y,
   }
 
   // in case of hyperprior on b
-  arma::vec b_vec(1000);
-  arma::rowvec prep2_L(1000);
-  arma::mat b_mat(1000,n_L);
-  arma::mat prep1_L(n_L,1000);
+  //arma::vec b_vec(1000);
+  //arma::rowvec prep2_L(1000);
+  //arma::mat b_mat(1000,n_L);
+  //arma::mat prep1_L(n_L,1000);
+  NumericVector b_vec_in;
+  NumericVector prep2_L_in;
+  NumericMatrix b_mat_in(1000,n_L);
+  NumericMatrix prep1_L_in(n_L,1000);
   if(priorL == "DL_h"){
-    double dist0 = 0.5 - 1/static_cast<double>(n_L); // grid should range from 1/n to 0.5
-    double stps0 = dist0 / (1000-1); // compute stepsize
+    b_vec_in = priorL_in["b_vec"];
+    prep2_L_in = priorL_in["prep2"];
+    b_mat_in = wrap(priorL_in["b_mat"]);
+    prep1_in = wrap(priorL_in["prep1"]);
+   // double dist0 = 0.5 - 1/static_cast<double>(n_L); // grid should range from 1/n to 0.5
+   // double stps0 = dist0 / (1000-1); // compute stepsize
 
-    b_vec(0) = 1/static_cast<double>(n_L);
-    for(int i=1; i<1000; ++i){
-      b_vec(i) = b_vec(i-1) + stps0;
-    }
-    b_mat.each_col() = b_vec;
+   // b_vec(0) = 1/static_cast<double>(n_L);
+  //  for(int i=1; i<1000; ++i){
+   //   b_vec(i) = b_vec(i-1) + stps0;
+   // }
+   // b_mat.each_col() = b_vec;
     // some precalculations for the conditional posterior
     // for faster evaluation of Dirichlet density
-    prep1_L = (b_mat).t() - 1;
-    prep2_L = vectorise(arma::lgamma(arma::sum(b_mat.t(),0)) -
-      arma::sum(arma::lgamma(b_mat.t()),0));
+   // prep1_L = (b_mat).t() - 1;
+   // prep2_L = vectorise(arma::lgamma(arma::sum(b_mat.t(),0)) -
+   //   arma::sum(arma::lgamma(b_mat.t()),0));
 
   }
+  arma::vec b_vec(b_vec_in.begin(), b_vec_in.length(), false);
+  arma::rowvec prep2_L(prep2_L_in.begin(), prep2_L_in.length(), false);
+  arma::mat b_mat(b_mat_in.begin(), b_mat_in.nrow(), b_mat_in.ncol(), false);
+  arma::mat prep1_L(prep1_L_in.begin(), prep1_L_in.nrow(), prep1_L_in.ncol(), false);
 
   //---- SSVS on L
   arma::vec tau_0_L;
@@ -294,7 +319,7 @@ List bvar_cpp(const arma::mat Y,
       ::Rf_error("Couldn't sample PHI in rep %i.", rep);
     }
 
-    if(priorPHI == "DL"){
+    if(priorPHI == "DL" || priorPHI == "DL_h"){
       // if regularization gets extreme, often there appear zeros (numerical issue)
       // coefficients must not be zero, otherwise problems with do_rgig1
       // anyhow, a realized value of a continous pd cannot be exactly zero
@@ -325,12 +350,11 @@ List bvar_cpp(const arma::mat Y,
       if(priorPHI == "DL_h"){
         sample_DL_hyper(DL_a, theta, prep1, prep2, zeta, a_vec);
       }
-      try{
-        sample_V_i_DL(V_i, PHI_diff(i_ocl), DL_a , zeta, psi, theta, priorPHI == "DL_h");
-      }catch(...){
-        //::Rf_error("Couldn't sample V_i (DL prior) in run %i.",  rep);
-        continue;
-      }
+      //try{
+        sample_V_i_DL(V_i, PHI_diff(i_ocl), DL_a , zeta, psi, theta); //, priorPHI == "DL_h"
+     // }catch(...){
+      //  ::Rf_error("Couldn't sample V_i (DL prior) in run %i.",  rep);
+      //}
 
 
     }else if(priorPHI == "SSVS"){
@@ -363,7 +387,7 @@ List bvar_cpp(const arma::mat Y,
       ::Rf_error("Couldn't sample L in rep %i.", rep);
     }
 
-    if(priorL == "DL"){
+    if(priorL == "DL" || priorL == "DL_h"){
 
       for (int jj = 0; jj<M; jj++){
         for (int ii = 0; ii<jj; ii++) {
@@ -409,9 +433,9 @@ List bvar_cpp(const arma::mat Y,
           sample_DL_hyper(DL_b, theta_L, prep1_L, prep2_L, zeta_L, b_vec);
       }
       try{
-         sample_V_i_DL(V_i_L, l, DL_b , zeta_L, psi_L, theta_L, priorL == "DL_h");
+         sample_V_i_DL(V_i_L, l, DL_b , zeta_L, psi_L, theta_L); //, priorL == "DL_h"
       } catch (...) {
-        //::Rf_error("Couldn't sample V_i_L  in run %i", rep);
+        ::Rf_error("Couldn't sample V_i_L (DL prior)  in run %i", rep);
 
       }
 
@@ -486,7 +510,11 @@ List bvar_cpp(const arma::mat Y,
     Named("tau0") = tau_0, // ???
     Named("tau1") = tau_1,// ???
     Named("V_i_long") = V_i_long, // ???
-    Named("V_i_L") = V_i_L
+    Named("V_i_L") = V_i_L,
+    Named("a_vec") = a_vec,
+    Named("a_mat") = a_mat,
+    Named("prep1") = prep1,
+    Named("prep2") = prep2
   );
 
   return out;

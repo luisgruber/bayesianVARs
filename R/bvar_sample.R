@@ -210,7 +210,7 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
       a_tilde_mat <- matrix(rep(a_tilde,n), nrow = grid)
       prep1 <- a_tilde_mat - 1
       prep2 <- lgamma(rowSums(a_tilde_mat)) - rowSums(lgamma(a_tilde_mat))
-      a <- 1/2
+      a <- 1/n
       #accept <- 0
       #sc <- 0.1
     }
@@ -280,7 +280,7 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
     }else if(L_hyper$hyperhyper == FALSE){
       b <- L_hyper$theta_dirichlet
     }else if(L_hyper$hyperhyper == TRUE){
-      b <- 1/2
+      b <- 1/n_l
       #accept_b <- 0
       #sc_b <- 0.1
       grid_b <- 1000
@@ -401,8 +401,12 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
 
   }else if(PHI_prior == "DL") {
 
+    #theta <- rep(1/n, n)
+    #zeta <- rgamma(1, n*0.5, .5)
     theta <- rep(1/n, n)
-    zeta <- rgamma(1, n*0.5, .5)
+    zeta <- 10
+    psi <- rep(1,n)
+    V_i <- psi * theta^2 * zeta^2
 
   }else if(PHI_prior == "SSVS" ){
 
@@ -419,8 +423,14 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
 
   if(L_prior == "DL") {
 
+    #theta_l <- rep(1/n_l, n_l)
+    #zeta_l <- rgamma(1, n_l*b, .5)
+
+    zeta_l <- 10
+    psi_l <- rep(1, n_l)
     theta_l <- rep(1/n_l, n_l)
-    zeta_l <- rgamma(1, n_l*b, .5)
+
+    V_i_L <- psi_l * theta_l^2 * zeta_l^2
 
   }else if(L_prior =="SSVS") {
 
@@ -440,6 +450,20 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
 
   for (rep in seq_len(tot)) {#seq_len(tot)
     setTxtProgressBar(pb,rep)
+
+
+    ## Draw PHI
+    PHI <- draw_PHI(PHI = PHI, PHI_prior = PHI0, Y = Y, X = X, L = L,
+                    d = d, V_i = V_i, M = M, K = K)
+
+    if(PHI_prior == "DL") {
+
+      PHI[PHI >= 0 & PHI < 1e-100] <- 1e-100
+      PHI[PHI <= 0 & PHI > -1e-100] <- -1e-100
+
+    }
+
+    phi <- as.vector(PHI)
 
     ## Draw hyperparameters wrt PHI (get prior variances V_i)
 
@@ -522,6 +546,51 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
 
     }
 
+
+
+
+    Ytilde <- Y - X %*% PHI
+
+    ## Draw L
+    L <- draw_L(Ytilde = Ytilde, V_i = V_i_L, d = d)
+
+    if(L_prior == "DL") {
+
+      L[upper.tri(L)][L[upper.tri(L)] >= 0 & L[upper.tri(L)] < 1e-100] <- 1e-100
+      L[upper.tri(L)][L[upper.tri(L)] <= 0 & L[upper.tri(L)] > -1e-100] <- -1e-100
+
+    }
+
+    l <- L[upper.tri(L, diag = FALSE)]
+    L_i <- backsolve(L, diag(M))
+
+    Ytilde_L <- Ytilde %*% L
+
+    ## Draw D_t
+    if(SV == TRUE){
+
+      for (i in seq_len(M)) {
+
+        svdraw <- stochvol::svsample_fast_cpp(Ytilde_L[,i], draws = 1,
+                                              burnin = 0, startpara = para[,i],
+                                              startlatent = h[,i],
+                                              priorspec = SV_hyper )
+        h[,i] <- svdraw$latent
+        para[1:5,i] <- svdraw$para
+        para["latent0",i] <- svdraw$latent0
+        d[,i] <- exp(h[,i])
+
+      }
+
+
+    }else if (SV == FALSE) {
+
+      S_post <- S0 + 0.5*colSums(Ytilde_L^2)
+      D <- 1/rgamma(M, shape=(v0+T)/2, rate =S_post)
+      d <- matrix(rep(D, T), T, M, byrow = TRUE)
+
+    }
+
     ## Draw hyperparameters wrt L
     if(L_prior == "DL") {
 
@@ -575,61 +644,6 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
                                psi = 2*r4 )
 
       V_i_L <- rep(lambda_4, n_l)
-
-    }
-
-    ## Draw PHI
-    PHI <- draw_PHI(PHI = PHI, PHI_prior = PHI0, Y = Y, X = X, L = L,
-                    d = d, V_i = V_i, M = M, K = K)
-
-    if(PHI_prior == "DL") {
-
-      PHI[PHI >= 0 & PHI < 1e-100] <- 1e-100
-      PHI[PHI <= 0 & PHI > -1e-100] <- -1e-100
-
-    }
-
-    phi <- as.vector(PHI)
-
-    Ytilde <- Y - X %*% PHI
-
-    ## Draw L
-    L <- draw_L(Ytilde = Ytilde, V_i = V_i_L, d = d)
-
-    if(L_prior == "DL") {
-
-      L[upper.tri(L)][L[upper.tri(L)] >= 0 & L[upper.tri(L)] < 1e-100] <- 1e-100
-      L[upper.tri(L)][L[upper.tri(L)] <= 0 & L[upper.tri(L)] > -1e-100] <- -1e-100
-
-    }
-
-    l <- L[upper.tri(L, diag = FALSE)]
-    L_i <- backsolve(L, diag(M))
-
-    Ytilde_L <- Ytilde %*% L
-
-    ## Draw D_t
-    if(SV == TRUE){
-
-      for (i in seq_len(M)) {
-
-        svdraw <- stochvol::svsample_fast_cpp(Ytilde_L[,i], draws = 1,
-                                              burnin = 0, startpara = para[,i],
-                                              startlatent = h[,i],
-                                              priorspec = SV_hyper )
-        h[,i] <- svdraw$latent
-        para[1:5,i] <- svdraw$para
-        para["latent0",i] <- svdraw$latent0
-        d[,i] <- exp(h[,i])
-
-      }
-
-
-    }else if (SV == FALSE) {
-
-      S_post <- S0 + 0.5*colSums(Ytilde_L^2)
-      D <- 1/rgamma(M, shape=(v0+T)/2, rate =S_post)
-      d <- matrix(rep(D, T), T, M, byrow = TRUE)
 
     }
 

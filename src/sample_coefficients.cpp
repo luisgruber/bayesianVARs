@@ -58,22 +58,22 @@ double do_rgig1(double lambda, double chi, double psi) {
 
   double res;
   // circumvent GIGrvg in these cases
-  if ((chi < (11 * DOUBLE_EPS))) {
+  if ((chi < (10 * DOUBLE_EPS))) {
     /* special cases which are basically Gamma and Inverse Gamma distribution */
     if (lambda > 0.0) {
       res = R::rgamma(lambda, 2.0/psi);
     }
-    else {
-      res = 1.0/R::rgamma(-lambda, 2.0/chi); // fixed
-    }
-  } else if ((psi < (11 * DOUBLE_EPS)) ) {
-    /* special cases which are basically Gamma and Inverse Gamma distribution */
-    if (lambda > 0.0) {
-      res = R::rgamma(lambda, 2.0/psi);  // fixed
-    } else {
-      res = 1.0/R::rgamma(-lambda, 2.0/chi); // fixed
-    }
+  else {
+    res = 1.0/R::rgamma(-lambda, 2.0/chi); // fixed
+  }
+} else if ((psi < (10 * DOUBLE_EPS)) ) {
+  /* special cases which are basically Gamma and Inverse Gamma distribution */
+  if (lambda > 0.0) {
+    res = R::rgamma(lambda, 2.0/psi);  // fixed
   } else {
+    res = 1.0/R::rgamma(-lambda, 2.0/chi); // fixed
+  }
+} else {
     SEXP (*fun)(int, double, double, double) = NULL;
     if (!fun) fun = (SEXP(*)(int, double, double, double)) R_GetCCallable("GIGrvg", "do_rgig");
 
@@ -81,6 +81,7 @@ double do_rgig1(double lambda, double chi, double psi) {
   }
   return res;
 }
+
 
 // draw_PHI samples VAR coefficients using the corrected triangular
 // algorithm as in Carrier, Chan, Clark & Marcellino (2021)
@@ -211,8 +212,8 @@ void sample_PHI(arma::mat& PHI, const arma::mat PHI_prior, const arma::mat Y,
 arma::mat draw_L(arma::mat Ytilde, arma::vec V_i, arma::mat d) {
 
   // Import MASS::mvrnorm function
-  Environment MASS = Environment::namespace_env("MASS");
-  Function Mrmvnorm = MASS["mvrnorm"];
+  //Environment MASS = Environment::namespace_env("MASS");
+  //Function Mrmvnorm = MASS["mvrnorm"];
 
   int M = Ytilde.n_cols;
   mat L(M,M,fill::eye);
@@ -245,9 +246,9 @@ arma::mat draw_L(arma::mat Ytilde, arma::vec V_i, arma::mat d) {
     // Fall back on MASS::mvnorm  if armadillo fails
     if(chol_success == false){
 
-      NumericVector tmp = Mrmvnorm(1, l_post, V_post);
-      L(span(0,i-1), span(i,i)) = as<arma::colvec>(tmp);//arma::mvnrnd(l_post, V_post)
-
+      //NumericVector tmp = Mrmvnorm(1, l_post, V_post);
+      //L(span(0,i-1), span(i,i)) = as<arma::colvec>(tmp);//arma::mvnrnd(l_post, V_post)
+      L(span(0,i-1), span(i,i)) = mvrnorm1(l_post, V_post);
     }else if(chol_success == true){
 
       arma::colvec randnvec(i);
@@ -304,45 +305,42 @@ void sample_L(arma::mat& L, arma::mat Ytilde, const arma::vec V_i, const arma::m
 
 }
 
-void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, const double a ,
-                   double& zeta, arma::vec& psi, arma::vec& theta, bool hyper){
+void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, const double& a ,
+                   double& zeta, arma::vec& psi, arma::vec& theta){ //, bool hyper
 
   double n = coefs.size();
-  double tmp4samplingzeta = 0;
+  arma::vec coefs_abs = arma::abs(coefs);
+  //long double tmp4samplingzeta = 0.;
+  //long double tmp4samplingtheta = 0.;
+  //long double tmp4samplingpsi;
+  double zeta2 = zeta*zeta;
   arma::vec theta_prep(n);
-  //double gig_psi;
     for(int j = 0; j < n; j++){
-      //try{
-        //gig_psi = (coefs(j) * coefs(j)) /
-          //( zeta * zeta * theta(j) * theta(j));
-      psi(j) = 1./do_rgig1(-0.5, 1, (coefs(j) * coefs(j)) /
-        ( zeta * zeta * theta(j) * theta(j)));
-      //} catch (...) {
-      //  ::Rf_error("phi=%i, zeta=%i, theta=%i; gig_psi%i.", coefs(j), zeta, theta(j), gig_psi);
-      //}
-      tmp4samplingzeta += fabs(coefs(j))/theta(j) ;
-      theta_prep(j) = do_rgig1(a-1., 2*fabs(coefs(j)), 1);
+      //tmp4samplingpsi = exp(2*log(fabs(coefs(j)))  -  (log(zeta2) + 2*log(theta(j))) );
+      psi(j) = 1./do_rgig1(-0.5, 1, (coefs_abs(j) * coefs_abs(j)) /
+        ( zeta2 * theta(j) * theta(j)));
+      //psi(j) = 1./do_rgig1(-0.5, 1, (tmp4samplingpsi));
+      theta_prep(j) = do_rgig1(a-1., 2*coefs_abs(j), 1);
+      //tmp4samplingzeta += fabs(coefs(j))/theta(j);
+      //tmp4samplingtheta += theta_prep(j);
     }
 
+  double tmp4samplingzeta = arma::accu(coefs_abs / theta);
   zeta = do_rgig1(n*(a-1.), 2*tmp4samplingzeta,1);
   theta = theta_prep / arma::accu(theta_prep);
   V_i = psi % theta%theta * zeta*zeta;
-  arma::uvec xmin = arma::find(V_i < DOUBLE_XMIN);
-  if(hyper){
-    V_i(xmin).fill(DOUBLE_XMIN);
-  }
 }
 
-arma::colvec ddir_prep(arma::colvec x, arma::mat prep1, arma::rowvec prep2){
+arma::colvec ddir_prep(const arma::colvec& x, const arma::mat& prep1, const arma::rowvec& prep2){
 
   arma::rowvec logd = sum(prep1.each_col() % log(x), 0) + prep2;
 
   return(logd.t());
 }
 
-void sample_DL_hyper(double& a, const arma::vec theta, const arma::mat prep1,
-                     const arma::rowvec prep2, const double zeta,
-                     arma::vec a_vec){
+void sample_DL_hyper(double& a, const arma::colvec& theta, const arma::mat& prep1,
+                     const arma::rowvec& prep2, const double& zeta,
+                     const arma::vec& a_vec){
   const int n = theta.size();
   arma::vec logprobs = ddir_prep(theta, prep1, prep2);
   for(int j=0; j<1000; j++){
@@ -351,8 +349,9 @@ void sample_DL_hyper(double& a, const arma::vec theta, const arma::mat prep1,
 
   arma::vec w = exp(logprobs - logprobs.max());
   arma::vec weights = w/sum(w);
-  arma::ivec iv(1000);
-  R::rmultinom(1, weights.begin(), 1000, iv.begin());
+  int k = weights.size();
+  arma::ivec iv(k);
+  R::rmultinom(1, weights.begin(), k, iv.begin());
   arma::uvec i = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
   a = a_vec(i(0));
 }

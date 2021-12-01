@@ -154,6 +154,15 @@ bvar_fast <- function(Yraw,
     if(priorPHI$DL_a == "1/K") priorPHI$DL_a <- 1/K
     if(priorPHI$DL_a == "1/n") priorPHI$DL_a <- 1/n
 
+  }else if(priorPHI$prior == "DL_h"){
+
+    grid <- 1000
+    priorPHI$a_vec <- seq(1/(n),1/2,length.out = grid)
+    priorPHI$a_mat <- matrix(rep(priorPHI$a_vec,n), nrow = grid)
+    priorPHI$prep1 <- t(priorPHI$a_mat - 1)
+    priorPHI$prep2 <- matrix(lgamma(rowSums(priorPHI$a_mat)) - rowSums(lgamma(priorPHI$a_mat)), nrow = 1, ncol = grid)
+    priorPHI$DL_a <- 1/n
+
   }else if(priorPHI$prior == "SSVS"){
 
     if(priorPHI$semiautomatic) {
@@ -179,6 +188,14 @@ bvar_fast <- function(Yraw,
 
   if(priorL$prior == "DL"){
     if(priorL$DL_b == "1/n") priorL$DL_b <- 1/n_L
+  }else if(priorL$prior == "DL_h"){
+
+    grid_L <- 1000
+    priorL$b_vec <- seq(1/(n_L),1/2,length.out = grid_L)
+    priorL$b_mat <- matrix(rep(priorL$b_vec,n_L), nrow = grid_L)
+    priorL$prep1 <- t(priorL$b_mat - 1)
+    priorL$prep2 <- matrix(lgamma(rowSums(priorL$b_mat)) - rowSums(lgamma(priorL$b_mat)), nrow = 1, ncol = grid_L)
+    priorL$DL_b <- 1/n_L
   }else if(priorL$prior == "SSVS"){
     priorL$SSVS_tau0 <- rep(priorL$SSVS_c0, n_L)
     priorL$SSVS_tau1 <- rep(priorL$SSVS_c1, n_L)
