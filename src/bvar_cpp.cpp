@@ -183,7 +183,7 @@ List bvar_cpp(const arma::mat Y,
     b_vec_in = priorL_in["b_vec"];
     prep2_L_in = priorL_in["prep2"];
     b_mat_in = wrap(priorL_in["b_mat"]);
-    prep1_in = wrap(priorL_in["prep1"]);
+    prep1_L_in = wrap(priorL_in["prep1"]);
    // double dist0 = 0.5 - 1/static_cast<double>(n_L); // grid should range from 1/n to 0.5
    // double stps0 = dist0 / (1000-1); // compute stepsize
 
