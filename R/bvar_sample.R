@@ -330,7 +330,8 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
     v0 <- 0.01   # prior shape parameter
 
   }else if(SV ==TRUE & is.null(SV_hyper)){
-
+   # expert <- get_default_fast_sv()
+    #expert$baseline_parameterization <- "noncentered"
     SV_hyper <- stochvol::specify_priors(
       mu = stochvol::sv_normal(mean = 0, sd = 100),
       phi = stochvol::sv_beta(shape1 = 20, shape2 = 1.5),
@@ -522,8 +523,10 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
       if(rep > 0.1*burnin){
 
         #conditional posterior inclusion probabilities gst
-        u_i1 <- dnorm(phi, phi_prior, (tau_1), log = TRUE) + log(p_i)
-        u_i2 <- dnorm(phi, phi_prior, (tau_0), log = TRUE) + log(1 - p_i)
+        #u_i1 <- dnorm(phi, phi_prior, (tau_1), log = TRUE) + log(p_i)
+        u_i1 <- -log(tau_1) - 0.5 * ((phi - phi_prior)/tau_1)^2 + log(p_i)
+        #u_i2 <- dnorm(phi, phi_prior, (tau_0), log = TRUE) + log(1 - p_i)
+        u_i2 <- -log(tau_0) - .5*((phi - phi_prior)/tau_0)^2 + log(1 - p_i)
         logdif <- u_i2 - u_i1
         gst <- 1/(1 + exp(logdif))
 
@@ -574,10 +577,12 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
         svdraw <- stochvol::svsample_fast_cpp(Ytilde_L[,i], draws = 1,
                                               burnin = 0, startpara = para[,i],
                                               startlatent = h[,i],
-                                              priorspec = SV_hyper )
-        h[,i] <- svdraw$latent
-        para[1:5,i] <- svdraw$para
-        para["latent0",i] <- svdraw$latent0
+                                              priorspec = SV_hyper#,
+                                              #fast_sv = expert
+                                              )
+        h[,i] <- svdraw$latent#[10,]
+        para[1:5,i] <- svdraw$para#[10,]
+        para["latent0",i] <- svdraw$latent0#[10]
         d[,i] <- exp(h[,i])
 
       }
@@ -619,8 +624,11 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
 
     }else if(L_prior == "SSVS" & rep > 0.1*burnin){
 
-      uu_i1 <- dnorm(l, 0, (kappa_1), log = TRUE) + log(q_i)
-      uu_i2 <- dnorm(l, 0, (kappa_0), log = TRUE) + log(1 - q_i)
+      #uu_i1 <- dnorm(l, 0, (kappa_1), log = TRUE) + log(q_i)
+      #uu_i2 <- dnorm(l, 0, (kappa_0), log = TRUE) + log(1 - q_i)
+
+      uu_i1 <- -log(kappa_1) - .5*(l/kappa_1)^2 + log(q_i)
+      uu_i2 <- -log(kappa_0) - .5*(l/kappa_0)^2 + log(1 - q_i)
 
       logdif_l <- uu_i2 - uu_i1
       wght <- 1/(1 + exp(logdif_l))
@@ -707,7 +715,7 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
   timer <- Sys.time() - start_time
   close(pb)
   cat("Finished MCMC after ", format(round(timer, 2)), ".\n", sep = "")
-  bench <- as.numeric(timer/tot)
+  bench <- as.numeric(timer*60/tot)
   attributes(bench) <- list("names" = "secs/itr")
   # covariables for one-step ahead predictions
   if(intercept){

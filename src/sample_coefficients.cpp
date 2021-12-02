@@ -1,10 +1,10 @@
-// [[Rcpp::depends(RcppArmadillo)]]
+//[[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 
 using namespace Rcpp;
 using namespace arma;
 
-arma::vec mvrnorm1(arma::vec mu, arma::mat Sigma, double tol = 1e-06){
+arma::vec mvrnorm1(arma::vec& mu, arma::mat& Sigma, double tol = 1e-06){
 
   int p = mu.size();
   arma::rowvec rnormvec(p);
@@ -88,14 +88,8 @@ double do_rgig1(double lambda, double chi, double psi) {
 // Rcpp::export --> for use within a sampler written in R
 
 // [[Rcpp::export]]
-arma::mat draw_PHI(arma::mat PHI, arma::mat PHI_prior, arma::mat Y, arma::mat X,
-                   arma::mat L, arma::mat d, arma::vec V_i, int K, int M) {
-
-  // Import MASS::mvrnorm function
-  Environment MASS = Environment::namespace_env("MASS");
-  Function Mrmvnorm = MASS["mvrnorm"];
-  //Environment base = Environment("package:base");
-  //Function Rchol = base["chol"];
+arma::mat draw_PHI(arma::mat& PHI, arma::mat& PHI_prior, arma::mat& Y, arma::mat& X,
+                   arma::mat& L, arma::mat& d, arma::vec& V_i, int& K, int& M) {
 
   arma::mat V_prior = reshape(V_i, K, M);
 
@@ -122,29 +116,7 @@ arma::mat draw_PHI(arma::mat PHI, arma::mat PHI_prior, arma::mat Y, arma::mat X,
 
     arma::colvec phi_post = V_post * (V_p_inv*PHI_prior.col(i) + X_new.t()*Y_new);
 
-    mat V_post_chol(K,K);
-    bool chol_success = chol(V_post_chol, V_post,"lower");
-
-    // Fall back on MASS::mvnorm  if armadillo fails
-    if(chol_success == true){
-
-      arma::colvec randnvec(K);
-
-      for(int j = 0; j < K; j++) {
-
-        randnvec(j) = R::rnorm(0, 1);
-
-      }
-
-      PHI.col(i) = phi_post + V_post_chol * randnvec;
-
-    }else if(chol_success == false){
-
-      NumericVector tmp = Mrmvnorm(1, Named("mu")=phi_post, Named("Sigma")=V_post); //, Named("tol")=100
-      PHI.col(i) = as<arma::colvec>(tmp);//arma::mvnrnd(phi_post, V_post)
-
-
-    }
+    PHI.col(i) = mvrnorm1(phi_post, V_post, 1e-06);
 
   }
 
@@ -155,9 +127,9 @@ arma::mat draw_PHI(arma::mat PHI, arma::mat PHI_prior, arma::mat Y, arma::mat X,
 // draw_PHI samples VAR coefficients using the corrected triangular
 // algorithm as in Carrier, Chan, Clark & Marcellino (2021)
 // for use within smapler written in Rcpp
-void sample_PHI(arma::mat& PHI, const arma::mat PHI_prior, const arma::mat Y,
-                const arma::mat X, const arma::mat L, const arma::mat d_sqrt,
-                const arma::mat V_prior, const int K, const int M, bool subs) {
+void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
+                const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,
+                const arma::mat& V_prior, const int& K, const int& M, bool subs) {
 
   for(int i = 0; i < M; i++){
 
@@ -209,11 +181,7 @@ void sample_PHI(arma::mat& PHI, const arma::mat PHI_prior, const arma::mat Y,
 // Rcpp::export --> for use within a sampler written in R
 
 // [[Rcpp::export]]
-arma::mat draw_L(arma::mat Ytilde, arma::vec V_i, arma::mat d) {
-
-  // Import MASS::mvrnorm function
-  //Environment MASS = Environment::namespace_env("MASS");
-  //Function Mrmvnorm = MASS["mvrnorm"];
+arma::mat draw_L(arma::mat Ytilde, arma::vec& V_i, arma::mat& d) {
 
   int M = Ytilde.n_cols;
   mat L(M,M,fill::eye);
@@ -240,28 +208,7 @@ arma::mat draw_L(arma::mat Ytilde, arma::vec V_i, arma::mat d) {
 
     colvec l_post = V_post * (Z.t()*c);
 
-    mat V_post_chol(i,i);
-    bool chol_success = chol(V_post_chol, V_post,"lower");
-
-    // Fall back on MASS::mvnorm  if armadillo fails
-    if(chol_success == false){
-
-      //NumericVector tmp = Mrmvnorm(1, l_post, V_post);
-      //L(span(0,i-1), span(i,i)) = as<arma::colvec>(tmp);//arma::mvnrnd(l_post, V_post)
-      L(span(0,i-1), span(i,i)) = mvrnorm1(l_post, V_post);
-    }else if(chol_success == true){
-
-      arma::colvec randnvec(i);
-
-      for(int j = 0; j < i; j++) {
-
-        randnvec(j) = R::rnorm(0, 1);
-
-      }
-
-      L(span(0,i-1), span(i,i)) = l_post + V_post_chol * randnvec;
-
-    }
+    L(span(0,i-1), span(i,i)) = mvrnorm1(l_post, V_post);
 
     ind = ind+i;
 
@@ -270,7 +217,7 @@ arma::mat draw_L(arma::mat Ytilde, arma::vec V_i, arma::mat d) {
   return(L);
 }
 
-void sample_L(arma::mat& L, arma::mat Ytilde, const arma::vec V_i, const arma::mat d_sqrt) {
+void sample_L(arma::mat& L, arma::mat& Ytilde, const arma::vec& V_i, const arma::mat& d_sqrt) {
 
   int M = Ytilde.n_cols;
   //mat L(M,M,fill::eye);
@@ -310,19 +257,12 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, const double& a ,
 
   double n = coefs.size();
   arma::vec coefs_abs = arma::abs(coefs);
-  //long double tmp4samplingzeta = 0.;
-  //long double tmp4samplingtheta = 0.;
-  //long double tmp4samplingpsi;
   double zeta2 = zeta*zeta;
   arma::vec theta_prep(n);
     for(int j = 0; j < n; j++){
-      //tmp4samplingpsi = exp(2*log(fabs(coefs(j)))  -  (log(zeta2) + 2*log(theta(j))) );
       psi(j) = 1./do_rgig1(-0.5, 1, (coefs_abs(j) * coefs_abs(j)) /
         ( zeta2 * theta(j) * theta(j)));
-      //psi(j) = 1./do_rgig1(-0.5, 1, (tmp4samplingpsi));
       theta_prep(j) = do_rgig1(a-1., 2*coefs_abs(j), 1);
-      //tmp4samplingzeta += fabs(coefs(j))/theta(j);
-      //tmp4samplingtheta += theta_prep(j);
     }
 
   double tmp4samplingzeta = arma::accu(coefs_abs / theta);
@@ -357,36 +297,43 @@ void sample_DL_hyper(double& a, const arma::colvec& theta, const arma::mat& prep
 }
 
 void sample_V_i_SSVS(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
-                     const arma::vec coeffs, const arma::vec tau_0,
-                     const arma::vec tau_1, const double s_a, const double s_b){
+                     const arma::vec& coeffs, const arma::vec& tau_0,
+                     const arma::vec& tau_1, const double& s_a, const double& s_b){
 
   int n = coeffs.size();
-  // log densities of normals
+  // Compute conditional posterior inclusion probability
+  // taking logs is much stabler!!!
   arma::vec u_i1 = -log(tau_1) - 0.5 * square((coeffs)/tau_1) + log(p_i);
   arma::vec u_i2 = -log(tau_0) - 0.5 * square((coeffs)/tau_0) + log(1 - p_i);
-
   arma::vec logdif = u_i2 - u_i1;
-  arma::vec gst = 1/(1 + exp(logdif));
+  arma::vec gst = 1/(1 + exp(logdif)); // == exp(u_i1)/(exp(u_i2) + exp(u_i1))
 
   for(int j=0; j<n; ++j){
 
+    // Draw gammas
     gammas(j) = R::rbinom(1,gst(j));
 
+    // Compute prior variances
     if(gammas(j)==1){
       V_i(j) = tau_1(j)*tau_1(j);
     }else{
       V_i(j) = tau_0(j)*tau_0(j);
     }
+
+    // Draw prior inclusion probabilites
     p_i(j) = R::rbeta(s_a + gammas(j), s_b + 1 - gammas(j));
   }
 
+  //V_i.elem(find(gammas==1)) = square(tau_1.elem(find(gammas==1)));
+  //V_i.elem(find(gammas==0)) = square(tau_0.elem(find(gammas==0)));
+
 }
 
-void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const double s1,
-                    const double r1, const double s2, const double r2,
-                    const arma::vec PHI_diff, const arma::vec V_i_prep,
-                    const int n_ol, const int n_cl, const arma::uvec i_ol,
-                    const arma::uvec i_cl){
+void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const double& s1,
+                    const double& r1, const double& s2, const double& r2,
+                    const arma::vec& PHI_diff, const arma::vec& V_i_prep,
+                    const int& n_ol, const int& n_cl, const arma::uvec& i_ol,
+                    const arma::uvec& i_cl){
 
   lambda_1 = do_rgig1(s1 - n_ol/2, sum(square(PHI_diff(i_ol))/V_i_prep(i_ol)),
                      2*r1 );
@@ -397,8 +344,8 @@ void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const do
 
 }
 
-void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double s1,
-                    const double r1, const arma::vec l){
+void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
+                    const double& r1, const arma::vec& l){
 
   int n = l.size();
   lambda_3 = do_rgig1(s1 - n/2, sum(square(l)), 2*r1 );
