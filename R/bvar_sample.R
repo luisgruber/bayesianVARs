@@ -91,6 +91,14 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
                       theta_draws = matrix(as.numeric(NA), draws, n),
                       a_draws = rep(as.numeric(NA), draws))
 
+  }else if(PHI_prior == "R2D2") {
+
+    DRAWS$PHI <- list(PHI_draws = array(as.numeric(NA), c(draws, K, M)),
+                      psi_draws = matrix(as.numeric(NA), draws, n),
+                      zeta_draws = rep(as.numeric(NA), draws),
+                      theta_draws = matrix(as.numeric(NA), draws, n),
+                      xi_draws = rep(as.numeric(NA), draws))
+
   }else if(PHI_prior == "SSVS") {
 
     DRAWS$PHI <- list(PHI_draws = array(as.numeric(NA), c(draws, K, M)),
@@ -409,6 +417,16 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
     psi <- rep(1,n)
     V_i <- psi * theta^2 * zeta^2
 
+  }else if(PHI_prior == "R2D2"){
+    b <- 0.5
+    ad <- 1/(n^(b/2) * T^(b/2)*log(T))
+    a <- n*ad
+    xi <- 1
+    theta <- rep(1/n, n)
+    zeta <- 10
+    psi <- rep(1,n)
+    V_i <- psi*theta*zeta/2
+
   }else if(PHI_prior == "SSVS" ){
 
     p_i <- 0.5 #rbeta(n, s_a, s_b)
@@ -518,6 +536,17 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
 
       V_i <- zeta^2*psi*theta^2
 
+    }else if(PHI_prior == "R2D2"){
+
+      psi <- as.vector(1/my_gig(n = 1, lambda = -.5, chi = 1,
+                                psi = 1/((theta*zeta/2)/abs(phi - phi_prior)^2)))
+      zeta<- GIGrvg::rgig(1, lambda = a -n/2, psi = 2*xi,
+                          chi = 2*sum(abs(phi-phi_prior)^2/as.vector(theta * psi)))
+      xi <- rgamma(1, a + b, 1 + zeta)
+      theta_prep <- as.vector(my_gig(n = 1, lambda = ad-1/2, chi = 2*abs(phi-phi_prior)^2/psi, psi = 2*xi))
+      theta <- theta_prep/sum(theta_prep)
+      V_i <- psi * zeta * theta / 2
+
     }else if(PHI_prior == "SSVS"){
 
       if(rep > 0.1*burnin){
@@ -548,9 +577,6 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
       }
 
     }
-
-
-
 
     Ytilde <- Y - X %*% PHI
 
@@ -673,6 +699,13 @@ bvar <- function(Yraw, p, intercept = FALSE, persistence = 0, PHI_prior = "DL", 
         DRAWS$PHI$zeta_draws[rep-burnin] <- zeta
         DRAWS$PHI$theta_draws[rep-burnin,] <- theta
         DRAWS$PHI$a_draws[rep-burnin] <- a
+
+      }else if(PHI_prior == "R2D2") {
+
+        DRAWS$PHI$psi_draws[rep-burnin,] <- psi
+        DRAWS$PHI$zeta_draws[rep-burnin] <- zeta
+        DRAWS$PHI$theta_draws[rep-burnin,] <- theta
+        DRAWS$PHI$xi_draws[rep-burnin] <- xi
 
       }else if(PHI_prior =="SSVS" ) {
 
