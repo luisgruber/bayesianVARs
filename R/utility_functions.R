@@ -5,7 +5,7 @@ specify_priorPHI <- function(prior, DL_a = "1/K",
                              SSVS_c0 = 0.01, SSVS_c1 = 100, SSVS_semiautomatic = TRUE, SSVS_sa = 0.5, SSVS_sb = 0.5,
                              HMP_lambda1 = c(0.01,0.01), HMP_lambda2 = c(0.01,0.01),
                              V_i = NULL){
-  if(!(prior %in% c("DL", "HMP", "SSVS", "normal"))){
+  if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2"))){
     stop("Argument 'prior' must be one of 'DL', 'SSVS', 'HMP' or 'normal'. \n")
   }
 
@@ -22,6 +22,10 @@ specify_priorPHI <- function(prior, DL_a = "1/K",
       DL_a <- 0.5 # initial value
     }
     out <- list(prior = prior, DL_a = DL_a)
+
+  }else if(prior == "R2D2"){
+
+    out <- list(prior = "R2D2")
 
   }else if(prior == "SSVS"){
     if(!(SSVS_c0>0 & SSVS_c1>0)){

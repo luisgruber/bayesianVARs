@@ -109,7 +109,7 @@ bvar_fast <- function(Yraw,
 
   ##V_i_L <- rep(1, n_L) cpp
 
-  if(!(priorPHI$prior %in% c("DL", "DL_h", "HMP", "SSVS", "normal"))){
+  if(!(priorPHI$prior %in% c("DL", "DL_h", "HMP", "SSVS", "normal", "R2D2"))){
     stop("Argument 'priorPHI$prior' must be one of
            'DL', 'SSVS', 'HMP' or 'normal'. \n")
   }
@@ -243,6 +243,9 @@ bvar_fast <- function(Yraw,
   phinames <- as.vector((vapply(seq_len(M), function(i) paste0(colnames(Y)[i], "~", colnames(X[,1:(ncol(X)-intercept)])), character(K))))
   if(priorPHI$prior %in% c("DL","DL_h")){
     colnames(res$phi_hyperparameter) <- c("zeta", paste0("psi: ", phinames), paste0("theta: ", phinames), "a")#
+
+  }else if(priorPHI$prior == "R2D2"){
+    colnames(res$phi_hyperparameter) <- c("zeta", paste0("psi: ", phinames), paste0("theta: ", phinames), "xi")#
 
   }else if(priorPHI$prior == "SSVS"){
   colnames(res$phi_hyperparameter) <- c(paste0("gamma: ", phinames), paste0("p_i: ", phinames))#

@@ -356,3 +356,24 @@ void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
   V_i_L.fill(lambda_3);
 
 }
+
+void sample_V_i_R2D2(arma::vec& V_i, const arma::vec& coefs,  const double& ad,
+                   double& zeta, arma::vec& psi, arma::vec& theta, double& xi,
+                   const double& a , const double& b){ //, bool hyper
+
+  double n = coefs.size();
+  arma::vec theta_prep(n);
+
+  for(int j = 0; j < n; j++){
+    psi(j) = 1./do_rgig1(-0.5, 1, (coefs(j) * coefs(j)) /
+      ( zeta * theta(j)/2));
+    theta_prep(j) = do_rgig1(ad - .5, 2*coefs(j)*coefs(j)/psi(j), 2*xi);
+  }
+
+  double tmp4samplingzeta = arma::accu(square(coefs) / (theta%psi));
+  zeta = do_rgig1(a - n/2, 2*tmp4samplingzeta, 2*xi);
+  xi = R::rgamma(a + b, 1/(1+ zeta)); // uses scale
+  theta = theta_prep / arma::accu(theta_prep);
+  V_i = psi % theta * zeta / 2;
+}
+

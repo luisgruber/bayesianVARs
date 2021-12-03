@@ -103,6 +103,16 @@ List bvar_cpp(const arma::mat Y,
   arma::mat a_mat(a_mat_in.begin(), a_mat_in.nrow(), a_mat_in.ncol(), false);
   arma::mat prep1(prep1_in.begin(), prep1_in.nrow(), prep1_in.ncol(), false);
 
+  //----R2D2 on PHI
+  double b_r2d2 = 0.5;
+  double ad = 1/(pow(n,(b_r2d2/2)) * pow(T,(b_r2d2/2)) *log(T));
+  double a_r2d2 = n*ad;
+  double xi = 1;
+  arma::vec theta_r2d2(n); theta_r2d2.fill(1/static_cast<double>(n));
+  double zeta_r2d2 = 10;
+  arma::vec psi_r2d2(n); psi_r2d2.fill(1/static_cast<double>(n));
+  V_i = psi_r2d2%theta_r2d2*zeta_r2d2/2;
+
   //---- SSVS on PHI
   arma::vec tau_0;
   arma::vec tau_1;
@@ -284,6 +294,8 @@ List bvar_cpp(const arma::mat Y,
   int phi_hyperparameter_size(0);
   if(priorPHI == "DL" || priorPHI == "DL_h"){
     phi_hyperparameter_size += 2. + 2*n; // a + zeta + n(theta + psi)
+  }else if(priorPHI == "R2D2"){
+    phi_hyperparameter_size += 2. + 2*n; // xi + zeta + n(theta + psi)
   }else if(priorPHI == "SSVS"){
     phi_hyperparameter_size += 2*n; // n(gammas + p_i)
   }else if(priorPHI == "HMP"){
@@ -319,7 +331,7 @@ List bvar_cpp(const arma::mat Y,
       ::Rf_error("Couldn't sample PHI in rep %i.", rep);
     }
 
-    if(priorPHI == "DL" || priorPHI == "DL_h"){
+    if(priorPHI == "DL" || priorPHI == "DL_h" || priorPHI == "R2D2"){
       // if regularization gets extreme, often there appear zeros (numerical issue)
       // coefficients must not be zero, otherwise problems with do_rgig1
       // anyhow, a realized value of a continous pd cannot be exactly zero
@@ -354,6 +366,17 @@ List bvar_cpp(const arma::mat Y,
         sample_V_i_DL(V_i, PHI_diff(i_ocl), DL_a , zeta, psi, theta); //, priorPHI == "DL_h"
      // }catch(...){
       //  ::Rf_error("Couldn't sample V_i (DL prior) in run %i.",  rep);
+      //}
+
+
+    }else if(priorPHI == "R2D2"){
+
+
+      //try{
+      sample_V_i_R2D2(V_i, PHI_diff(i_ocl), ad , zeta_r2d2, psi_r2d2,
+                      theta_r2d2, xi, a_r2d2, b_r2d2 ); //, priorPHI == "DL_h"
+      // }catch(...){
+      //  ::Rf_error("Couldn't sample V_i (R2D2 prior) in run %i.",  rep);
       //}
 
 
@@ -462,6 +485,13 @@ List bvar_cpp(const arma::mat Y,
         phi_hyperparameter_draws(rep-burnin, span(1,(n))) = trans(psi.as_col());
         phi_hyperparameter_draws(rep-burnin, span(n+1.,(2*n))) = trans(theta.as_col());
         phi_hyperparameter_draws(rep-burnin, phi_hyperparameter_size-1.) = DL_a;
+
+      }if(priorPHI == "R2D2"){
+
+        phi_hyperparameter_draws(rep-burnin, 0) = zeta_r2d2 ;
+        phi_hyperparameter_draws(rep-burnin, span(1,(n))) = trans(psi_r2d2.as_col());
+        phi_hyperparameter_draws(rep-burnin, span(n+1.,(2*n))) = trans(theta_r2d2.as_col());
+        phi_hyperparameter_draws(rep-burnin, phi_hyperparameter_size-1.) = xi ;
 
       }else if(priorPHI == "SSVS"){
 
