@@ -163,6 +163,7 @@ pred_eval <- function(s, Y_obs, mod, VoI){
   # Y_obs: ex post observed data for evaluation
   # mod: model object estimated via BVAR_*
   # VoI: variables of interest for joint & marginal predictive likelihoods and MSFE
+
   SV <- mod$SV
   # data preparation
   intercept <- mod$intercept
@@ -170,6 +171,9 @@ pred_eval <- function(s, Y_obs, mod, VoI){
   draws <- dim(mod$PHI)[1]
   M <- ncol(mod$Y)
   p <- mod$p
+  if(nrow(Y_obs)!=s | ncol(Y_obs) !=M){
+    stop("Y_obs has wrong dimensions! \n")
+  }
 
   if(SV==TRUE) {
     sv_mu <- mod$sv_para[,1,]
@@ -196,8 +200,8 @@ pred_eval <- function(s, Y_obs, mod, VoI){
   Sigma <- array(as.numeric(NA), c(M,M,s), dimnames = list(variables, variables, NULL))
 
   # X_fore holds the observations/predictions relevant for prediction
-  X_fore <- as.vector(mod$Y[nrow(mod$Y):(nrow(mod$Y)-p+1),]) # Y_t:Y_(t-p+1) for one-step ahead
-  if(intercept) X_fore <- c(X_fore, 1)
+  X_fore1 <- as.vector(t(mod$Y[nrow(mod$Y):(nrow(mod$Y)-p+1),])) # Y_t:Y_(t-p+1) for one-step ahead
+  if(intercept) X_fore1 <- c(X_fore1, 1)
 
   for (i in seq.int(draws)) {
 
@@ -222,7 +226,7 @@ pred_eval <- function(s, Y_obs, mod, VoI){
 
     ## one-steap ahead predictive likelihoods and predictions
     # predictive mean
-    pred_mean_temp <- as.vector(X_fore%*%mod$PHI[i,,])
+    pred_mean_temp <- as.vector(X_fore1%*%mod$PHI[i,,])
     names(pred_mean_temp) <- variables
 
     # Predictive likelihoods
@@ -234,6 +238,7 @@ pred_eval <- function(s, Y_obs, mod, VoI){
     predictions[i,1,] <- tryCatch(pred_mean_temp + t(chol(Sigma[,,1]))%*%stats::rnorm(M), error=function(e) MASS::mvrnorm(1, pred_mean_temp, Sigma[,,1]))
 
     ## s-step ahead
+    X_fore_s <- X_fore1
     if(s>1){
 
       for (kk in seq_len(s-1)) {
@@ -241,20 +246,20 @@ pred_eval <- function(s, Y_obs, mod, VoI){
         if(intercept){
           if(p == 1){
 
-            X_fore <- c(predictions[i,kk,],1)
+            X_fore_s <- c(predictions[i,kk,],1)
 
-          }else X_fore <- c(predictions[i,kk,], X_fore[1:(length(X_fore)-M-1)],1)
+          }else X_fore_s <- c(predictions[i,kk,], X_fore_s[1:(length(X_fore_s)-M-1)],1)
 
         }else {
           if(p == 1){
 
-            X_fore <- predictions[i,kk,]
+            X_fore_s <- predictions[i,kk,]
 
-          }else X_fore <- c(predictions[i,kk,], X_fore[1:(length(X_fore)-M)])
+          }else X_fore_s <- c(predictions[i,kk,], X_fore_s[1:(length(X_fore_s)-M)])
 
         }
 
-        pred_mean_temp <- as.vector(X_fore%*%mod$PHI[i,,])
+        pred_mean_temp <- as.vector(X_fore_s%*%mod$PHI[i,,])
         names(pred_mean_temp) <- variables
 
         PL_joint[i, kk+1] <-  mvtnorm::dmvnorm(as.vector(Y_obs[kk+1, VoI]),pred_mean_temp[VoI],Sigma[VoI,VoI,kk+1])
