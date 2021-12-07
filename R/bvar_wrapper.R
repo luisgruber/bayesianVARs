@@ -51,13 +51,17 @@ bvar_fast <- function(Yraw,
   }
   Y <- Y_tmp[-c(1:p), ]
 
+  # function pred_eval needs means and sds for scaling the observed values (if standardize == TRUE)
   mu_Y <- colMeans(Y)
   sd_Y <- apply(Y, 2 ,sd)
+  mu_X <- colMeans(X)
+  sd_X <- apply(X, 2, sd)
+
   if(standardize==TRUE){
 
-    Y <- scale(Y)
+    Y <- scale(Y, center = TRUE, scale = TRUE)
     if(is.numeric(intercept)){
-      X[,-ncol(X)] <- scale(X[,-ncol(X)])
+      X[,-ncol(X)] <- scale(X[,-ncol(X)], center = TRUE, scale = TRUE) # standardize every column, except intercept
     }else X <- scale(X)
 
   }
@@ -274,6 +278,10 @@ bvar_fast <- function(Yraw,
   res$intercept <- ifelse(intercept>0, TRUE, FALSE)
   res$SV <- SV
   res$standardize <- standardize
+  res$mu_X <- mu_X
+  res$sd_X <- sd_X
+  res$Yraw <- Y_tmp
+  res$Traw <- Traw
 
   res
 }
