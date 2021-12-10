@@ -167,11 +167,6 @@ pred_eval <- function(s, Y_obs, mod, VoI){
   # relevant mod settings
   SV <- mod$SV
   intercept <- mod$intercept
-  standardize <- mod$standardize
-  mod$mu_X <- mu_X
-  mod$sd_X <- sd_X
-  mod$mu_Y <- mu_Y
-  mod$sd_Y <- sd_Y
 
   # data preparation
   variables <- colnames(mod$Y)
@@ -184,14 +179,7 @@ pred_eval <- function(s, Y_obs, mod, VoI){
   }
 
   ## X_fore1: regressors for one-step ahead forecasts
-  X_fore1_unscaled <- as.vector(t(mod$Yraw[mod$Traw:(mod$Traw-p+1),])) # Y_t:Y_(t-p+1) for one-step ahead
-  if(standardize){
-    # scale X_fore1
-    # transform to same level as regressors "mod$X"
-    X_fore1 <- (X_fore1_unscaled - mu_X)/sd_X
-  }else {
-    X_fore1 <- X_fore1_unscaled
-  }
+  X_fore1 <- as.vector(t(mod$Yraw[mod$Traw:(mod$Traw-p+1),])) # Y_t:Y_(t-p+1) for one-step ahead
 
   if(intercept) X_fore1 <- c(X_fore1, 1)
 
@@ -203,9 +191,6 @@ pred_eval <- function(s, Y_obs, mod, VoI){
   }else if(SV == FALSE){
     D_draws <- mod$DRAWS$D$D_draws
   }
-  if(standardize == TRUE){
-    Y_obs <- t((t(Y_obs) - mu_Y)/sd_Y)
-  }
   Y_obs <- matrix(Y_obs, s, M)
   colnames(Y_obs) <- variables
 
@@ -214,7 +199,7 @@ pred_eval <- function(s, Y_obs, mod, VoI){
   PL_joint <- matrix(as.numeric(NA), draws, s)
   PL_marginal <- array(as.numeric(NA), c(draws, s, length(VoI)), dimnames = list(NULL, NULL, VoI))
 
-  predictions <- predictions_unscaled <- array(as.numeric(NA), c(draws, s, M), dimnames = list(NULL, paste0("s: ", 1:s), variables))
+  predictions <- array(as.numeric(NA), c(draws, s, M), dimnames = list(NULL, paste0("s: ", 1:s), variables))
 
   h_fore <- matrix(as.numeric(NA), M, s)
   Sigma <- array(as.numeric(NA), c(M,M,s), dimnames = list(variables, variables, NULL))
@@ -253,18 +238,10 @@ pred_eval <- function(s, Y_obs, mod, VoI){
     # Predictions
     predictions[i,1,] <- tryCatch(pred_mean_temp + t(chol(Sigma[,,1]))%*%stats::rnorm(M), error=function(e) MASS::mvrnorm(1, pred_mean_temp, Sigma[,,1]))
 
-    # transform prediction to original "Yraw" scale
-    if(standardize){
-      predictions_unscaled[i,1,] <-  predictions[i,1,]*sd_Y + mu_Y
-    }
-
     ## s-step ahead
     # X_fore_s holds regressors for s-step ahead predictions
     # will be recursively updated
     X_fore_s <- X_fore1
-    if(standardize){
-      X_fore_s_unscaled <- X_fore1_unscaled
-    }
 
     if(s>1){
 
@@ -273,43 +250,24 @@ pred_eval <- function(s, Y_obs, mod, VoI){
         if(intercept){
           if(p == 1){
 
-            if(standardize){
-              X_fore_s_unscaled <- predictions_unscaled[i,kk,]
-              X_fore_s <- c((X_fore_s_unscaled - mu_X)/sd_X,1)
-            }else{
               X_fore_s <- c(predictions[i,kk,],1)
-            }
 
           }else {
-            if(standardize){
-              X_fore_s_unscaled <- c(predictions_unscaled[i,kk,], X_fore_s_unscaled[1:(length(X_fore_s)-M-1)])
-              X_fore_s <- c((X_fore_s_unscaled - mu_X)/sd_X,1)
-            }else {
+
               X_fore_s <- c(predictions[i,kk,], X_fore_s[1:(length(X_fore_s)-M-1)],1)
-            }
+
           }
 
         }else {
 
           if(p == 1){
 
-            if(standardize){
-              X_fore_s_unscaled <- predictions_unscaled[i,kk,]
-              X_fore_s <- (X_fore_s_unscaled - mu_X)/sd_X
-            }else{
               X_fore_s <- predictions[i,kk,]
-            }
 
           }else{
 
-            if(standardize){
+            X_fore_s <- c(predictions[i,kk,], X_fore_s[1:(length(X_fore_s)-M)])
 
-              X_fore_s_unscaled <- c(predictions_unscaled[i,kk,], X_fore_s_unscaled[1:(length(X_fore_s)-M)])
-              X_fore_s <- (X_fore_s_unscaled - mu_X)/sd_X
-
-            }else{
-              X_fore_s <- c(predictions[i,kk,], X_fore_s[1:(length(X_fore_s)-M)])
-            }
           }
 
 
@@ -322,10 +280,6 @@ pred_eval <- function(s, Y_obs, mod, VoI){
         PL_marginal[i, kk+1,] <-  stats::dnorm(as.vector(Y_obs[kk+1, VoI]), pred_mean_temp[VoI], sqrt(diag(Sigma[VoI,VoI,kk+1])))
 
         predictions[i, kk+1,] <- tryCatch(pred_mean_temp + t(chol(Sigma[,,kk+1]))%*%stats::rnorm(M), error=function(e) MASS::mvrnorm(1, pred_mean_temp, Sigma[,,kk+1]))
-
-        if(standardize){
-          predictions_unscaled[i,kk+1,] <-  predictions[i,kk+1,]*sd_Y + mu_Y
-        }
 
       }
 
@@ -344,5 +298,6 @@ pred_eval <- function(s, Y_obs, mod, VoI){
               MSFE=MSFE,
               PL = PL,
               PL_joint = PL_joint,
-              PL_marginal=PL_marginal))
+              PL_marginal=PL_marginal,
+              X_fore1=X_fore1))
 }

@@ -60,27 +60,17 @@ mlag <- function(X,p){
 
 # MP Prior functions ------------------------------------------------------
 
-MP_sigma_sq <- function(Y,p, standardize){ # X,
+MP_sigma_sq <- function(Y,p){ # X,
 
   T <- nrow(Y)
   M <- ncol(Y)
   sigma_sq <- rep(as.numeric(NA), M)
 
-  #for(i in 1:M){
-  #  k <- seq(i, p*M, by=M)
-  #  X_i <- X[,k] #c(1,k)
-  #  phi_i <- solve(crossprod(X_i))%*%crossprod(X_i, Y[,i]) # OLS estimates of i-th equation
-  #  sigma_sq[i] <- (crossprod(Y[,i]-X_i%*%phi_i))/(T-p)
-  #}
   for(i in 1:M){
 
     Y_i <- as.matrix(Y[,i])
     X_i <- mlag(Y_i, p)
     Y_i <- Y_i[-(1:p),]
-    if(standardize){
-      Y_i <- scale(Y_i)
-      X_i <- scale(X_i)
-    }
     phi_i <- tryCatch(solve(crossprod(X_i))%*%crossprod(X_i, Y_i), error = function(e) solve(qr(X_i, LAPACK = TRUE), Y_i)) # OLS estimates of i-th equation
     sigma_sq[i] <- (crossprod(Y_i-X_i%*%phi_i))/(T-p)
 

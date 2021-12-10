@@ -2,7 +2,6 @@
 bvar_fast <- function(Yraw,
                       p,
                       intercept = FALSE,
-                      standardize = TRUE,
                       persistence = 0,
                       priorPHI,
                       priorL,
@@ -16,7 +15,6 @@ bvar_fast <- function(Yraw,
                       ){
 
 # Data preliminaries ------------------------------------------------------
-
 
   # M: number of variables,
   # T: number of observations used for estimation,
@@ -50,21 +48,6 @@ bvar_fast <- function(Yraw,
     colnames(X)[ncol(X)] <- c("intercept")
   }
   Y <- Y_tmp[-c(1:p), ]
-
-  # function pred_eval needs means and sds for scaling the observed values (if standardize == TRUE)
-  mu_Y <- colMeans(Y)
-  sd_Y <- apply(Y, 2 ,sd)
-  mu_X <- colMeans(X)
-  sd_X <- apply(X, 2, sd)
-
-  if(standardize==TRUE){
-
-    Y <- scale(Y, center = TRUE, scale = TRUE)
-    if(is.numeric(intercept)){
-      X[,-ncol(X)] <- scale(X[,-ncol(X)], center = TRUE, scale = TRUE) # standardize every column, except intercept
-    }else X <- scale(X)
-
-  }
 
   T <- Traw - p
   if(T!=nrow(Y) | T!=nrow(X)){
@@ -185,7 +168,7 @@ bvar_fast <- function(Yraw,
   }else if(priorPHI$prior == "normal"){
     priorPHI$V_i <- rep(priorPHI$V_i, length = n)
   }else if(priorPHI$prior == "HMP"){
-    sigma_sq <- MP_sigma_sq(Yraw, 6, standardize)
+    sigma_sq <- MP_sigma_sq(Yraw, 6)
     # prepare prior variances down to lambdas
     priorPHI$V_i_prep <- MP_V_prior_prep(sigma_sq, (K+intercept), M, intercept>0)
   }
@@ -272,14 +255,9 @@ bvar_fast <- function(Yraw,
   res$l_hyperparameter <- as.data.frame(res$l_hyperparameter)
   res$Y <- Y
   res$X <- X
-  res$mu_Y <- mu_Y
-  res$sd_Y <- sd_Y
   res$p <- p
   res$intercept <- ifelse(intercept>0, TRUE, FALSE)
   res$SV <- SV
-  res$standardize <- standardize
-  res$mu_X <- mu_X
-  res$sd_X <- sd_X
   res$Yraw <- Y_tmp
   res$Traw <- Traw
 
