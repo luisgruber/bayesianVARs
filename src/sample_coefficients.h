@@ -38,7 +38,7 @@ void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const do
 void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
                       const double& r1, const arma::vec& l);
 
-void sample_V_i_R2D2(arma::vec& V_i, const arma::vec& coefs,  const double& ad,
+void sample_V_i_R2D2(arma::vec& V_i, const arma::vec& coefs,  const double& api,
                      double& zeta, arma::vec& psi, arma::vec& theta, double& xi,
                      const double& a , const double& b);
 

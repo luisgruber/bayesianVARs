@@ -69,11 +69,6 @@ List bvar_cpp(const arma::mat Y,
     V_i = psi % theta % theta * zeta * zeta;
    }
 
-  // in case of hyperprior on a (discrete uniform)
-  //arma::vec a_vec(1000); // will hold grid of possible a
-  //arma::rowvec prep2(1000);
-  //arma::mat a_mat(1000,n); // grid as matrix
-  //arma::mat prep1(n,1000);
   NumericVector a_vec_in;
   NumericVector prep2_in;
   NumericMatrix a_mat_in(1000,n);
@@ -83,19 +78,6 @@ List bvar_cpp(const arma::mat Y,
     prep2_in = priorPHI_in["prep2"];
     a_mat_in = wrap(priorPHI_in["a_mat"]);
     prep1_in = wrap(priorPHI_in["prep1"]);
-    //double dist = 0.5 - 1/static_cast<double>(n); // grid should range from 1/n to 0.5
-    //double stps = dist / (1000-1); // compute stepsize
-
-    //a_vec(0) = 1/static_cast<double>(n);
-    //for(int i=1; i<1000; ++i){
-    //  a_vec(i) = a_vec(i-1) + stps;
-    //}
-    //a_mat.each_col() = a_vec;
-    // some precalculations for the conditional posterior
-    // for faster evaluation of Dirichlet density
-    //prep1 = (a_mat).t() - 1;
-    //prep2 = vectorise(arma::lgamma(arma::sum(a_mat.t(),0)) -
-    //  arma::sum(arma::lgamma(a_mat.t()),0));
 
   }
   arma::vec a_vec(a_vec_in.begin(), a_vec_in.length(), false);
@@ -104,9 +86,13 @@ List bvar_cpp(const arma::mat Y,
   arma::mat prep1(prep1_in.begin(), prep1_in.nrow(), prep1_in.ncol(), false);
 
   //----R2D2 on PHI
-  double b_r2d2 = 0.5;
-  double ad = 1/(pow(n,(b_r2d2/2)) * pow(T,(b_r2d2/2)) *log(T));
-  double a_r2d2 = n*ad;
+  double b_r2d2;
+  if(priorPHI== "R2D2"){
+    double b_r2d2_in = priorPHI_in["R2D2_b"];
+    b_r2d2= b_r2d2_in;
+  }
+  double api = 1/(pow(n,(b_r2d2/2)) * pow(T,(b_r2d2/2)) *log(T));
+  double a_r2d2 = n*api;
   double xi = 1;
   arma::vec theta_r2d2(n); theta_r2d2.fill(1/static_cast<double>(n));
   double zeta_r2d2 = 10;
@@ -180,11 +166,6 @@ List bvar_cpp(const arma::mat Y,
     V_i_L= psi_L% theta_L % theta_L * zeta_L * zeta_L;
   }
 
-  // in case of hyperprior on b
-  //arma::vec b_vec(1000);
-  //arma::rowvec prep2_L(1000);
-  //arma::mat b_mat(1000,n_L);
-  //arma::mat prep1_L(n_L,1000);
   NumericVector b_vec_in;
   NumericVector prep2_L_in;
   NumericMatrix b_mat_in(1000,n_L);
@@ -194,25 +175,25 @@ List bvar_cpp(const arma::mat Y,
     prep2_L_in = priorL_in["prep2"];
     b_mat_in = wrap(priorL_in["b_mat"]);
     prep1_L_in = wrap(priorL_in["prep1"]);
-   // double dist0 = 0.5 - 1/static_cast<double>(n_L); // grid should range from 1/n to 0.5
-   // double stps0 = dist0 / (1000-1); // compute stepsize
-
-   // b_vec(0) = 1/static_cast<double>(n_L);
-  //  for(int i=1; i<1000; ++i){
-   //   b_vec(i) = b_vec(i-1) + stps0;
-   // }
-   // b_mat.each_col() = b_vec;
-    // some precalculations for the conditional posterior
-    // for faster evaluation of Dirichlet density
-   // prep1_L = (b_mat).t() - 1;
-   // prep2_L = vectorise(arma::lgamma(arma::sum(b_mat.t(),0)) -
-   //   arma::sum(arma::lgamma(b_mat.t()),0));
-
   }
   arma::vec b_vec(b_vec_in.begin(), b_vec_in.length(), false);
   arma::rowvec prep2_L(prep2_L_in.begin(), prep2_L_in.length(), false);
   arma::mat b_mat(b_mat_in.begin(), b_mat_in.nrow(), b_mat_in.ncol(), false);
   arma::mat prep1_L(prep1_L_in.begin(), prep1_L_in.nrow(), prep1_L_in.ncol(), false);
+
+  //----R2D2 on L
+  double b_L_r2d2;
+  if(priorL == "R2D2"){
+    double b_L_r2d2_in = priorL_in["R2D2_b"];
+    b_L_r2d2 = b_L_r2d2_in;
+  }
+  double api_L = 1/(pow(n_L,(b_L_r2d2/2)) * pow(T,(b_L_r2d2/2)) *log(T));
+  double a_L_r2d2 = n_L*api_L;
+  double xi_L = 1;
+  arma::vec theta_L_r2d2(n_L); theta_L_r2d2.fill(1/static_cast<double>(n_L));
+  double zeta_L_r2d2 = 10;
+  arma::vec psi_L_r2d2(n_L); psi_L_r2d2.fill(1/static_cast<double>(n_L));
+  V_i_L = psi_L_r2d2 % theta_L_r2d2 * zeta_L_r2d2 /2.;
 
   //---- SSVS on L
   arma::vec tau_0_L;
@@ -306,6 +287,8 @@ List bvar_cpp(const arma::mat Y,
   int l_hyperparameter_size(0);
   if(priorL == "DL" || priorL == "DL_h"){
     l_hyperparameter_size += 2. + 2*n_L;
+  }else if(priorL == "R2D2"){
+    l_hyperparameter_size += 2. + 2*n_L; // xi + zeta + n(theta + psi)
   }else if(priorL == "SSVS"){
     l_hyperparameter_size += 2*n_L;
   }else if(priorL == "HMP"){
@@ -373,7 +356,7 @@ List bvar_cpp(const arma::mat Y,
 
 
       //try{
-      sample_V_i_R2D2(V_i, PHI_diff(i_ocl), ad , zeta_r2d2, psi_r2d2,
+      sample_V_i_R2D2(V_i, PHI_diff(i_ocl), api , zeta_r2d2, psi_r2d2,
                       theta_r2d2, xi, a_r2d2, b_r2d2 ); //, priorPHI == "DL_h"
       // }catch(...){
       //  ::Rf_error("Couldn't sample V_i (R2D2 prior) in run %i.",  rep);
@@ -410,7 +393,7 @@ List bvar_cpp(const arma::mat Y,
       ::Rf_error("Couldn't sample L in rep %i.", rep);
     }
 
-    if(priorL == "DL" || priorL == "DL_h"){
+    if(priorL == "DL" || priorL == "DL_h" || priorL == "R2D2"){
 
       for (int jj = 0; jj<M; jj++){
         for (int ii = 0; ii<jj; ii++) {
@@ -462,6 +445,11 @@ List bvar_cpp(const arma::mat Y,
 
       }
 
+    }else if(priorL == "R2D2"){
+
+      sample_V_i_R2D2(V_i_L, l, api_L , zeta_L_r2d2, psi_L_r2d2,
+                      theta_L_r2d2, xi_L, a_L_r2d2, b_L_r2d2 );
+
     }else if(priorL == "SSVS"){
 
       sample_V_i_SSVS(V_i_L, gammas_L, p_i_L, l, tau_0_L, tau_1_L, SSVS_s_a_L, SSVS_s_b_L);
@@ -486,7 +474,7 @@ List bvar_cpp(const arma::mat Y,
         phi_hyperparameter_draws(rep-burnin, span(n+1.,(2*n))) = trans(theta.as_col());
         phi_hyperparameter_draws(rep-burnin, phi_hyperparameter_size-1.) = DL_a;
 
-      }if(priorPHI == "R2D2"){
+      }else if(priorPHI == "R2D2"){
 
         phi_hyperparameter_draws(rep-burnin, 0) = zeta_r2d2 ;
         phi_hyperparameter_draws(rep-burnin, span(1,(n))) = trans(psi_r2d2.as_col());
@@ -509,6 +497,13 @@ List bvar_cpp(const arma::mat Y,
         l_hyperparameter_draws(rep-burnin, span(1,n_L)) = trans(psi_L.as_col());
         l_hyperparameter_draws(rep-burnin, span(n_L+1.,2*n_L)) = trans(theta_L.as_col());
         l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-1.) = DL_b;
+
+      }else if(priorL == "R2D2"){
+
+        l_hyperparameter_draws(rep-burnin, 0) = zeta_L_r2d2 ;
+        l_hyperparameter_draws(rep-burnin, span(1,(n_L))) = trans(psi_L_r2d2.as_col());
+        l_hyperparameter_draws(rep-burnin, span(n_L+1.,(2*n_L))) = trans(theta_L_r2d2.as_col());
+        l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-1.) = xi_L ;
 
       }else if(priorL == "SSVS"){
 

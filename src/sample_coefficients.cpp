@@ -357,7 +357,7 @@ void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
 
 }
 
-void sample_V_i_R2D2(arma::vec& V_i, const arma::vec& coefs,  const double& ad,
+void sample_V_i_R2D2(arma::vec& V_i, const arma::vec& coefs,  const double& api,
                    double& zeta, arma::vec& psi, arma::vec& theta, double& xi,
                    const double& a , const double& b){ //, bool hyper
 
@@ -367,7 +367,7 @@ void sample_V_i_R2D2(arma::vec& V_i, const arma::vec& coefs,  const double& ad,
   for(int j = 0; j < n; j++){
     psi(j) = 1./do_rgig1(-0.5, 1, (coefs(j) * coefs(j)) /
       ( zeta * theta(j)/2));
-    theta_prep(j) = do_rgig1(ad - .5, 2*coefs(j)*coefs(j)/psi(j), 2*xi);
+    theta_prep(j) = do_rgig1(api - .5, 2*coefs(j)*coefs(j)/psi(j), 2*xi);
   }
 
   double tmp4samplingzeta = arma::accu(square(coefs) / (theta%psi));

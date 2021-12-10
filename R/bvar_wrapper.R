@@ -246,6 +246,9 @@ bvar_fast <- function(Yraw,
   }
   if(priorL$prior %in% c("DL","DL_h")){
     colnames(res$l_hyperparameter) <- c("zeta", paste0("psi: ", lnames), paste0("theta: ", lnames), "b")
+  }else if(priorL$prior == "R2D2"){
+    colnames(res$l_hyperparameter) <- c("zeta", paste0("psi: ", lnames), paste0("theta: ", lnames), "xi")#
+
   }else if(priorL$prior == "SSVS"){
     colnames(res$l_hyperparameter) <- c(paste0("gamma: ", lnames), paste0("p_i: ", lnames))
   }else if(priorL$prior == "HMP"){
