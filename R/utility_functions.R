@@ -201,7 +201,7 @@ pred_eval <- function(s, Y_obs, mod, VoI){
   # storage
   PL <- rep(as.numeric(NA), draws)
   PL_joint <- matrix(as.numeric(NA), draws, s)
-  PL_marginal <- array(as.numeric(NA), c(draws, s, length(VoI)), dimnames = list(NULL, NULL, VoI))
+  PL_marginal <- array(as.numeric(NA), c(draws, s, M), dimnames = list(NULL, NULL, variables))
 
   predictions <- array(as.numeric(NA), c(draws, s, M), dimnames = list(NULL, paste0("s: ", 1:s), variables))
 
@@ -237,7 +237,7 @@ pred_eval <- function(s, Y_obs, mod, VoI){
     # Predictive likelihoods
     PL[i] <- mvtnorm::dmvnorm(as.vector(Y_obs[1,]),pred_mean_temp,Sigma[,,1])
     PL_joint[i,1] <-  mvtnorm::dmvnorm(as.vector(Y_obs[1,VoI]),pred_mean_temp[VoI],Sigma[VoI,VoI,1])
-    PL_marginal[i,1,] <-  stats::dnorm(as.vector(Y_obs[1, VoI]), pred_mean_temp[VoI], sqrt(diag(Sigma[VoI,VoI,1])))
+    PL_marginal[i,1,] <-  stats::dnorm(as.vector(Y_obs[1, ]), pred_mean_temp, sqrt(diag(Sigma[,,1])))
 
     # Predictions
     predictions[i,1,] <- tryCatch(pred_mean_temp + t(chol(Sigma[,,1]))%*%stats::rnorm(M), error=function(e) MASS::mvrnorm(1, pred_mean_temp, Sigma[,,1]))
@@ -281,7 +281,7 @@ pred_eval <- function(s, Y_obs, mod, VoI){
         names(pred_mean_temp) <- variables
 
         PL_joint[i, kk+1] <-  mvtnorm::dmvnorm(as.vector(Y_obs[kk+1, VoI]),pred_mean_temp[VoI],Sigma[VoI,VoI,kk+1])
-        PL_marginal[i, kk+1,] <-  stats::dnorm(as.vector(Y_obs[kk+1, VoI]), pred_mean_temp[VoI], sqrt(diag(Sigma[VoI,VoI,kk+1])))
+        PL_marginal[i, kk+1,] <-  stats::dnorm(as.vector(Y_obs[kk+1, ]), pred_mean_temp, sqrt(diag(Sigma[,,kk+1])))
 
         predictions[i, kk+1,] <- tryCatch(pred_mean_temp + t(chol(Sigma[,,kk+1]))%*%stats::rnorm(M), error=function(e) MASS::mvrnorm(1, pred_mean_temp, Sigma[,,kk+1]))
 
@@ -291,15 +291,10 @@ pred_eval <- function(s, Y_obs, mod, VoI){
 
   }
 
-  # MSFE
-  #MSFE <- (colMeans(predictions[,VoI]) - Y_obs[,VoI])^2
-  MSFE <- (apply(predictions[,,VoI, drop=FALSE], 2:3, mean) - Y_obs[,VoI])^2
-
   return(list(predictions=predictions,
               LPL=log(mean(PL)),
               LPL_joint=log(colMeans(PL_joint)),
               LPL_marginal=log(apply(PL_marginal, 2:3, mean)),
-              MSFE=MSFE,
               PL = PL,
               PL_joint = PL_joint,
               PL_marginal=PL_marginal,
