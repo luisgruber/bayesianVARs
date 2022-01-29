@@ -104,6 +104,14 @@ arma::mat draw_PHI(arma::mat& PHI, arma::mat& PHI_prior, arma::mat& Y, arma::mat
     arma::mat X_new_tmp = arma::kron(L( span(i,i), span(i, M-1)).t(), X);
     arma::mat X_new = X_new_tmp.each_col() / normalizer;
 
+    // SL
+//    for(int j = 0; j<K; j++){
+//      //gammas
+//      arma::vec Y_new_star = Y_new - X_new * PHI.col(i) + X_new.col(j)*PHI(j,i);
+//      double V_post = 1./(1/V_prior(j,i) + trans(X_new.col(j))*X_new.col(j));
+//      double phi_j_post = V_post*(1/V_prior(j,i)*PHI_prior(j,i) + trans(X_new.col(j))*Y_new_star);
+//      PHI(j,i) = R::rnorm(phi_j_post,V_post);
+//    }
     // Compute V_post
     //arma::mat V_post = ( V_p_inv + X_new.t()*X_new ).i(); //unstable
     // compute inverse via the QR decomposition (similar to chol2inv in R)
@@ -377,3 +385,52 @@ void sample_V_i_R2D2(arma::vec& V_i, const arma::vec& coefs,  const double& api,
   V_i = psi % theta * zeta / 2;
 }
 
+void sample_PHI_SL(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
+                   const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,
+                   arma::mat& Gamma, const int& K, const int& M) {
+
+  for(int i = 0; i < M; i++){
+
+    arma::mat PHI_0 = PHI;
+    PHI_0.col(i).zeros();
+    arma::vec normalizer = vectorise( d_sqrt.cols(i, M-1)  );
+    arma::vec Y_new = vectorise( (Y - X * PHI_0) * L.cols(i, M-1) ) / normalizer;
+    arma::mat X_new_tmp = arma::kron(L( span(i,i), span(i, M-1)).t(), X);
+    arma::mat X_new = X_new_tmp.each_col() / normalizer;
+
+    for(int j = 0; j<K; j++){
+      //gammas
+      double p_i = R::rbeta(0.5 + Gamma(j,i), 0.5 + 1 - Gamma(j,i));
+      double v_i = 1./R::rgamma(0.01 + Gamma(j,i)/2, 1/(0.01 + PHI(j,i)*PHI(j,i)/2));
+
+      arma::vec Y_new_star = Y_new - X_new * PHI.col(i) + X_new.col(j)*PHI(j,i);
+
+      vec pre1 = (trans(X_new.col(j))*X_new.col(j));
+      double V_post = 1./(1./v_i + pre1(0)); // by construction pre1 is a scalar
+      vec pre2 = (trans(X_new.col(j))*Y_new_star);
+      double phi_j_post = V_post*(PHI_prior(j,i)/v_i + pre2(0));
+
+      double u_i1 = -log(v_i) - 0.5*(PHI_prior(j,i)*PHI_prior(j,i)/v_i) -
+        (-log(sqrt(V_post)) - 0.5*(phi_j_post*phi_j_post/V_post)) + log(p_i);
+      double u_i2 =  log(1 - p_i);
+
+      //double numericalnormalizer = u_i2;
+      //if(u_1>u_i2){
+      //  numericalnormalizer = u_i1;
+      //}
+
+      double logdiff = u_i2 - u_i1;
+      double gst = (1./(1+exp(logdiff)));
+
+      Gamma(j,i) = R::rbinom(1,gst);
+
+      if(Gamma(j,i)==1){
+        PHI(j,i) = R::rnorm(phi_j_post,V_post);
+      }else {
+        PHI(j,i) = 0;
+      }
+
+    }
+
+  }
+}

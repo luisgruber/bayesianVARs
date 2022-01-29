@@ -96,7 +96,7 @@ bvar_fast <- function(Yraw,
 
   ##V_i_L <- rep(1, n_L) cpp
 
-  if(!(priorPHI$prior %in% c("DL", "DL_h", "HMP", "SSVS", "normal", "R2D2"))){
+  if(!(priorPHI$prior %in% c("DL", "DL_h", "HMP", "SSVS", "normal", "R2D2", "SL"))){
     stop("Argument 'priorPHI$prior' must be one of
            'DL', 'SSVS', 'HMP' or 'normal'. \n")
   }

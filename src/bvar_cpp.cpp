@@ -3,6 +3,7 @@
 #include <progress.hpp>
 #include <Rcpp/Benchmark/Timer.h>
 #include "sample_coefficients.h"
+//#include "SL.h"
 
 using namespace Rcpp;
 using namespace arma;
@@ -118,6 +119,9 @@ List bvar_cpp(const arma::mat Y,
   }
   arma::vec gammas(n, fill::zeros);
   arma::vec p_i(n); p_i.fill(0.5);
+
+  //----------------------------------------------SL
+  mat Gamma(K,M, fill::zeros);
 
   //---- HMP on PHI
   double lambda_1=0.04;
@@ -281,6 +285,8 @@ List bvar_cpp(const arma::mat Y,
     phi_hyperparameter_size += 2*n; // n(gammas + p_i)
   }else if(priorPHI == "HMP"){
     phi_hyperparameter_size += 2; // lambda_1 + lambda_2
+  }else if(priorPHI == "SL"){
+    phi_hyperparameter_size += n;
   }
   arma::mat phi_hyperparameter_draws(draws, phi_hyperparameter_size);
 
@@ -308,6 +314,9 @@ List bvar_cpp(const arma::mat Y,
   for(int rep = 0; rep < tot; rep++){
 
     //----1) Draw PHI (reduced form VAR coefficients)
+    if(priorPHI == "SL"){
+      sample_PHI_SL(PHI, PHI0, Y, X, L, d_sqrt, Gamma, K, M);
+    }else{
     try{
       sample_PHI(PHI, PHI0, Y, X, L, d_sqrt, V_prior, K, M, false);
     } catch(...){
@@ -380,7 +389,7 @@ List bvar_cpp(const arma::mat Y,
     V_i_long(i_ocl) = V_i;
 
     V_prior = reshape(V_i_long, K+intercept, M);
-
+    }//end if SL
     //----3) Draw Sigma_t = inv(L)'*D_t*inv(L), where L is upper unitriangular
     //       and D diagonal
     //----3a) Draw free off-diagonal elements in L
@@ -489,6 +498,10 @@ List bvar_cpp(const arma::mat Y,
       }else if(priorPHI == "HMP"){
         phi_hyperparameter_draws(rep-burnin, 0) = lambda_1;
         phi_hyperparameter_draws(rep-burnin, 1) = lambda_2;
+      }else if(priorPHI == "SL"){
+
+        phi_hyperparameter_draws(rep-burnin, span(0, (n-1.))) = vectorise(Gamma);
+
       }
 
       if(priorL == "DL" || priorL == "DL_h"){

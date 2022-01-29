@@ -199,9 +199,9 @@ pred_eval <- function(s, Y_obs, mod, VoI){
   colnames(Y_obs) <- variables
 
   # storage
-  PL <- rep(as.numeric(NA), draws)
-  PL_joint <- matrix(as.numeric(NA), draws, s)
-  PL_marginal <- array(as.numeric(NA), c(draws, s, M), dimnames = list(NULL, NULL, variables))
+  LPL_draws <- rep(as.numeric(NA), draws)
+  LPL_joint_draws <- matrix(as.numeric(NA), draws, s)
+  PL_marginal_draws <- array(as.numeric(NA), c(draws, s, M), dimnames = list(NULL, NULL, variables))
 
   predictions <- array(as.numeric(NA), c(draws, s, M), dimnames = list(NULL, paste0("s: ", 1:s), variables))
 
@@ -235,9 +235,9 @@ pred_eval <- function(s, Y_obs, mod, VoI){
     names(pred_mean_temp) <- variables
 
     # Predictive likelihoods
-    PL[i] <- mvtnorm::dmvnorm(as.vector(Y_obs[1,]),pred_mean_temp,Sigma[,,1])
-    PL_joint[i,1] <-  mvtnorm::dmvnorm(as.vector(Y_obs[1,VoI]),pred_mean_temp[VoI],Sigma[VoI,VoI,1])
-    PL_marginal[i,1,] <-  stats::dnorm(as.vector(Y_obs[1, ]), pred_mean_temp, sqrt(diag(Sigma[,,1])))
+    LPL_draws[i] <- mvtnorm::dmvnorm(as.vector(Y_obs[1,]),pred_mean_temp,Sigma[,,1], log = TRUE)
+    LPL_joint_draws[i,1] <-  mvtnorm::dmvnorm(as.vector(Y_obs[1,VoI]),pred_mean_temp[VoI],Sigma[VoI,VoI,1], log = TRUE)
+    PL_marginal_draws[i,1,] <-  stats::dnorm(as.vector(Y_obs[1, ]), pred_mean_temp, sqrt(diag(Sigma[,,1])))
 
     # Predictions
     predictions[i,1,] <- tryCatch(pred_mean_temp + t(chol(Sigma[,,1]))%*%stats::rnorm(M), error=function(e) MASS::mvrnorm(1, pred_mean_temp, Sigma[,,1]))
@@ -280,8 +280,8 @@ pred_eval <- function(s, Y_obs, mod, VoI){
         pred_mean_temp <- as.vector(X_fore_s%*%mod$PHI[i,,])
         names(pred_mean_temp) <- variables
 
-        PL_joint[i, kk+1] <-  mvtnorm::dmvnorm(as.vector(Y_obs[kk+1, VoI]),pred_mean_temp[VoI],Sigma[VoI,VoI,kk+1])
-        PL_marginal[i, kk+1,] <-  stats::dnorm(as.vector(Y_obs[kk+1, ]), pred_mean_temp, sqrt(diag(Sigma[,,kk+1])))
+        LPL_joint_draws[i, kk+1] <-  mvtnorm::dmvnorm(as.vector(Y_obs[kk+1, VoI]),pred_mean_temp[VoI],Sigma[VoI,VoI,kk+1], log = TRUE)
+        PL_marginal_draws[i, kk+1,] <-  stats::dnorm(as.vector(Y_obs[kk+1, ]), pred_mean_temp, sqrt(diag(Sigma[,,kk+1])))
 
         predictions[i, kk+1,] <- tryCatch(pred_mean_temp + t(chol(Sigma[,,kk+1]))%*%stats::rnorm(M), error=function(e) MASS::mvrnorm(1, pred_mean_temp, Sigma[,,kk+1]))
 
@@ -291,12 +291,22 @@ pred_eval <- function(s, Y_obs, mod, VoI){
 
   }
 
+  numericalnormalizer <- max(LPL_draws) - 700
+  LPL <- log(mean(exp(LPL_draws - numericalnormalizer))) + numericalnormalizer
+  LPL0 <- log(mean(exp(LPL_draws)))
+
+  numericalnormalizer2 <- apply(LPL_joint_draws,2,max) - 700
+  LPL_joint <- log(colMeans(exp( t(t(LPL_joint_draws) - numericalnormalizer2)))) + numericalnormalizer2
+  LPL_joint0 <- log(colMeans(exp(LPL_joint_draws)))
+
   return(list(predictions=predictions,
-              LPL=log(mean(PL)),
-              LPL_joint=log(colMeans(PL_joint)),
-              LPL_marginal=log(apply(PL_marginal, 2:3, mean)),
-              PL = PL,
-              PL_joint = PL_joint,
-              PL_marginal=PL_marginal,
+              LPL=LPL,
+              LPL0=LPL0,
+              LPL_joint=LPL_joint,
+              LPL_joint0=LPL_joint0,
+              LPL_marginal=log(apply(PL_marginal_draws, 2:3, mean)),
+              LPL_draws = LPL_draws,
+              LPL_joint_draws = LPL_joint_draws,
+              PL_marginal_draws=PL_marginal_draws,
               X_fore1=X_fore1))
 }
