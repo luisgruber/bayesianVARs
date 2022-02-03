@@ -190,8 +190,10 @@ bvar_fast <- function(Yraw,
     priorL$V_i <- rep(priorL$V_i, length = n_L)
   }
 
-  if(SV == TRUE & is.null(sv_spec)){
-    sv_spec <- list(priormu = c(0,100),
+
+  if(is.null(sv_spec)){
+    sv_spec <- list(SV = SV,
+                    priormu = c(0,100),
                     priorphi = c(20, 1.5),
                     priorsigma2 = c(0.5,0.5)#,
                     #priorh0 = -1 #h0 from stationary distribution

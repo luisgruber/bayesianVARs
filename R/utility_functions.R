@@ -4,8 +4,8 @@
 specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
                              SSVS_c0 = 0.01, SSVS_c1 = 100, SSVS_semiautomatic = TRUE, SSVS_sa = 0.5, SSVS_sb = 0.5,
                              HMP_lambda1 = c(0.01,0.01), HMP_lambda2 = c(0.01,0.01),
-                             V_i = NULL){
-  if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2"))){
+                             V_i = NULL,...){
+  if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "SL"))){
     stop("Argument 'prior' must be one of 'DL', 'SSVS', 'HMP' or 'normal'. \n")
   }
 
@@ -40,6 +40,8 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
     out <- list(prior=prior, V_i=V_i)
   }else if(prior == "HMP"){
     out <- list(prior = prior, lambda_1 = HMP_lambda1, lambda_2 = HMP_lambda2)
+  }else if(prior == "SL"){
+    out <- list(prior = prior, ...)
   }
   out
 }
@@ -48,8 +50,9 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
 specify_priorL <- function(prior, DL_b = "1/n", R2D2_b = 0.5,
                              SSVS_c0 = 0.001, SSVS_c1 = 1, SSVS_sa = 0.5, SSVS_sb = 0.5,
                            HMP_lambda3 = c(0.01,0.01),
-                             V_i = NULL){
-  if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2"))){
+                             V_i = NULL,
+                           ...){
+  if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "SL"))){
     stop("Argument 'prior' must be one of 'DL', 'SSVS', 'HMP' or 'normal'. \n")
   }
 
@@ -83,6 +86,8 @@ specify_priorL <- function(prior, DL_b = "1/n", R2D2_b = 0.5,
     out <- list(prior=prior, V_i=V_i)
   }else if(prior == "HMP"){
     out <- list(prior = prior, lambda_3 = HMP_lambda3)
+  }else if(prior == "SL"){
+    out <- list(prior = "SL", ...)
   }
   out
 }

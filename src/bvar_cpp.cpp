@@ -121,7 +121,15 @@ List bvar_cpp(const arma::mat Y,
   arma::vec p_i(n); p_i.fill(0.5);
 
   //----------------------------------------------SL
-  mat Gamma(K,M, fill::zeros);
+  mat Gamma(K,M, fill::ones);
+  double nu_a;
+  double nu_b;
+  if(priorPHI == "SL"){
+    double nu_a_in = priorPHI_in["nu_a"];
+    double nu_b_in = priorPHI_in["nu_b"];
+    nu_a = nu_a_in;
+    nu_b = nu_b_in;
+  }
 
   //---- HMP on PHI
   double lambda_1=0.04;
@@ -234,8 +242,20 @@ List bvar_cpp(const arma::mat Y,
   //arma::mat V_prior = arma::reshape(V_i, K, M);
   arma::mat V_prior = arma::reshape(V_i_long, K + intercept, M);
 
+  //----------------------------------------------SL
+  vec omega(n_L, fill::ones);
+  double nu_a_L;
+  double nu_b_L;
+  if(priorPHI == "SL"){
+    double nu_a_L_in = priorL_in["nu_a"];
+    double nu_b_L_in = priorL_in["nu_b"];
+    nu_a_L = nu_a_L_in;
+    nu_b_L = nu_b_L_in;
+  }
+
   //-----------------------------SV-settings----------------------------------//
   // Import sv_spec
+  bool SV = sv_spec["SV"];
   NumericVector sv_priormu = sv_spec["priormu"] ;
   NumericVector sv_priorphi= sv_spec["priorphi"];
   NumericVector sv_priorsigma2 = sv_spec["priorsigma2"] ;
@@ -299,6 +319,8 @@ List bvar_cpp(const arma::mat Y,
     l_hyperparameter_size += 2*n_L;
   }else if(priorL == "HMP"){
     l_hyperparameter_size += 1;
+  }else if(priorL == "SL"){
+    l_hyperparameter_size += n_L;
   }
   arma::mat l_hyperparameter_draws(draws, l_hyperparameter_size);
 
@@ -315,7 +337,7 @@ List bvar_cpp(const arma::mat Y,
 
     //----1) Draw PHI (reduced form VAR coefficients)
     if(priorPHI == "SL"){
-      sample_PHI_SL(PHI, PHI0, Y, X, L, d_sqrt, Gamma, K, M);
+      sample_PHI_SL(PHI, PHI0, Y, X, L, d_sqrt, Gamma, K, M, nu_a, nu_b);
     }else{
     try{
       sample_PHI(PHI, PHI0, Y, X, L, d_sqrt, V_prior, K, M, false);
@@ -390,82 +412,98 @@ List bvar_cpp(const arma::mat Y,
 
     V_prior = reshape(V_i_long, K+intercept, M);
     }//end if SL
+
     //----3) Draw Sigma_t = inv(L)'*D_t*inv(L), where L is upper unitriangular
     //       and D diagonal
     //----3a) Draw free off-diagonal elements in L
 
     arma::mat resid = Y - X*PHI;
-    try{
-      sample_L(L, resid, V_i_L, d_sqrt);
-    }
-    catch(...){
-      ::Rf_error("Couldn't sample L in rep %i.", rep);
-    }
+    if(priorL == "SL"){
+      sample_L_SL(L, resid, d_sqrt, omega, nu_a_L, nu_b_L);
+    }else{
 
-    if(priorL == "DL" || priorL == "DL_h" || priorL == "R2D2"){
+      try{
+        sample_L(L, resid, V_i_L, d_sqrt);
+      }
+      catch(...){
+        ::Rf_error("Couldn't sample L in rep %i.", rep);
+      }
 
-      for (int jj = 0; jj<M; jj++){
-        for (int ii = 0; ii<jj; ii++) {
-          if(L(ii,jj) == 0) {
-            if(R::rbinom( 1, 0.5 )==0){
-              L(ii,jj) = 1e-100;
-            }else{
-              L(ii,jj) = -1e-100;
-            }
-          }else
-            if(L(ii,jj) < 1e-100 && L(ii,jj) > 0){
-              L(ii,jj) = 1e-100;
-            }else if (L(ii,jj) > -1e-100 && L(ii,jj) < 0){
-              L(ii,jj) = -1e-100;
-            }
+      if(priorL == "DL" || priorL == "DL_h" || priorL == "R2D2"){
+
+        for (int jj = 0; jj<M; jj++){
+          for (int ii = 0; ii<jj; ii++) {
+            if(L(ii,jj) == 0) {
+              if(R::rbinom( 1, 0.5 )==0){
+                L(ii,jj) = 1e-100;
+              }else{
+                L(ii,jj) = -1e-100;
+              }
+            }else
+              if(L(ii,jj) < 1e-100 && L(ii,jj) > 0){
+                L(ii,jj) = 1e-100;
+              }else if (L(ii,jj) > -1e-100 && L(ii,jj) < 0){
+                L(ii,jj) = -1e-100;
+              }
+          }
         }
       }
-    }
 
-    //----3b) Draw elements of D_t
+      //----3b) Draw hyperparameters of hierarchical priors
+      l = L(L_upper_indices);
+      if(priorL == "DL" || priorL == "DL_h"){
+
+        if(priorL == "DL_h"){
+
+          sample_DL_hyper(DL_b, theta_L, prep1_L, prep2_L, zeta_L, b_vec);
+        }
+        try{
+          sample_V_i_DL(V_i_L, l, DL_b , zeta_L, psi_L, theta_L); //, priorL == "DL_h"
+        } catch (...) {
+          ::Rf_error("Couldn't sample V_i_L (DL prior)  in run %i", rep);
+
+        }
+
+      }else if(priorL == "R2D2"){
+
+        sample_V_i_R2D2(V_i_L, l, api_L , zeta_L_r2d2, psi_L_r2d2,
+                        theta_L_r2d2, xi_L, a_L_r2d2, b_L_r2d2 );
+
+      }else if(priorL == "SSVS"){
+
+        sample_V_i_SSVS(V_i_L, gammas_L, p_i_L, l, tau_0_L, tau_1_L, SSVS_s_a_L, SSVS_s_b_L);
+
+      }else if(priorL == "HMP"){
+
+        sample_V_i_L_HMP(lambda_3, V_i_L, s_r_3(0), s_r_3(1), l);
+      }
+
+    }//--------------end if SL
+
+    //----3c) Draw elements of D_t
     //        in case of SV use package stochvol
     arma::mat str_resid = resid*L; // structural (orthogonalized) residuals
 
-    const arma::mat resid_norm = log(square(str_resid)); // + offset??
-    for(int j=0; j < M; j++){
-      arma::vec h_j  = h.unsafe_col(j);  // unsafe_col reuses memory, h will automatically be overwritten
-      arma::uvec mixind_j = mixind.unsafe_col(j);
-      double mu = sv_para(0,j),
-        phi = sv_para(1,j),
-        sigma = sv_para(2,j),
-        h0_j = sv_para(3,j);
-      stochvol::update_fast_sv(resid_norm.col(j), mu, phi, sigma, h0_j, h_j, mixind_j, prior_spec, expert_sv);
-      sv_para.col(j) = arma::colvec({mu, phi, sigma, h0_j});
-    }
-    d_sqrt = exp(h/2);
-
-    //----4) Draw hyperparameters of hierarchical priors
-    l = L(L_upper_indices);
-    if(priorL == "DL" || priorL == "DL_h"){
-
-      if(priorL == "DL_h"){
-
-          sample_DL_hyper(DL_b, theta_L, prep1_L, prep2_L, zeta_L, b_vec);
+    if(SV == false || (priorPHI == "SL" && rep < 0.1*burnin)){
+      for(int i =0; i<M; i++){
+        double s_p = 0.01 + 0.5*accu(square(str_resid.col(i)));
+        double d_i = 1. / R::rgamma((0.01+T)/2, 1./s_p);
+        d_sqrt.col(i).fill(sqrt(d_i));
+        h.col(i).fill(log(d_i));
       }
-      try{
-         sample_V_i_DL(V_i_L, l, DL_b , zeta_L, psi_L, theta_L); //, priorL == "DL_h"
-      } catch (...) {
-        ::Rf_error("Couldn't sample V_i_L (DL prior)  in run %i", rep);
-
+    }else if(SV == true){
+      const arma::mat resid_norm = log(square(str_resid)); // + + 1e-40offset??
+      for(int j=0; j < M; j++){
+        arma::vec h_j  = h.unsafe_col(j);  // unsafe_col reuses memory, h will automatically be overwritten
+        arma::uvec mixind_j = mixind.unsafe_col(j);
+        double mu = sv_para(0,j),
+          phi = sv_para(1,j),
+          sigma = sv_para(2,j),
+          h0_j = sv_para(3,j);
+        stochvol::update_fast_sv(resid_norm.col(j), mu, phi, sigma, h0_j, h_j, mixind_j, prior_spec, expert_sv);
+        sv_para.col(j) = arma::colvec({mu, phi, sigma, h0_j});
       }
-
-    }else if(priorL == "R2D2"){
-
-      sample_V_i_R2D2(V_i_L, l, api_L , zeta_L_r2d2, psi_L_r2d2,
-                      theta_L_r2d2, xi_L, a_L_r2d2, b_L_r2d2 );
-
-    }else if(priorL == "SSVS"){
-
-      sample_V_i_SSVS(V_i_L, gammas_L, p_i_L, l, tau_0_L, tau_1_L, SSVS_s_a_L, SSVS_s_b_L);
-
-    }else if(priorL == "HMP"){
-
-      sample_V_i_L_HMP(lambda_3, V_i_L, s_r_3(0), s_r_3(1), l);
+      d_sqrt = exp(h/2);
     }
 
     //-------Store draws after burnin
@@ -526,6 +564,8 @@ List bvar_cpp(const arma::mat Y,
       }else if(priorL == "HMP"){
 
         l_hyperparameter_draws(rep-burnin, 0) = lambda_3;
+      }else if(priorL == "SL"){
+        l_hyperparameter_draws(rep-burnin, span(0, (n_L-1.))) = omega;
       }
     }
 
@@ -552,7 +592,8 @@ List bvar_cpp(const arma::mat Y,
     Named("a_vec") = a_vec,
     Named("a_mat") = a_mat,
     Named("prep1") = prep1,
-    Named("prep2") = prep2
+    Named("prep2") = prep2,
+    Named("Gamma") = Gamma
   );
 
   return out;

@@ -387,7 +387,8 @@ void sample_V_i_R2D2(arma::vec& V_i, const arma::vec& coefs,  const double& api,
 
 void sample_PHI_SL(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
                    const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,
-                   arma::mat& Gamma, const int& K, const int& M) {
+                   arma::mat& Gamma, const int& K, const int& M,
+                   const double& nu_a, const double& nu_b) {
 
   for(int i = 0; i < M; i++){
 
@@ -401,28 +402,37 @@ void sample_PHI_SL(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& 
     for(int j = 0; j<K; j++){
       //gammas
       double p_i = R::rbeta(0.5 + Gamma(j,i), 0.5 + 1 - Gamma(j,i));
-      double v_i = 1./R::rgamma(0.01 + Gamma(j,i)/2, 1/(0.01 + PHI(j,i)*PHI(j,i)/2));
+      double v_i = 1./R::rgamma((nu_a + Gamma(j,i))/2, 1./((nu_b + PHI(j,i)*PHI(j,i))/2));
 
       arma::vec Y_new_star = Y_new - X_new * PHI.col(i) + X_new.col(j)*PHI(j,i);
 
-      vec pre1 = (trans(X_new.col(j))*X_new.col(j));
-      double V_post = 1./(1./v_i + pre1(0)); // by construction pre1 is a scalar
-      vec pre2 = (trans(X_new.col(j))*Y_new_star);
-      double phi_j_post = V_post*(PHI_prior(j,i)/v_i + pre2(0));
+      //vec pre1 = trans(X_new.col(j))*X_new.col(j); // pre1 is 1x1 dimensional
+      double pre1 = accu(X_new.col(j)%X_new.col(j)) ;
+      double V_post = 1./(1./v_i + pre1); // conversion to double via pre1(0)
+      //vec pre2 = trans(X_new.col(j))*Y_new_star;
+      double pre2 = accu(X_new.col(j)%Y_new_star) ;
+      double phi_j_post = V_post*(PHI_prior(j,i)/v_i + pre2);
 
-      double u_i1 = -log(v_i) - 0.5*(PHI_prior(j,i)*PHI_prior(j,i)/v_i) -
-        (-log(sqrt(V_post)) - 0.5*(phi_j_post*phi_j_post/V_post)) + log(p_i);
+      double u_i1 = -0.5*log(v_i) - 0.5*(PHI_prior(j,i)*PHI_prior(j,i)/v_i) -
+        (-0.5*log(V_post) - 0.5*(phi_j_post*phi_j_post/V_post)) + log(p_i);
       double u_i2 =  log(1 - p_i);
 
-      //double numericalnormalizer = u_i2;
-      //if(u_1>u_i2){
-      //  numericalnormalizer = u_i1;
-      //}
+      double numericalnormalizer = u_i2;
+      if(u_i1>u_i2){
+        numericalnormalizer = u_i1;
+      }
 
-      double logdiff = u_i2 - u_i1;
-      double gst = (1./(1+exp(logdiff)));
+      double pp1 = exp(u_i1 - numericalnormalizer);
+      double pp2 = exp(u_i2 - numericalnormalizer);
+      double gst = pp1/(pp1 + pp2);
+      //double logdiff = u_i2 - u_i1;
+      //double gst = (1./(1+exp(logdiff)));
 
       Gamma(j,i) = R::rbinom(1,gst);
+
+      //if(!(Gamma(j,i)==0 || Gamma(j,i)==1)){
+      //  ::Rf_error("Gamma_ji: %f, u_i1: %f, u_i2: %f, v_i: %f, V_post: %f, phi_j_post: %f, pre1: %f", Gamma(j,i), u_i1, u_i2, v_i, V_post, phi_j_post, pre1);
+      //}
 
       if(Gamma(j,i)==1){
         PHI(j,i) = R::rnorm(phi_j_post,V_post);
@@ -433,4 +443,51 @@ void sample_PHI_SL(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& 
     }
 
   }
+}
+
+void sample_L_SL(arma::mat& L, arma::mat& Ytilde, const arma::mat& d_sqrt,
+              vec& omega, const double& nu_a, const double& nu_b) {
+
+  int M = Ytilde.n_cols;
+  //mat L(M,M,fill::eye);
+
+  int ind = 0;
+
+  for(int i = 1; i < M; i++){
+
+
+    vec normalizer = vectorise( d_sqrt.col(i) );
+    mat Z = -1 * (Ytilde.cols(0, i-1).each_col() / normalizer);
+    vec c = vectorise(Ytilde.col(i)) / normalizer;
+
+    for(int j=0; j<Z.n_cols; j++){
+
+      double p_i = R::rbeta(0.5 + omega(ind), 0.5 + 1 - omega(ind));
+      double v_i = 1./R::rgamma((nu_a + omega(ind))/2, 1./((nu_b + L(j,i)*L(j,i))/2));
+
+      vec c_star = c - Z*L(span(0,i-1), span(i,i)) + Z.col(j)*L(j,i);
+
+      vec pre1 = (trans(Z.col(j))*Z.col(j)); // pre1 is 1x1 dimensional
+      double V_post = 1./(1./v_i + pre1(0)); // conversion to double via pre1(0)
+      vec pre2 = (trans(Z.col(j))*c_star);
+      double l_j_post = V_post*(pre2(0));
+
+      double u_i1 = -0.5*log(v_i) - (-0.5*log(V_post) - 0.5*(l_j_post*l_j_post/V_post)) + log(p_i);
+      double u_i2 =  log(1 - p_i);
+
+      double logdiff = u_i2 - u_i1;
+      double gst = (1./(1+exp(logdiff)));
+
+      omega(ind) = R::rbinom(1,gst);
+
+      if(omega(ind)==1){
+        L(j,i) = R::rnorm(l_j_post,V_post);
+      }else {
+        L(j,i) = 0;
+      }
+      ind = ind+1;
+    }
+
+  }
+
 }

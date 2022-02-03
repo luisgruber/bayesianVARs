@@ -44,6 +44,10 @@ void sample_V_i_R2D2(arma::vec& V_i, const arma::vec& coefs,  const double& api,
 
 void sample_PHI_SL(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
                    const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,
-                   arma::mat& Gamma, const int& K, const int& M);
+                   arma::mat& Gamma, const int& K, const int& M,
+                   const double& nu_a, const double& nu_b);
+
+void sample_L_SL(arma::mat& L, arma::mat& Ytilde, const arma::mat& d_sqrt,
+              vec& omega, const double& nu_a, const double& nu_b);
 
 #endif
