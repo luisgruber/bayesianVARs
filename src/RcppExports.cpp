@@ -12,8 +12,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // bvar_cpp
-List bvar_cpp(const arma::mat Y, const arma::mat X, const int M, const int T, const int K, const int draws, const int burnin, const int intercept, const arma::vec priorIntercept, arma::mat PHI, const arma::mat PHI0, const List priorPHI_in, const List priorL_in, arma::mat L, const List sv_spec, arma::mat h, arma::mat sv_para, const arma::imat i_mat, const arma::ivec i_vec, const bool progressbar);
-RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP YSEXP, SEXP XSEXP, SEXP MSEXP, SEXP TSEXP, SEXP KSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP interceptSEXP, SEXP priorInterceptSEXP, SEXP PHISEXP, SEXP PHI0SEXP, SEXP priorPHI_inSEXP, SEXP priorL_inSEXP, SEXP LSEXP, SEXP sv_specSEXP, SEXP hSEXP, SEXP sv_paraSEXP, SEXP i_matSEXP, SEXP i_vecSEXP, SEXP progressbarSEXP) {
+List bvar_cpp(const arma::mat Y, const arma::mat X, const int M, const int T, const int K, const int draws, const int burnin, const int intercept, const arma::vec priorIntercept, arma::mat PHI, const arma::mat PHI0, const List priorPHI_in, const List priorL_in, arma::mat L, const bool SV, const arma::vec priorHomoscedastic, const List sv_spec, arma::mat h, arma::mat sv_para, const arma::imat i_mat, const arma::ivec i_vec, const bool progressbar);
+RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP YSEXP, SEXP XSEXP, SEXP MSEXP, SEXP TSEXP, SEXP KSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP interceptSEXP, SEXP priorInterceptSEXP, SEXP PHISEXP, SEXP PHI0SEXP, SEXP priorPHI_inSEXP, SEXP priorL_inSEXP, SEXP LSEXP, SEXP SVSEXP, SEXP priorHomoscedasticSEXP, SEXP sv_specSEXP, SEXP hSEXP, SEXP sv_paraSEXP, SEXP i_matSEXP, SEXP i_vecSEXP, SEXP progressbarSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -31,13 +31,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const List >::type priorPHI_in(priorPHI_inSEXP);
     Rcpp::traits::input_parameter< const List >::type priorL_in(priorL_inSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type L(LSEXP);
+    Rcpp::traits::input_parameter< const bool >::type SV(SVSEXP);
+    Rcpp::traits::input_parameter< const arma::vec >::type priorHomoscedastic(priorHomoscedasticSEXP);
     Rcpp::traits::input_parameter< const List >::type sv_spec(sv_specSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type h(hSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type sv_para(sv_paraSEXP);
     Rcpp::traits::input_parameter< const arma::imat >::type i_mat(i_matSEXP);
     Rcpp::traits::input_parameter< const arma::ivec >::type i_vec(i_vecSEXP);
     Rcpp::traits::input_parameter< const bool >::type progressbar(progressbarSEXP);
-    rcpp_result_gen = Rcpp::wrap(bvar_cpp(Y, X, M, T, K, draws, burnin, intercept, priorIntercept, PHI, PHI0, priorPHI_in, priorL_in, L, sv_spec, h, sv_para, i_mat, i_vec, progressbar));
+    rcpp_result_gen = Rcpp::wrap(bvar_cpp(Y, X, M, T, K, draws, burnin, intercept, priorIntercept, PHI, PHI0, priorPHI_in, priorL_in, L, SV, priorHomoscedastic, sv_spec, h, sv_para, i_mat, i_vec, progressbar));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -89,7 +91,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 20},
+    {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 22},
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
     {"_bayesianVARs_draw_PHI", (DL_FUNC) &_bayesianVARs_draw_PHI, 9},
     {"_bayesianVARs_draw_L", (DL_FUNC) &_bayesianVARs_draw_L, 3},

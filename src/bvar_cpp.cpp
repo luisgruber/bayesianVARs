@@ -23,6 +23,8 @@ List bvar_cpp(const arma::mat Y,
               const List priorPHI_in,
               const List priorL_in,
               arma::mat L,
+              const bool SV,
+              const arma::vec priorHomoscedastic,
               const List sv_spec,
               arma::mat h,
               arma::mat sv_para,
@@ -49,7 +51,7 @@ List bvar_cpp(const arma::mat Y,
   arma::vec V_i(n);
 
   arma::vec V_i_long(n+M*intercept); // ??? V_i plus intercept prior variances
-
+  V_i_long(i_i) = priorIntercept; // in case of HM prior, these will be scaled later
 
   if(priorPHI == "normal"){
     arma::vec V_i_in = priorPHI_in["V_i"];
@@ -87,18 +89,24 @@ List bvar_cpp(const arma::mat Y,
   arma::mat prep1(prep1_in.begin(), prep1_in.nrow(), prep1_in.ncol(), false);
 
   //----R2D2 on PHI
-  double b_r2d2;
-  if(priorPHI== "R2D2"){
-    double b_r2d2_in = priorPHI_in["R2D2_b"];
-    b_r2d2= b_r2d2_in;
-  }
-  double api = 1/(pow(n,(b_r2d2/2)) * pow(T,(b_r2d2/2)) *log(T));
-  double a_r2d2 = n*api;
+  double api;
+  double a_r2d2;
   double xi = 1;
   arma::vec theta_r2d2(n); theta_r2d2.fill(1/static_cast<double>(n));
   double zeta_r2d2 = 10;
   arma::vec psi_r2d2(n); psi_r2d2.fill(1/static_cast<double>(n));
-  V_i = psi_r2d2%theta_r2d2*zeta_r2d2/2;
+
+  double b_r2d2;
+  if(priorPHI== "R2D2"){
+    double b_r2d2_in = priorPHI_in["R2D2_b"];
+    b_r2d2= b_r2d2_in;
+
+    api = 1/(pow(n,(b_r2d2/2)) * pow(T,(b_r2d2/2)) *log(T));
+    a_r2d2 = n*api;
+    V_i = psi_r2d2%theta_r2d2*zeta_r2d2/2;
+  }
+
+
 
   //---- SSVS on PHI
   arma::vec tau_0;
@@ -152,6 +160,9 @@ List bvar_cpp(const arma::mat Y,
   arma::vec s_r_1(s_r_1_in.begin(), s_r_1_in.length(), false);
   arma::vec s_r_2(s_r_2_in.begin(), s_r_2_in.length(), false);
 
+  //Fill V_i_long with remaining prior variances
+  V_i_long(i_ocl) = V_i; // ???
+  arma::mat V_prior = arma::reshape(V_i_long, K + intercept, M);
 
 //-------------- L
   std::string priorL = priorL_in["prior"];
@@ -194,18 +205,21 @@ List bvar_cpp(const arma::mat Y,
   arma::mat prep1_L(prep1_L_in.begin(), prep1_L_in.nrow(), prep1_L_in.ncol(), false);
 
   //----R2D2 on L
-  double b_L_r2d2;
-  if(priorL == "R2D2"){
-    double b_L_r2d2_in = priorL_in["R2D2_b"];
-    b_L_r2d2 = b_L_r2d2_in;
-  }
-  double api_L = 1/(pow(n_L,(b_L_r2d2/2)) * pow(T,(b_L_r2d2/2)) *log(T));
-  double a_L_r2d2 = n_L*api_L;
+  double api_L;
+  double a_L_r2d2;
   double xi_L = 1;
   arma::vec theta_L_r2d2(n_L); theta_L_r2d2.fill(1/static_cast<double>(n_L));
   double zeta_L_r2d2 = 10;
   arma::vec psi_L_r2d2(n_L); psi_L_r2d2.fill(1/static_cast<double>(n_L));
-  V_i_L = psi_L_r2d2 % theta_L_r2d2 * zeta_L_r2d2 /2.;
+
+  double b_L_r2d2;
+  if(priorL == "R2D2"){
+    double b_L_r2d2_in = priorL_in["R2D2_b"];
+    b_L_r2d2 = b_L_r2d2_in;
+    api_L = 1/(pow(n_L,(b_L_r2d2/2)) * pow(T,(b_L_r2d2/2)) *log(T));
+    a_L_r2d2 = n_L*api_L;
+    V_i_L = psi_L_r2d2 % theta_L_r2d2 * zeta_L_r2d2 /2.;
+  }
 
   //---- SSVS on L
   arma::vec tau_0_L;
@@ -237,10 +251,6 @@ List bvar_cpp(const arma::mat Y,
   }
   arma::vec s_r_3(s_r_3_in.begin(), s_r_3_in.length(), false);
 
-  V_i_long(i_ocl) = V_i; // ???
-  V_i_long(i_i) = priorIntercept;
-  //arma::mat V_prior = arma::reshape(V_i, K, M);
-  arma::mat V_prior = arma::reshape(V_i_long, K + intercept, M);
 
   //----------------------------------------------SL
   vec omega(n_L, fill::ones);
@@ -255,7 +265,6 @@ List bvar_cpp(const arma::mat Y,
 
   //-----------------------------SV-settings----------------------------------//
   // Import sv_spec
-  bool SV = sv_spec["SV"];
   NumericVector sv_priormu = sv_spec["priormu"] ;
   NumericVector sv_priorphi= sv_spec["priorphi"];
   NumericVector sv_priorsigma2 = sv_spec["priorsigma2"] ;
@@ -288,6 +297,7 @@ List bvar_cpp(const arma::mat Y,
   arma::umat mixind(T,M); mixind.fill(5);
   //initialize d_sqrt
   arma::mat d_sqrt = arma::exp(h/2);
+
 
   //------------------------------------STORAGE-------------------------------//
 
@@ -418,6 +428,7 @@ List bvar_cpp(const arma::mat Y,
     //----3a) Draw free off-diagonal elements in L
 
     arma::mat resid = Y - X*PHI;
+
     if(priorL == "SL"){
       sample_L_SL(L, resid, d_sqrt, omega, nu_a_L, nu_b_L);
     }else{
@@ -484,15 +495,15 @@ List bvar_cpp(const arma::mat Y,
     //        in case of SV use package stochvol
     arma::mat str_resid = resid*L; // structural (orthogonalized) residuals
 
-    if(SV == false || (priorPHI == "SL" && rep < 0.1*burnin)){
+    if(SV == false || (priorPHI == "SL" && rep < 0.1*burnin)){ //|| (priorPHI == "SL" && rep < 0.1*burnin) //???
       for(int i =0; i<M; i++){
-        double s_p = 0.01 + 0.5*accu(square(str_resid.col(i)));
-        double d_i = 1. / R::rgamma((0.01+T)/2, 1./s_p);
+        double s_p = priorHomoscedastic(i,0) + 0.5*accu(square(str_resid.col(i)));
+        double d_i = 1. / R::rgamma((priorHomoscedastic(i,1)+T)/2, 1./s_p);
         d_sqrt.col(i).fill(sqrt(d_i));
         h.col(i).fill(log(d_i));
       }
     }else if(SV == true){
-      const arma::mat resid_norm = log(square(str_resid)); // + + 1e-40offset??
+      const arma::mat resid_norm = log(square(str_resid)); // + 1e-40offset??
       for(int j=0; j < M; j++){
         arma::vec h_j  = h.unsafe_col(j);  // unsafe_col reuses memory, h will automatically be overwritten
         arma::uvec mixind_j = mixind.unsafe_col(j);

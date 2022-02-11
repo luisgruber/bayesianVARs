@@ -1,5 +1,23 @@
 # specify Priors ----------------------------------------------------------
 
+#' Specify prior on PHI
+#'
+#' Specify
+#'
+#' @param prior
+#'
+#' @param DL_a
+#' @param R2D2_b
+#' @param SSVS_c0
+#' @param SSVS_c1
+#' @param SSVS_semiautomatic
+#' @param SSVS_sa
+#' @param SSVS_sb
+#' @param HMP_lambda1
+#' @param HMP_lambda2
+#' @param V_i
+#' @param ...
+#'
 #' @export
 specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
                              SSVS_c0 = 0.01, SSVS_c1 = 100, SSVS_semiautomatic = TRUE, SSVS_sa = 0.5, SSVS_sb = 0.5,
@@ -46,6 +64,22 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
   out
 }
 
+#' Specify prior on PHI
+#'
+#' Specify
+#'
+#' @param prior
+#'
+#' @param DL_b
+#' @param R2D2_b
+#' @param SSVS_c0
+#' @param SSVS_c1
+#' @param SSVS_sa
+#' @param SSVS_sb
+#' @param HMP_lambda3
+#' @param V_i
+#' @param ...
+#'
 #' @export
 specify_priorL <- function(prior, DL_b = "1/n", R2D2_b = 0.5,
                              SSVS_c0 = 0.001, SSVS_c1 = 1, SSVS_sa = 0.5, SSVS_sb = 0.5,
