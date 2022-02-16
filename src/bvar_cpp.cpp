@@ -106,8 +106,6 @@ List bvar_cpp(const arma::mat Y,
     V_i = psi_r2d2%theta_r2d2*zeta_r2d2/2;
   }
 
-
-
   //---- SSVS on PHI
   arma::vec tau_0;
   arma::vec tau_1;
@@ -268,6 +266,7 @@ List bvar_cpp(const arma::mat Y,
   NumericVector sv_priormu = sv_spec["priormu"] ;
   NumericVector sv_priorphi= sv_spec["priorphi"];
   NumericVector sv_priorsigma2 = sv_spec["priorsigma2"] ;
+  NumericVector sv_offset = sv_spec["sv_offset"];
 
   // create prior specification object for the update_*_sv functions
   using stochvol::PriorSpec;
@@ -503,15 +502,16 @@ List bvar_cpp(const arma::mat Y,
         h.col(i).fill(log(d_i));
       }
     }else if(SV == true){
-      const arma::mat resid_norm = log(square(str_resid)); // + 1e-40offset??
+      //const arma::mat resid_norm = log(square(str_resid) + sv_offset); // + 1e-40offset??
       for(int j=0; j < M; j++){
+        const arma::mat resid_norm = log(square(str_resid.col(j)) + sv_offset(j));
         arma::vec h_j  = h.unsafe_col(j);  // unsafe_col reuses memory, h will automatically be overwritten
         arma::uvec mixind_j = mixind.unsafe_col(j);
         double mu = sv_para(0,j),
           phi = sv_para(1,j),
           sigma = sv_para(2,j),
           h0_j = sv_para(3,j);
-        stochvol::update_fast_sv(resid_norm.col(j), mu, phi, sigma, h0_j, h_j, mixind_j, prior_spec, expert_sv);
+        stochvol::update_fast_sv(resid_norm, mu, phi, sigma, h0_j, h_j, mixind_j, prior_spec, expert_sv); //resid_norm.col(j)
         sv_para.col(j) = arma::colvec({mu, phi, sigma, h0_j});
       }
       d_sqrt = exp(h/2);
