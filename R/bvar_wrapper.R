@@ -99,7 +99,8 @@ bvar_fast <- function(Yraw,
                       SV=TRUE,
                       sv_spec = list(priormu = c(0,100),
                                      priorphi = c(20, 1.5),
-                                     priorsigma2 = c(0.5,0.5)),
+                                     priorsigma2 = c(0.5,0.5),
+                                     sv_offset = 0),
                       priorHomoscedastic = NA,
                       progressbar=TRUE,
                       PHI_in=NULL,
@@ -253,8 +254,8 @@ bvar_fast <- function(Yraw,
       priorPHI$SSVS_tau0 <- priorPHI$SSVS_c0*sigma_phi
       priorPHI$SSVS_tau1 <- priorPHI$SSVS_c1*sigma_phi
     }else{
-      priorPHI$SSVS_tau0 <- rep(priorPHI$SSVS_c0, n)
-      priorPHI$SSVS_tau1 <- rep(priorPHI$SSVS_c1, n)
+      priorPHI$SSVS_tau0 <- rep_len(priorPHI$SSVS_c0, n)
+      priorPHI$SSVS_tau1 <- rep_len(priorPHI$SSVS_c1, n)
     }
 
   }else if(priorPHI$prior == "normal"){
@@ -284,16 +285,51 @@ bvar_fast <- function(Yraw,
 
 
 #  if(is.null(sv_spec)){
-#    sv_spec <- list(SV = SV,
-#                    priormu = c(0,100),
+#    sv_spec <- list(priormu = c(0,100),
 #                    priorphi = c(20, 1.5),
 #                    priorsigma2 = c(0.5,0.5)#,
 #                    #priorh0 = -1 #h0 from stationary distribution
 #    )
 #  }
   if(SV == TRUE){
-    if(!is.na(priorHomoscedastic)){
-      warning("'priorHomoscedastic' setting will be ignored, because 'SV=TRUE'! \n")
+    sv_spec_error <- "sv_spec is a list that must supply the following
+                      components: \n
+                      priormu: a numeric vector of length 2, where the
+                      second element must be posistive \n
+                      priorphi: a strictly positive numeric vector of length 2 \n
+                      priorsigma: a strictly positive numeric vector of length 2 \n
+                      sv_offset: either a single non-negative number, or a vector of length M with non-negative entries. \n"
+    sv_specs <- c("priormu", "priorphi", "priorsigma2", "sv_offset")
+    if(any(!(sv_specs %in% names(sv_spec)))){
+      stop(sv_spec_error)
+    }
+    if(!(length(sv_spec[["priormu"]]) == 2 & is.numeric(sv_spec[["priormu"]]) &
+       sv_spec[["priormu"]][2]>0)){
+      stop(sv_spec_error)
+    }
+    if(!(length(sv_spec[["priorphi"]]) == 2 & is.numeric(sv_spec[["priorphi"]]) &
+       all(sv_spec[["priorphi"]]>0))){
+      stop(sv_spec_error)
+    }
+    if(!(length(sv_spec[["priorsigma2"]]) == 2 & is.numeric(sv_spec[["priorsigma2"]]) &
+         all(sv_spec[["priorsigma2"]]>0))){
+      stop(sv_spec_error)
+    }
+    if(length(sv_spec[["sv_offset"]]) == 1 | length(sv_spec[["sv_offset"]]) == M){
+      sv_spec$sv_offset <- rep_len(sv_spec$sv_offset, M)
+    }else {
+      stop(sv_spec_error)
+      }
+
+
+    if(!(length(priorHomoscedastic) == 1 )){
+      warning("'priorHomoscedastic' setting will be ignored, because 'SV=TRUE'! \n",
+              immediate. = TRUE)
+    }else if(length(priorHomoscedastic) == 1){
+      if(!is.na(priorHomoscedastic)){
+        warning("'priorHomoscedastic' setting will be ignored, because 'SV=TRUE'! \n",
+                immediate. = TRUE)
+      }
     }
     priorHomoscedastic <- matrix(as.numeric(NA), M, 2) #0.01
   }else if(SV == FALSE){
@@ -383,6 +419,7 @@ bvar_fast <- function(Yraw,
   res$SV <- SV
   res$Yraw <- Y_tmp
   res$Traw <- Traw
-
+  res$datamat <- data.frame(cbind(Y,
+                                  X))
   res
 }

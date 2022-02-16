@@ -64,7 +64,7 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
   out
 }
 
-#' Specify prior on PHI
+#' Specify prior on L
 #'
 #' Specify
 #'
@@ -202,10 +202,10 @@ specify_L_nonhierarchical <- function(V_prior = 10) {
 }
 
 #' @export
-pred_eval <- function(s, Y_obs, mod, VoI){
+pred_eval <- function(s, Y_obs, mod, VoI, new = TRUE){
   # Y_obs: ex post observed data for evaluation
   # mod: model object estimated via BVAR_*
-  # VoI: variables of interest for joint & marginal predictive likelihoods and MSFE
+  # VoI: variables of interest for joint & marginal predictive likelihoods
 
   # relevant mod settings
   SV <- mod$SV
@@ -221,7 +221,7 @@ pred_eval <- function(s, Y_obs, mod, VoI){
     stop("Y_obs has wrong dimensions! \n")
   }
 
-  ## X_fore1: regressors for one-step ahead forecasts
+  ## X_fore1: predictors for one-step ahead forecasts
   X_fore1 <- as.vector(t(mod$Yraw[mod$Traw:(mod$Traw-p+1),])) # Y_t:Y_(t-p+1) for one-step ahead
 
   if(intercept) X_fore1 <- c(X_fore1, 1)
@@ -246,89 +246,60 @@ pred_eval <- function(s, Y_obs, mod, VoI){
 
   h_fore <- matrix(as.numeric(NA), M, s)
   Sigma <- array(as.numeric(NA), c(M,M,s), dimnames = list(variables, variables, NULL))
+ # Sigma_fore <- matrix(NA, M,M)
+
 
   for (i in seq.int(draws)) {
 
     L_inv <- backsolve(mod$L[i,,], diag(M))
 
-    if(SV==TRUE) {
-      # compute k-step ahead forecasts of latent log volas
-      h_fore <- sv_h_T[i, ]
-      for (k in seq_len(s)) {
-        mu_h <- sv_mu[i,] + sv_phi[i,]*(h_fore - sv_mu[i,])
-        sigma_h <- sv_sigma[i, ]
-        h_fore <- stats::rnorm(M, mean = mu_h, sd= sigma_h)
+      X_fore_k <- X_fore1
 
-        # compute SIGMA[t+s]
-        Sigma[,,k] <- t(L_inv) %*% diag(exp(h_fore)) %*% L_inv
+      if(!SV){
+        # compute SIGMA
+        Sigma_fore <- t(L_inv) %*% diag(D_draws[i,]) %*% L_inv
+        rownames(Sigma_fore) <- colnames(Sigma_fore) <- variables
+      }else if(SV){
+        # initialize latent vola
+        h_fore <- sv_h_T[i, ]
       }
 
-    }else if(SV==FALSE) {
-      # compute SIGMA
-      Sigma[,,1:s] <- t(L_inv) %*% diag(D_draws[i,]) %*% L_inv
-    }
+      for(k in seq.int(s)){
 
-    ## one-steap ahead predictive likelihoods and predictions
-    # predictive mean
-    pred_mean_temp <- as.vector(X_fore1%*%mod$PHI[i,,])
-    names(pred_mean_temp) <- variables
-
-    # Predictive likelihoods
-    LPL_draws[i] <- mvtnorm::dmvnorm(as.vector(Y_obs[1,]),pred_mean_temp,Sigma[,,1], log = TRUE)
-    LPL_joint_draws[i,1] <-  mvtnorm::dmvnorm(as.vector(Y_obs[1,VoI]),pred_mean_temp[VoI],Sigma[VoI,VoI,1], log = TRUE)
-    PL_marginal_draws[i,1,] <-  stats::dnorm(as.vector(Y_obs[1, ]), pred_mean_temp, sqrt(diag(Sigma[,,1])))
-
-    # Predictions
-    predictions[i,1,] <- tryCatch(pred_mean_temp + t(chol(Sigma[,,1]))%*%stats::rnorm(M), error=function(e) MASS::mvrnorm(1, pred_mean_temp, Sigma[,,1]))
-
-    ## s-step ahead
-    # X_fore_s holds regressors for s-step ahead predictions
-    # will be recursively updated
-    X_fore_s <- X_fore1
-
-    if(s>1){
-
-      for (kk in seq_len(s-1)) {
-
-        if(intercept){
-          if(p == 1){
-
-              X_fore_s <- c(predictions[i,kk,],1)
-
-          }else {
-
-              X_fore_s <- c(predictions[i,kk,], X_fore_s[1:(length(X_fore_s)-M-1)],1)
-
-          }
-
-        }else {
-
-          if(p == 1){
-
-              X_fore_s <- predictions[i,kk,]
-
-          }else{
-
-            X_fore_s <- c(predictions[i,kk,], X_fore_s[1:(length(X_fore_s)-M)])
-
-          }
-
-
-        }
-
-        pred_mean_temp <- as.vector(X_fore_s%*%mod$PHI[i,,])
+        pred_mean_temp <- as.vector(X_fore_k%*%mod$PHI[i,,])
         names(pred_mean_temp) <- variables
 
-        LPL_joint_draws[i, kk+1] <-  mvtnorm::dmvnorm(as.vector(Y_obs[kk+1, VoI]),pred_mean_temp[VoI],Sigma[VoI,VoI,kk+1], log = TRUE)
-        PL_marginal_draws[i, kk+1,] <-  stats::dnorm(as.vector(Y_obs[kk+1, ]), pred_mean_temp, sqrt(diag(Sigma[,,kk+1])))
+        # compute prediction of variance-covariance matrix
+        if(SV){
+          # compute k-step ahead forecasts of latent log volas
+          mu_h <- sv_mu[i,] + sv_phi[i,]*(h_fore - sv_mu[i,])
+          sigma_h <- sv_sigma[i, ]
+          h_fore <- stats::rnorm(M, mean = mu_h, sd= sigma_h)
 
-        predictions[i, kk+1,] <- tryCatch(pred_mean_temp + t(chol(Sigma[,,kk+1]))%*%stats::rnorm(M), error=function(e) MASS::mvrnorm(1, pred_mean_temp, Sigma[,,kk+1]))
+          # compute SIGMA[t+s]
+          Sigma_fore <- t(L_inv) %*% diag(exp(h_fore)) %*% L_inv
+          rownames(Sigma_fore) <- colnames(Sigma_fore) <- variables
+        }
 
-      }
+        predictions[i,k,] <- tryCatch(pred_mean_temp + t(chol(Sigma_fore))%*%stats::rnorm(M),
+                                      error=function(e) MASS::mvrnorm(1, pred_mean_temp, Sigma_fore))
 
-    }
+        if(k==1){
+          LPL_draws[i] <- mvtnorm::dmvnorm(as.vector(Y_obs[1,]),pred_mean_temp,Sigma_fore, log = TRUE)
+        }
 
-  }
+        LPL_joint_draws[i, k] <-  mvtnorm::dmvnorm(as.vector(Y_obs[k, VoI]),pred_mean_temp[VoI],Sigma_fore[VoI,VoI], log = TRUE)
+        PL_marginal_draws[i, k,] <-  stats::dnorm(as.vector(Y_obs[k, ]), pred_mean_temp, sqrt(diag(Sigma_fore)))
+
+        if(k<s){
+          X_fore_k <- c(predictions[i,k,], X_fore_k[1:((p-1)*M)])
+          if(intercept){
+            X_fore_k <- c(X_fore_k,1)
+          }
+        }
+
+      }# end 1:k
+  }# end 1:draws
 
   numericalnormalizer <- max(LPL_draws) - 700
   LPL <- log(mean(exp(LPL_draws - numericalnormalizer))) + numericalnormalizer
@@ -348,4 +319,136 @@ pred_eval <- function(s, Y_obs, mod, VoI){
               LPL_joint_draws = LPL_joint_draws,
               PL_marginal_draws=PL_marginal_draws,
               X_fore1=X_fore1))
+}
+
+#' @export
+predict_bvar <- function(s,mod, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
+  # Y_obs: ex post observed data for evaluation
+  # mod: model object estimated via BVAR_*
+  # VoI: variables of interest for joint & marginal predictive likelihoods
+
+  # relevant mod settings
+  SV <- mod$SV
+  intercept <- mod$intercept
+
+  # data preparation
+  variables <- colnames(mod$Y)
+  draws <- dim(mod$PHI)[1]
+  M <- ncol(mod$Y)
+  K <- ncol(mod$X)
+  p <- mod$p
+
+  if(nrow(Y_obs)!=s | ncol(Y_obs) !=M){
+    stop("Y_obs has wrong dimensions! \n")
+  }
+
+
+  if(SV==TRUE) {
+    sv_mu <- mod$sv_para[,1,]
+    sv_phi <- mod$sv_para[,2,]
+    sv_sigma <- mod$sv_para[,3,]
+    sv_h_T <- mod$sv_latent[, dim(mod$sv_latent)[2],]
+  }else if(SV == FALSE){
+    D_draws <- mod$DRAWS$D$D_draws
+  }
+
+  # storage
+  predictions <- array(as.numeric(NA), c(draws, s, M), dimnames = list(NULL, paste0("s: ", 1:s), variables))
+
+  if(LPL){
+    Y_obs <- matrix(Y_obs, s, M)
+    colnames(Y_obs) <- variables
+
+    LPL_draws <- matrix(as.numeric(NA), draws, s)
+    PL_marginal_draws <- array(as.numeric(NA), c(draws, s, M), dimnames = list(NULL, NULL, variables))
+    if(!any(is.na(LPL_VoI))){
+      LPL_joint_draws <- matrix(as.numeric(NA), draws, s)
+    }
+  }
+
+  # initialization and placeholders
+  h_fore <- matrix(as.numeric(NA), M, s)
+  Sigma_padding <- matrix(0, M*p + intercept,M)
+  Sigma_padding[1:M,1:M] <- diag(M)
+  z_fore0 <- as.matrix(mod$datamat[nrow(mod$datamat), 1:(p*M)])
+  if(intercept){
+    z_fore0 <- cbind(z_fore0,1)
+  }
+
+  for (i in seq.int(draws)) {
+
+    # Companion form
+    # F: matrix of coefficients
+    # z: endogenous variables
+    F <- get_companion(mod$PHI[i,,], p, intercept)
+    z_fore <- z_fore0
+    SIGMA_k <- matrix(0,K,K)
+
+    L_inv <- backsolve(mod$L[i,,], diag(M))
+
+    if(!SV){
+      # compute SIGMA
+      Sigma_fore <- t(L_inv) %*% diag(D_draws[i,]) %*% L_inv
+    }else if(SV){
+      # initialize latent vola
+      h_fore <- sv_h_T[i, ]
+    }
+
+    for(k in seq_len(s)){
+
+      # recursively update the predictive mean
+      z_fore <- z_fore %*% F
+      pred_mean <- z_fore[1:M]
+      names(pred_mean) <- variables
+
+      # compute prediction of variance-covariance matrix
+      if(SV){
+        # compute k-step ahead forecasts of latent log volas
+        mu_h <- sv_mu[i,] + sv_phi[i,]*(h_fore - sv_mu[i,])
+        sigma_h <- sv_sigma[i, ]
+        h_fore <- stats::rnorm(M, mean = mu_h, sd = sigma_h)
+
+        # compute SIGMA[t+s]
+        Sigma_fore <- t(L_inv) %*% diag(exp(h_fore)) %*% L_inv
+      }
+      SIGMA_k <- crossprod(F,SIGMA_k) %*% F + Sigma_padding %*% tcrossprod(Sigma_fore, Sigma_padding)
+      SIGMA_k_crop <- SIGMA_k[1:M,1:M]
+      rownames(SIGMA_k_crop) <- colnames(SIGMA_k_crop) <- variables
+
+      predictions[i,k,] <- tryCatch(pred_mean + t(chol(SIGMA_k_crop ))%*%stats::rnorm(M),
+               error=function(e) MASS::mvrnorm(1, pred_mean, SIGMA_k_crop))
+
+      if(LPL){
+        LPL_draws[i,k] <- mvtnorm::dmvnorm(as.vector(Y_obs[k,]),pred_mean,SIGMA_k_crop, log = TRUE)
+        PL_marginal_draws[i, k,] <-  stats::dnorm(as.vector(Y_obs[k, ]), pred_mean, sqrt(diag(SIGMA_k_crop)))
+        if(!any(is.na(LPL_VoI))){
+          LPL_joint_draws[i, k] <-  mvtnorm::dmvnorm(as.vector(Y_obs[k, LPL_VoI]),pred_mean[LPL_VoI],SIGMA_k_crop[LPL_VoI,LPL_VoI], log = TRUE)
+        }
+      }
+
+    }# end 1:s step ahead
+
+  }# end 1:draws
+
+  out <- list(predictions = predictions)
+
+  if(LPL){
+    numericalnormalizer <- apply(LPL_draws, 2, function(x) max(x) - 700)
+    LPL <- apply(t(t(LPL_draws) - numericalnormalizer), 2, function(x) log(mean(exp(x)))) +
+      numericalnormalizer
+    out$LPL <- LPL
+    out$LPL_draws <- LPL_draws
+    out$LPL_marginal = log(apply(PL_marginal_draws, 2:3, mean))
+    out$PL_marginal_draws <- PL_marginal_draws
+  }
+
+  if(!any(is.na(LPL_VoI))){
+    numericalnormalizer2 <- apply(LPL_joint_draws, 2, function(x) max(x) - 700)
+    LPL_joint <- apply(t(t(LPL_draws) - numericalnormalizer), 2, function(x) log(mean(exp(x)))) +
+      numericalnormalizer
+    out$LPL_joint <- LPL_joint
+    out$LPL_joint_draws <- LPL_joint_draws
+  }
+
+  return(out)
 }

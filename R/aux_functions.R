@@ -136,3 +136,27 @@ get_MP_V_prior <- function(lambda1=0.04, lambda2=0.0016, lambda3=10^3, sigma_sq 
   return(V_i=as.vector(V_i))
 }
 
+
+# Companion ---------------------------------------------------------------
+
+get_companion <- function(PHI, p, intercept=TRUE){
+
+  M <- ncol(PHI)
+  K <- nrow(PHI)
+
+  companion <- matrix(0, K, K)
+  companion[,1:M] <- PHI
+  companion[1:((p-1)*M), (M+1):(M+(p-1)*M)] <- diag((p-1)*M)
+  if(intercept){
+    companion[K, K] <- 1
+  }
+
+  #cc <- matrix(0, M*p + intercept,M)
+  #cc[1:M,1:M] <- diag(M)
+
+  return(companion
+    #list(companion = companion,
+          #    cc = cc)
+    )
+
+}
