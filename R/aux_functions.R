@@ -162,3 +162,23 @@ get_companion <- function(PHI, p, intercept=TRUE){
     )
 
 }
+
+
+# Density of multivariate Normal (Cholesky) -------------------------------
+
+mydmvnorm <- function (x, mean , cholsigma, log = FALSE) {
+  p <- ncol(cholsigma)
+  #x <- matrix(x, ncol = p)
+  mean <- as.vector(mean)
+  x <- as.vector(x)
+
+  tmp <- backsolve(cholsigma, x - mean, transpose = TRUE)
+  rss <- sum(tmp^2)
+  logretval <- -sum(log(diag(cholsigma))) - 0.5 * p * log(2 *pi) - 0.5 * rss
+
+  names(logretval) <- rownames(x)
+  if (log)
+    logretval
+  else exp(logretval)
+}
+

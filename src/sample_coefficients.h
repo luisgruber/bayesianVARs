@@ -29,7 +29,7 @@ void sample_V_i_SSVS(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
                      const arma::vec& coeffs, const arma::vec& tau_0,
                      const arma::vec& tau_1, const double& s_a, const double& s_b);
 
-void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const double& s1,
+void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i_long, const double& s1,
                     const double& r1, const double& s2, const double& r2,
                     const arma::vec& PHI_diff, const arma::vec& V_i_prep,
                     const int& n_ol, const int& n_cl, const arma::uvec& i_ol,

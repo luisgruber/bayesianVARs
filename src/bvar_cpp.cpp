@@ -51,7 +51,7 @@ List bvar_cpp(const arma::mat Y,
   arma::vec V_i(n);
 
   arma::vec V_i_long(n+M*intercept); // ??? V_i plus intercept prior variances
-  V_i_long(i_i) = priorIntercept; // in case of HM prior, these will be scaled later
+  V_i_long(i_i) = priorIntercept; // in case of HM prior, these will be scaled later (probably not???)
 
   if(priorPHI == "normal"){
     arma::vec V_i_in = priorPHI_in["V_i"];
@@ -150,7 +150,7 @@ List bvar_cpp(const arma::mat Y,
      }
   arma::vec V_i_prep(V_i_prep_in.begin(), V_i_prep_in.length(), false);
   if(priorPHI == "HMP"){
-    V_i_long(i_i) = priorIntercept % V_i_prep(i_i);
+    //V_i_long(i_i) = priorIntercept % V_i_prep(i_i);
     V_i_long(i_ol) = lambda_1*V_i_prep(i_ol);
     V_i_long(i_cl) = lambda_2*V_i_prep(i_cl);
     V_i = V_i_long(i_ocl);
@@ -412,8 +412,9 @@ List bvar_cpp(const arma::mat Y,
     }else if(priorPHI == "HMP"){
 
       if(rep > 0.1*burnin){
-        sample_V_i_HMP(lambda_1, lambda_2, V_i, s_r_1(0), s_r_1(1), s_r_2(0),
-                       s_r_2(1), PHI_diff(i_ocl), V_i_prep, n_ol, n_cl, i_ol, i_cl);
+        sample_V_i_HMP(lambda_1, lambda_2, V_i_long, s_r_1(0), s_r_1(1), s_r_2(0),
+                       s_r_2(1), PHI_diff, V_i_prep, n_ol, n_cl, i_ol, i_cl);
+        V_i = V_i_long(i_ocl);
       }
     }
 

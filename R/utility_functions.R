@@ -22,7 +22,7 @@
 specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
                              SSVS_c0 = 0.01, SSVS_c1 = 100, SSVS_semiautomatic = TRUE, SSVS_sa = 0.5, SSVS_sb = 0.5,
                              HMP_lambda1 = c(0.01,0.01), HMP_lambda2 = c(0.01,0.01),
-                             V_i = NULL,...){
+                             V_i = 10,...){
   if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "SL"))){
     stop("Argument 'prior' must be one of 'DL', 'SSVS', 'HMP' or 'normal'. \n")
   }
@@ -46,14 +46,14 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
     out <- list(prior = prior, R2D2_b = R2D2_b)
 
   }else if(prior == "SSVS"){
-    if(!(SSVS_c0>0 & SSVS_c1>0)){
-      stop("'SSVS_c0' and 'SSVS_c1' must be positive numeric values.")
+    if(!(all(SSVS_c0>0) & all(SSVS_c1>0))){
+      stop("'SSVS_c0' and 'SSVS_c1' must be positive numeric values. \n")
     }
     out <- list(prior = prior, SSVS_c0=SSVS_c0, SSVS_c1=SSVS_c1,
                 semiautomatic=SSVS_semiautomatic, SSVS_s_a=SSVS_sa, SSVS_s_b=SSVS_sb)
   }else if(prior == "normal"){
-    if(is.null(V_i)){
-      V_i <- 10
+    if(!(all(V_i>0))){
+      stop("'V_i' must be positive. \n")
     }
     out <- list(prior=prior, V_i=V_i)
   }else if(prior == "HMP"){
@@ -84,7 +84,7 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
 specify_priorL <- function(prior, DL_b = "1/n", R2D2_b = 0.5,
                              SSVS_c0 = 0.001, SSVS_c1 = 1, SSVS_sa = 0.5, SSVS_sb = 0.5,
                            HMP_lambda3 = c(0.01,0.01),
-                             V_i = NULL,
+                             V_i = 10,
                            ...){
   if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "SL"))){
     stop("Argument 'prior' must be one of 'DL', 'SSVS', 'HMP' or 'normal'. \n")
@@ -114,8 +114,8 @@ specify_priorL <- function(prior, DL_b = "1/n", R2D2_b = 0.5,
     }
     out <- list(prior = prior, SSVS_c0=SSVS_c0, SSVS_c1=SSVS_c1, SSVS_s_a=SSVS_sa, SSVS_s_b=SSVS_sb)
   }else if(prior == "normal"){
-    if(is.null(V_i)){
-      V_i <- 1
+    if(!(all(V_i>0))){
+      stop("'V_i' must be positive. \n")
     }
     out <- list(prior=prior, V_i=V_i)
   }else if(prior == "HMP"){
@@ -202,7 +202,7 @@ specify_L_nonhierarchical <- function(V_prior = 10) {
 }
 
 #' @export
-pred_eval <- function(mod, s, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
+pred_eval <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
   # Y_obs: ex post observed data for evaluation
   # mod: model object estimated via BVAR_*
   # VoI: variables of interest for joint & marginal predictive likelihoods
@@ -230,25 +230,31 @@ pred_eval <- function(mod, s, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
     }else{
       LPL_subset <- FALSE
     }
-    Y_obs <- matrix(Y_obs, s, M)
+    Y_obs <- matrix(Y_obs, nsteps, M)
     colnames(Y_obs) <- variables
   }
   if(SV==TRUE) {
+    # extract sv parameters
     sv_mu <- mod$sv_para[,1,]
     sv_phi <- mod$sv_para[,2,]
     sv_sigma <- mod$sv_para[,3,]
+    # extract current state of log-vola
     sv_h_T <- mod$sv_latent[, dim(mod$sv_latent)[2],]
   }else if(SV == FALSE){
-    D_draws <- mod$DRAWS$D$D_draws
+    D_sqrt_draws <- exp(mod$sv_latent[, dim(mod$sv_latent)[2],]/2)
   }
 
   # storage
-  predictions <- array(as.numeric(NA), c(draws, s, M), dimnames = list(NULL, paste0("s: ", 1:s), variables))
+  predictions <- array(as.numeric(NA), c(draws, nsteps, M),
+                       dimnames = list(NULL, paste0("t+", 1:nsteps), variables))
   if(LPL){
-    LPL_draws <- matrix(as.numeric(NA), draws, s)
-    PL_univariate_draws <- array(as.numeric(NA), c(draws, s, M), dimnames = list(NULL, NULL, variables))
+    LPL_draws <- matrix(as.numeric(NA), draws, nsteps)
+    colnames(LPL_draws) <- paste0("t+", 1:nsteps)
+    PL_univariate_draws <- array(as.numeric(NA), c(draws, nsteps, M),
+                                 dimnames = list(NULL, paste0("t+", 1:nsteps), variables))
     if(LPL_subset){
-      LPL_sub_draws <- matrix(as.numeric(NA), draws, s)
+      LPL_sub_draws <- matrix(as.numeric(NA), draws, nsteps)
+      colnames(LPL_sub_draws) <- paste0("t+", 1:nsteps)
     }
   }
 
@@ -265,37 +271,47 @@ pred_eval <- function(mod, s, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
 
       if(!SV){
         # compute SIGMA
-        Sigma_fore <- t(L_inv) %*% diag(D_draws[i,]) %*% L_inv
+        #Sigma_fore <- crossprod(L_inv, diag(D_draws[i,])) %*% L_inv #???
+        #t(L_inv) %*% diag(D_draws[i,]) %*% L_inv #???
+        Sigma_chol_fore <- diag(D_sqrt_draws[i,]) %*% L_inv
+        Sigma_fore <- crossprod(Sigma_chol_fore)
       }else if(SV){
-        # initialize latent vola
+        # initialize latent log-vola at current state
         h_fore <- sv_h_T[i, ]
       }
 
-      for(k in seq.int(s)){
+      for(k in seq.int(nsteps)){
 
         mean_fore <- as.vector(X_fore_k%*%mod$PHI[i,,])
 
         # compute prediction of variance-covariance matrix
         if(SV){
-          # compute k-step ahead forecasts of latent log volas
-          h_fore <- sv_mu[i,] + sv_phi[i,]*(h_fore - sv_mu[i,]) + sv_sigma[i,]*stats::rnorm(1)
+          # compute k-step ahead forecasts of latent log-volas
+          h_fore <- sv_mu[i,] + sv_phi[i,]*(h_fore - sv_mu[i,]) +
+            sv_sigma[i,]*stats::rnorm(M, mean = 0, sd = 1)
 
-          # compute SIGMA[t+s]
-          Sigma_fore <- t(L_inv) %*% diag(exp(h_fore)) %*% L_inv
+          # compute SIGMA[t+k]
+          #Sigma_fore <- crossprod(L_inv, diag(exp(h_fore))) %*% L_inv #???
+          #t(L_inv) %*% diag(exp(h_fore)) %*% L_inv
+          #???
+          Sigma_chol_fore <- diag(exp(h_fore/2)) %*% L_inv
+          Sigma_fore <- crossprod(Sigma_chol_fore)
         }
 
-        predictions[i,k,] <- tryCatch(mean_fore + t(chol(Sigma_fore))%*%stats::rnorm(M),
-                                      error=function(e) MASS::mvrnorm(1, mean_fore, Sigma_fore))
+        predictions[i,k,] <- tryCatch(
+          mean_fore + stats::rnorm(M) %*% Sigma_chol_fore, #??? mean_fore + t(chol(Sigma_fore)) %*% stats::rnorm(M)
+          error = function(e) MASS::mvrnorm(1, mean_fore, Sigma_fore)
+          )
 
         if(LPL){
-          LPL_draws[i,k] <- mvtnorm::dmvnorm(as.vector(Y_obs[k,]),mean_fore,Sigma_fore, log = TRUE)
+          LPL_draws[i,k] <- mydmvnorm(Y_obs[k,], mean_fore,Sigma_chol_fore, log = TRUE) #??? mvtnorm::dmvnorm(as.vector(Y_obs[k,]),mean_fore,Sigma_fore, log = TRUE)
           PL_univariate_draws[i, k,] <-  stats::dnorm(as.vector(Y_obs[k, ]), mean_fore, sqrt(diag(Sigma_fore)))
           if(LPL_subset){
-            LPL_sub_draws[i, k] <-  mvtnorm::dmvnorm(as.vector(Y_obs[k, VoI]),mean_fore[VoI],Sigma_fore[VoI,VoI, drop = FALSE], log = TRUE)
+            LPL_sub_draws[i, k] <-  mydmvnorm(Y_obs[k, VoI], mean_fore[VoI], chol(Sigma_fore[VoI,VoI, drop = FALSE]), log = TRUE)#??? mvtnorm::dmvnorm(as.vector(Y_obs[k, VoI]),mean_fore[VoI],Sigma_fore[VoI,VoI, drop = FALSE], log = TRUE)
           }
         }
 
-        if(k<s){
+        if(k<nsteps){
           if(p==1){
             X_fore_k <- predictions[i,k,]
           }else{
@@ -315,19 +331,24 @@ pred_eval <- function(mod, s, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
   if(LPL){
     numericalnormalizer <- apply(LPL_draws,2,max) - 700
     LPL <- log(colMeans(exp( t(t(LPL_draws) - numericalnormalizer)))) + numericalnormalizer
+    names(LPL) <- paste0("t+", 1:nsteps)
     out$LPL <- LPL
     out$LPL_draws <- LPL_draws
+
     out$LPL_univariate <- log(apply(PL_univariate_draws, 2:3, mean))
+    rownames(out$LPL_univariate) <- paste0("t+", 1:nsteps)
     out$PL_univariate_draws <- PL_univariate_draws
+
     if(LPL_subset){
       numericalnormalizer2 <- apply(LPL_sub_draws,2,max) - 700
       LPL_VoI <- log(colMeans(exp( t(t(LPL_sub_draws) - numericalnormalizer2)))) +
         numericalnormalizer2
+      names(LPL_VoI) <- paste0("t+", 1:nsteps)
       out$LPL_VoI <- LPL_VoI
       out$LPL_VoI_draws <- LPL_sub_draws
     }
   }
-#out$VoI <- VoI
+
   return(out)
 }
 
