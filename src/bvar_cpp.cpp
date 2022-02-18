@@ -497,8 +497,8 @@ List bvar_cpp(const arma::mat Y,
 
     if(SV == false || (priorPHI == "SL" && rep < 0.1*burnin)){ //|| (priorPHI == "SL" && rep < 0.1*burnin) //???
       for(int i =0; i<M; i++){
-        double s_p = priorHomoscedastic(i,0) + 0.5*accu(square(str_resid.col(i)));
-        double d_i = 1. / R::rgamma((priorHomoscedastic(i,1)+T)/2, 1./s_p);
+        double s_p = priorHomoscedastic(i,1) + 0.5*accu(square(str_resid.col(i)));
+        double d_i = 1. / R::rgamma(priorHomoscedastic(i,0)+T/2, 1./s_p);
         d_sqrt.col(i).fill(sqrt(d_i));
         h.col(i).fill(log(d_i));
       }
