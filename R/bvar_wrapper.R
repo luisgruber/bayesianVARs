@@ -421,5 +421,6 @@ bvar_fast <- function(Yraw,
   res$Traw <- Traw
   res$datamat <- data.frame(cbind(Y,
                                   X))
+  class(res) <- "bvar"
   res
 }

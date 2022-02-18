@@ -202,10 +202,7 @@ specify_L_nonhierarchical <- function(V_prior = 10) {
 }
 
 #' @export
-pred_eval <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
-  # Y_obs: ex post observed data for evaluation
-  # mod: model object estimated via BVAR_*
-  # VoI: variables of interest for joint & marginal predictive likelihoods
+predict.bvar <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA,...){
 
   # relevant mod settings
   SV <- mod$SV
@@ -346,9 +343,10 @@ pred_eval <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
       names(LPL_VoI) <- paste0("t+", 1:nsteps)
       out$LPL_VoI <- LPL_VoI
       out$LPL_VoI_draws <- LPL_sub_draws
+      out$VoI <- variables[VoI]
     }
   }
-
+  class(out) <- "bvar_predict"
   return(out)
 }
 
@@ -482,4 +480,46 @@ predict_bvar <- function(s,mod, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
   }
 
   return(out)
+}
+
+#' @export
+summary.bvar_predict <- function(object, ...){
+  out <- list()
+  if(!is.null(object$LPL)){
+    out$LPL <- object$LPL
+    out$LPL_univariate <- object$LPL_univariate
+  }
+  if(!is.null(object$LPL_VoI)){
+    out$LPL_VoI <- object$LPL_VoI
+    out$VoI <- object$VoI
+  }
+  out$prediction_quantiles <- apply(object$predictions, 2:3, quantile, c(.05,.5,.95))
+  class(out) <- "summary.bvar_predict"
+  out
+}
+
+#' @export
+print.summary.bvar_predict <- function(x, ...){
+  digits <- max(3, getOption("digits") - 3)
+  if(!is.null(x$LPL)){
+    cat("\nLPL:\n")
+    print(x$LPL, digits = digits)
+
+    if(!is.null(x$LPL_VoI)){
+      n <- length(x$VoI)
+      cat("\nMarginal joint LPL of ")
+      cat(x$VoI[1:(n-1)] ,sep = ", ")
+      cat(" & ", x$VoI[n], ":\n", sep = "")
+      print(x$LPL_VoI, digits = digits)
+    }
+
+    cat("\nMarginal univariate LPLs:\n")
+    print(x$LPL_univariate, digits = digits)
+
+  }
+
+  cat("\nPrediction quantiles:\n")
+  print(x$prediction_quantiles, digits = digits)
+
+  invisible(x)
 }
