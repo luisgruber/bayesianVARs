@@ -203,7 +203,6 @@ specify_L_nonhierarchical <- function(V_prior = 10) {
 
 #' @export
 pred_eval <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
-
   # Y_obs: ex post observed data for evaluation
   # mod: model object estimated via BVAR_*
   # VoI: variables of interest for joint & marginal predictive likelihoods
@@ -234,11 +233,6 @@ pred_eval <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
     Y_obs <- matrix(Y_obs, nsteps, M)
     colnames(Y_obs) <- variables
   }
-## X_fore1: predictors for one-step ahead forecasts
-  X_fore1 <- as.vector(t(mod$Yraw[mod$Traw:(mod$Traw-p+1),])) # Y_t:Y_(t-p+1) for one-step ahead
-
-  if(intercept) X_fore1 <- c(X_fore1, 1)
-
   if(SV==TRUE) {
     # extract sv parameters
     sv_mu <- mod$sv_para[,1,]
@@ -284,7 +278,6 @@ pred_eval <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
       }else if(SV){
         # initialize latent log-vola at current state
         h_fore <- sv_h_T[i, ]
-
       }
 
       for(k in seq.int(nsteps)){
@@ -293,7 +286,7 @@ pred_eval <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
 
         # compute prediction of variance-covariance matrix
         if(SV){
-          # compute k-step ahead forecasts of latent log-volas
+          # compute k-step ahead forecast of latent log-volas
           h_fore <- sv_mu[i,] + sv_phi[i,]*(h_fore - sv_mu[i,]) +
             sv_sigma[i,]*stats::rnorm(M, mean = 0, sd = 1)
 
@@ -359,7 +352,6 @@ pred_eval <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
   return(out)
 }
 
-
 #' @export
 predict_bvar <- function(s,mod, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
   # Y_obs: ex post observed data for evaluation
@@ -413,13 +405,13 @@ predict_bvar <- function(s,mod, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
   if(intercept){
     z_fore0 <- cbind(z_fore0,1)
   }
-
+  F <- get_companion(mod$PHI[1,,], p, intercept)
   for (i in seq.int(draws)) {
 
     # Companion form
     # F: matrix of coefficients
     # z: endogenous variables
-    F <- get_companion(mod$PHI[i,,], p, intercept)
+    F[,1:M] <- mod$PHI[i,,]
     z_fore <- z_fore0
     SIGMA_k <- matrix(0,K,K)
 
