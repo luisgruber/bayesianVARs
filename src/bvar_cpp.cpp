@@ -334,6 +334,18 @@ List bvar_cpp(const arma::mat Y,
   arma::mat l_hyperparameter_draws(draws, l_hyperparameter_size);
 
   //L = arma::eye(size(L));
+  arma::mat eps(K,M);
+  if(priorPHI == "DL" || priorPHI == "DL_h" || priorPHI == "R2D2"){
+    for(int i=0; i<K; i++){
+      for(int j=0; j<M; j++){
+        if(PHI0(i,j)==0){
+          eps(i,j)=1e-100;
+        }else {
+          eps(i,j)=1e-10;
+        }
+      }
+    }
+  }
 
   //-----------------------------------SAMPLER--------------------------------//
 
@@ -355,23 +367,24 @@ List bvar_cpp(const arma::mat Y,
     }
 
     if(priorPHI == "DL" || priorPHI == "DL_h" || priorPHI == "R2D2"){
+      PHI_diff = PHI - PHI0;
       // if regularization gets extreme, often there appear zeros (numerical issue)
       // coefficients must not be zero, otherwise problems with do_rgig1
       // anyhow, a realized value of a continous pd cannot be exactly zero
       for (int ii = 0; ii<K; ii++) {
         for (int jj = 0; jj<M; jj++){
-          if(PHI(ii,jj) == 0) {
+          if(PHI_diff(ii,jj) == 0) {
+
             if(R::rbinom( 1, 0.5 )==0){
-              PHI(ii,jj) = 1e-100;
+              PHI(ii,jj) = PHI0(ii,jj) + eps(ii,jj);//1e-100;
             }else{
-              PHI(ii,jj) = -1e-100;
+              PHI(ii,jj) = PHI0(ii,jj) - eps(ii,jj);//1e-100;
             }
-          }else
-            if(PHI(ii,jj) < 1e-100 && PHI(ii,jj) > 0){
-              PHI(ii,jj) = 1e-100;
-            }else if (PHI(ii,jj) > -1e-100 && PHI(ii,jj) < 0){
-              PHI(ii,jj) = -1e-100;
-            }
+          }else if(PHI_diff(ii,jj) < eps(ii,jj) && PHI_diff(ii,jj) > 0){
+              PHI(ii,jj) = PHI0(ii,jj) + eps(ii,jj);
+          }else if (PHI_diff(ii,jj) > (-1*eps(ii,jj)) && PHI_diff(ii,jj) < 0){
+              PHI(ii,jj) = PHI0(ii,jj) - eps(ii,jj);
+          }
         }
       }
     }
