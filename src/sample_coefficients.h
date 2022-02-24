@@ -50,4 +50,7 @@ void sample_PHI_SL(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& 
 void sample_L_SL(arma::mat& L, arma::mat& Ytilde, const arma::mat& d_sqrt,
               vec& omega, const double& nu_a, const double& nu_b);
 
+void sample_prior_mean(vec& m_i ,const vec& coefs, const vec& v_i, const double& mu0,
+                       const double& b0);
+
 #endif

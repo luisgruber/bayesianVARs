@@ -435,7 +435,7 @@ void sample_PHI_SL(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& 
       //}
 
       if(Gamma(j,i)==1){
-        PHI(j,i) = R::rnorm(phi_j_post,V_post);
+        PHI(j,i) = R::rnorm(phi_j_post, sqrt(V_post));
       }else {
         PHI(j,i) = 0;
       }
@@ -481,7 +481,7 @@ void sample_L_SL(arma::mat& L, arma::mat& Ytilde, const arma::mat& d_sqrt,
       omega(ind) = R::rbinom(1,gst);
 
       if(omega(ind)==1){
-        L(j,i) = R::rnorm(l_j_post,V_post);
+        L(j,i) = R::rnorm(l_j_post, sqrt(V_post));
       }else {
         L(j,i) = 0;
       }
@@ -490,4 +490,14 @@ void sample_L_SL(arma::mat& L, arma::mat& Ytilde, const arma::mat& d_sqrt,
 
   }
 
+}
+
+void sample_prior_mean(vec& m_i ,const vec& coefs, const vec& v_i, const double& mu0,
+                       const double& b0){
+  double n = coefs.size();
+  for(int i=0; i<n; i++){
+    double b = 1./(1./b0 + 1./v_i(i));
+    double mu = b * (mu0/b0 + coefs(i)/v_i(i));
+    m_i(i) = R::rnorm(mu, sqrt(b));
+    }
 }
