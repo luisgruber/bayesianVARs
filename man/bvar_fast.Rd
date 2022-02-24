@@ -10,7 +10,7 @@ bvar_fast(
   intercept = 100,
   draws = 1000,
   burnin = 1000,
-  persistence = 0,
+  persistence = list(persistence = 0, priorPersistence = 0),
   priorPHI,
   priorL,
   SV = TRUE,

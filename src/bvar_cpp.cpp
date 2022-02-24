@@ -19,7 +19,7 @@ List bvar_cpp(const arma::mat Y,
               const int intercept,
               const arma::vec priorIntercept,
               arma::mat PHI,
-              const arma::mat PHI0,
+              arma::mat PHI0, //??? no const
               const List priorPHI_in,
               const List priorL_in,
               arma::mat L,
@@ -30,7 +30,8 @@ List bvar_cpp(const arma::mat Y,
               arma::mat sv_para,
               const arma::imat i_mat,
               const arma::ivec i_vec,
-              const bool progressbar){
+              const bool progressbar,
+              const List persistence_in){
 
 //-------------------------Preliminaries--------------------------------------//
 
@@ -38,12 +39,24 @@ List bvar_cpp(const arma::mat Y,
   arma::mat PHI_diff; // will hold PHI - PHI0
   const arma::uvec i_ol = arma::find(i_vec > 0); // indicator for ownlags
   const arma::uvec i_cl = arma::find(i_vec < 0); // indicator for crosslags
+  const arma::uvec i_fol = arma::find(i_vec == 1); // indicator for first ownlags
   const int n_ol = i_ol.size(); // nr. of ownlags
   const int n_cl = i_cl.size(); // nr. of crosslags
   const arma::uvec i_ocl= arma::find(i_vec != 0.); // indicator for all coefficients except intercept
   const arma::uvec i_i= arma::find(i_vec == 0.); // indicator for intercepts
 
 //--------------------Initialization of hyperparameters-----------------------//
+
+//---- Hyperprior on mean of first ownlag coefficients //???
+  bool priorPersistence = persistence_in["hyper"];
+  double mu0;
+  double b0;
+  vec m_i(M);
+  if(priorPersistence==true){
+    mu0 =  persistence_in["persistence"];
+    b0 =  persistence_in["priorPersistence"];
+    m_i = PHI0(i_fol);
+  }
 
 //---- PHI
   std::string priorPHI = priorPHI_in["prior"];
@@ -305,6 +318,14 @@ List bvar_cpp(const arma::mat Y,
   arma::cube PHI_draws(draws, (K+intercept), M); // ??? K + intercept
   arma::cube L_draws(draws, M, M);
 
+  int mid = 0;
+  int mim = 0;
+  if(priorPersistence==true){
+    mid +=draws;
+    mim +=M;
+  }
+  mat m_i_draws(mid, mim);
+
   int phi_hyperparameter_size(0);
   if(priorPHI == "DL" || priorPHI == "DL_h"){
     phi_hyperparameter_size += 2. + 2*n; // a + zeta + n(theta + psi)
@@ -376,20 +397,24 @@ List bvar_cpp(const arma::mat Y,
           if(PHI_diff(ii,jj) == 0) {
 
             if(R::rbinom( 1, 0.5 )==0){
-              PHI(ii,jj) = PHI0(ii,jj) + eps(ii,jj);//1e-100;
+              PHI(ii,jj) = PHI0(ii,jj) + 1e-100;//eps(ii,jj);//1e-100;
+              PHI_diff(ii,jj) = 1e-100;
             }else{
-              PHI(ii,jj) = PHI0(ii,jj) - eps(ii,jj);//1e-100;
+              PHI(ii,jj) = PHI0(ii,jj) - 1e-100;//eps(ii,jj);//1e-100;
+              PHI_diff(ii,jj) = -1e-100;
             }
-          }else if(PHI_diff(ii,jj) < eps(ii,jj) && PHI_diff(ii,jj) > 0){
-              PHI(ii,jj) = PHI0(ii,jj) + eps(ii,jj);
-          }else if (PHI_diff(ii,jj) > (-1*eps(ii,jj)) && PHI_diff(ii,jj) < 0){
-              PHI(ii,jj) = PHI0(ii,jj) - eps(ii,jj);
+          }else if(PHI_diff(ii,jj) < 1e-100 && PHI_diff(ii,jj) > 0){ //eps(ii,jj)
+              PHI(ii,jj) = PHI0(ii,jj) + 1e-100;//eps(ii,jj);
+            PHI_diff(ii,jj) = 1e-100;
+          }else if (PHI_diff(ii,jj) > -1e-100 && PHI_diff(ii,jj) < 0){ //-eps(ii,jj)
+              PHI(ii,jj) = PHI0(ii,jj) - 1e-100;//eps(ii,jj);
+            PHI_diff(ii,jj) = -1e-100;
           }
         }
       }
-    }
-
-    PHI_diff = PHI - PHI0;
+    }else{
+      PHI_diff = PHI - PHI0;
+      }
 
     //----2) Sample hyperparameters of hierarchical priors (prior variances V_i)
 
@@ -434,6 +459,12 @@ List bvar_cpp(const arma::mat Y,
     V_i_long(i_ocl) = V_i;
 
     V_prior = reshape(V_i_long, K+intercept, M);
+
+    //----(optional) Sample prior mean of first ownlags //???
+    if(priorPersistence==true){
+      sample_prior_mean(m_i, PHI(i_fol), V_i_long(i_fol), mu0, b0);
+      PHI0(i_fol) = m_i;
+    }
     }//end if SL
 
     //----3) Draw Sigma_t = inv(L)'*D_t*inv(L), where L is upper unitriangular
@@ -539,6 +570,10 @@ List bvar_cpp(const arma::mat Y,
       sv_latent_draws.row(rep-burnin) = h;
       sv_para_draws.row((rep-burnin)) = sv_para;
 
+      if(priorPersistence==true){
+        m_i_draws.row(rep-burnin) = m_i;
+      }
+
       if(priorPHI == "DL" || priorPHI == "DL_h"){
 
         phi_hyperparameter_draws(rep-burnin, 0) = zeta;
@@ -614,11 +649,14 @@ List bvar_cpp(const arma::mat Y,
     Named("tau1") = tau_1,// ???
     Named("V_i_long") = V_i_long, // ???
     Named("V_i_L") = V_i_L,
-    Named("a_vec") = a_vec,
-    Named("a_mat") = a_mat,
-    Named("prep1") = prep1,
-    Named("prep2") = prep2,
-    Named("Gamma") = Gamma
+    //Named("a_vec") = a_vec, // ???
+    //Named("a_mat") = a_mat, // ???
+    //Named("prep1") = prep1, // ???
+    //Named("prep2") = prep2, // ???
+    Named("Gamma") = Gamma, // ???
+    Named("m_i") = m_i_draws,
+    Named("priorPers") = priorPersistence,
+    Named("PHI0")=PHI0
   );
 
   return out;
