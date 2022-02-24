@@ -47,6 +47,7 @@ List bvar_cpp(const arma::mat Y,
 
 //--------------------Initialization of hyperparameters-----------------------//
 
+<<<<<<< HEAD
 //---- Hyperprior on mean of first ownlag coefficients //???
   bool priorPersistence = persistence_in["hyper"];
   double mu0;
@@ -58,6 +59,20 @@ List bvar_cpp(const arma::mat Y,
     m_i = PHI0(i_fol);
   }
 
+||||||| 42092f8
+=======
+//---- Hyperprior on mean of first ownlag coefficients //???
+  bool priorPersistence = persistence_in["hyper"];
+  double mu0;
+  double b0;
+  vec m_i;
+  if(priorPersistence==true){
+    mu0 =  persistence_in["persistence"];
+    b0 =  persistence_in["priorPersistence"];
+    m_i = PHI0(i_fol);
+  }
+
+>>>>>>> 8053a35abe6e41723c14c55d95ec47ca8b941361
 //---- PHI
   std::string priorPHI = priorPHI_in["prior"];
   // V_i holds prior variances (without intercepts)
@@ -465,6 +480,7 @@ List bvar_cpp(const arma::mat Y,
       sample_prior_mean(m_i, PHI(i_fol), V_i_long(i_fol), mu0, b0);
       PHI0(i_fol) = m_i;
     }
+
     }//end if SL
 
     //----3) Draw Sigma_t = inv(L)'*D_t*inv(L), where L is upper unitriangular

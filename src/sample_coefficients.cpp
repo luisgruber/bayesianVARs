@@ -501,3 +501,4 @@ void sample_prior_mean(vec& m_i ,const vec& coefs, const vec& v_i, const double&
     m_i(i) = R::rnorm(mu, sqrt(b));
     }
 }
+
