@@ -187,6 +187,7 @@ bvar_fast <- function(Yraw,
     PHI0[1:M, 1:M] <- diag(M)*persistence$persistence
 
   }
+
   if(persistence$priorPersistence>0){
     persistence$hyper = TRUE
 

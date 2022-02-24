@@ -465,6 +465,7 @@ List bvar_cpp(const arma::mat Y,
       sample_prior_mean(m_i, PHI(i_fol), V_i_long(i_fol), mu0, b0);
       PHI0(i_fol) = m_i;
     }
+
     }//end if SL
 
     //----3) Draw Sigma_t = inv(L)'*D_t*inv(L), where L is upper unitriangular
