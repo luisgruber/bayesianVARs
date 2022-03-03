@@ -420,8 +420,7 @@ bvar_fast <- function(Yraw,
   res$SV <- SV
   res$Yraw <- Y_tmp
   res$Traw <- Traw
-  res$datamat <- data.frame(cbind(Y,
-                                  X))
+  res$datamat <- data.frame(cbind(Y, X))
   class(res) <- "bvar"
   res
 }

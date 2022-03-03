@@ -36,13 +36,21 @@ List bvar_cpp(const arma::mat Y,
 
   const double n = K*M; // number of VAR coefficients // ??? without intercept
   arma::mat PHI_diff; // will hold PHI - PHI0
-  const arma::uvec i_ol = arma::find(i_vec > 0); // indicator for ownlags
-  const arma::uvec i_cl = arma::find(i_vec < 0); // indicator for crosslags
-  const arma::uvec i_fol = arma::find(i_vec == 1); // indicator for first ownlags
-  const int n_ol = i_ol.size(); // nr. of ownlags
-  const int n_cl = i_cl.size(); // nr. of crosslags
+  //const arma::uvec i_ol = arma::find(i_vec > 0); // indicator for ownlags
+  //const arma::uvec i_cl = arma::find(i_vec < 0); // indicator for crosslags
+  // int n_ol = i_ol.size(); // nr. of ownlags
+  //const int n_cl = i_cl.size(); // nr. of crosslags
   const arma::uvec i_ocl= arma::find(i_vec != 0.); // indicator for all coefficients except intercept
   const arma::uvec i_i= arma::find(i_vec == 0.); // indicator for intercepts
+
+  //////////////////
+  // indicators for coefficients without intercept
+  const arma::ivec i_vec_small=i_vec(i_ocl);
+  const arma::uvec i_ol = arma::find(i_vec_small > 0);
+  const arma::uvec i_cl = arma::find(i_vec_small < 0);
+  const int n_ol = i_ol.size(); // nr. of ownlags
+  const int n_cl = i_cl.size(); // nr. of crosslags
+  /////////////////
 
 //--------------------Initialization of hyperparameters-----------------------//
 
@@ -152,9 +160,9 @@ List bvar_cpp(const arma::mat Y,
   arma::vec V_i_prep(V_i_prep_in.begin(), V_i_prep_in.length(), false);
   if(priorPHI == "HMP"){
     //V_i_long(i_i) = priorIntercept % V_i_prep(i_i);
-    V_i_long(i_ol) = lambda_1*V_i_prep(i_ol);
-    V_i_long(i_cl) = lambda_2*V_i_prep(i_cl);
-    V_i = V_i_long(i_ocl);
+    arma::vec V_i_prep_small = V_i_prep(i_ocl);
+    V_i(i_ol) = lambda_1*V_i_prep_small(i_ol);
+    V_i(i_cl) = lambda_2*V_i_prep_small(i_cl);
   }
   arma::vec s_r_1(s_r_1_in.begin(), s_r_1_in.length(), false);
   arma::vec s_r_2(s_r_2_in.begin(), s_r_2_in.length(), false);
@@ -334,20 +342,6 @@ List bvar_cpp(const arma::mat Y,
   }
   arma::mat l_hyperparameter_draws(draws, l_hyperparameter_size);
 
-  //L = arma::eye(size(L));
-  arma::mat eps(K,M);
-  if(priorPHI == "DL" || priorPHI == "DL_h" || priorPHI == "R2D2"){
-    for(int i=0; i<K; i++){
-      for(int j=0; j<M; j++){
-        if(PHI0(i,j)==0){
-          eps(i,j)=1e-100;
-        }else {
-          eps(i,j)=1e-10;
-        }
-      }
-    }
-  }
-
   //-----------------------------------SAMPLER--------------------------------//
 
   const int tot = draws + burnin;
@@ -420,19 +414,31 @@ List bvar_cpp(const arma::mat Y,
       //  ::Rf_error("Couldn't sample V_i (R2D2 prior) in run %i.",  rep);
       //}
 
+//      for(int i=0; i<p; i++){
+//        uvec i_cl_i = arma::find(i_vec==(i+1));
+//        uvec i_ol_i = arma::find(i_vec==-(i+1));
+//
+//        sample_V_i_R2D2(V_i_long(i_cl_i), PHI_diff(i_cl_i), api_cl(i) ,
+//                        zeta_cl_r2d2(i), psi_r2d2(i_cl_i), theta_r2d2(i_cl_i),
+//                        xi_cl(i), a_cl_r2d2(i), b_cl_r2d2(i) );
+//        sample_V_i_R2D2(V_i_long(i_ol_i), PHI_diff(i_ol_i), api_ol(i), zeta_r2d2,
+//                        psi_r2d2, theta_r2d2, xi, a_r2d2, b_r2d2 );
+//      }
 
     }else if(priorPHI == "SSVS"){
 
       if(rep > 0.1*burnin){
-        sample_V_i_SSVS(V_i, gammas, p_i, PHI_diff(i_ocl), tau_0, tau_1, SSVS_s_a, SSVS_s_b);
+        sample_V_i_SSVS(V_i, gammas, p_i, PHI_diff(i_ocl), tau_0, tau_1,
+                        SSVS_s_a, SSVS_s_b);
 
       }
+
     }else if(priorPHI == "HMP"){
 
       if(rep > 0.1*burnin){
-        sample_V_i_HMP(lambda_1, lambda_2, V_i_long, s_r_1(0), s_r_1(1), s_r_2(0),
-                       s_r_2(1), PHI_diff, V_i_prep, n_ol, n_cl, i_ol, i_cl);
-        V_i = V_i_long(i_ocl);
+        sample_V_i_HMP(lambda_1, lambda_2, V_i, s_r_1(0), s_r_1(1), s_r_2(0),
+                       s_r_2(1), PHI_diff(i_ocl), V_i_prep(i_ocl), n_ol, n_cl,
+                       i_ol, i_cl);
       }
     }
 

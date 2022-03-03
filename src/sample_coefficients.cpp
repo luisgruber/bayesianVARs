@@ -337,7 +337,7 @@ void sample_V_i_SSVS(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
 
 }
 
-void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i_long, const double& s1,
+void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const double& s1,
                     const double& r1, const double& s2, const double& r2,
                     const arma::vec& PHI_diff, const arma::vec& V_i_prep,
                     const int& n_ol, const int& n_cl, const arma::uvec& i_ol,
@@ -347,8 +347,8 @@ void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i_long, con
                      2*r1 );
   lambda_2 = do_rgig1(s2 - n_cl/2, sum(square(PHI_diff(i_cl))/V_i_prep(i_cl)), 2*r2 );
 
-  V_i_long(i_ol) = lambda_1 * V_i_prep(i_ol);
-  V_i_long(i_cl) = lambda_2 * V_i_prep(i_cl);
+  V_i(i_ol) = lambda_1 * V_i_prep(i_ol);
+  V_i(i_cl) = lambda_2 * V_i_prep(i_cl);
 
 }
 
