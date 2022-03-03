@@ -93,8 +93,7 @@ bvar_fast <- function(Yraw,
                       intercept = 100,
                       draws=1000,
                       burnin=1000,
-                      persistence = list(persistence = 0,
-                                         priorPersistence = 0),
+                      persistence = 0,
                       priorPHI,
                       priorL,
                       SV=TRUE,
@@ -177,26 +176,17 @@ bvar_fast <- function(Yraw,
     intercept <- 1
   }
 
-  if(persistence$persistence == 0) {
+  if(persistence == 0) {
 
     PHI0 <- matrix(0, K+intercept, M)
 
   }else {
 
     PHI0 <- matrix(0, K+intercept, M)
-    PHI0[1:M, 1:M] <- diag(M)*persistence$persistence
+    PHI0[1:M, 1:M] <- diag(M)*persistence
 
   }
 
-  if(persistence$priorPersistence>0){
-    persistence$hyper = TRUE
-
-  }else if(persistence$priorPersistence==0){
-    persistence$hyper = FALSE
-  }else{
-    stop("'persistence$priorPersistence' must be a single value greater or equal
-         to zero! \n")
-  }
 
   ##V_i_L <- rep(1, n_L) cpp
 
@@ -384,8 +374,7 @@ bvar_fast <- function(Yraw,
                   sv_para_init,
                   i_mat,
                   i_vec,
-                  progressbar,
-                  persistence
+                  progressbar
                   )
 
   #Rcpp timer is in nanoseconds
