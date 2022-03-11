@@ -43,7 +43,7 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
 
   }else if(prior == "R2D2"){
 
-    out <- list(prior = prior, R2D2_b = R2D2_b)
+    out <- list(prior = prior, R2D2_b = R2D2_b,...)
 
   }else if(prior == "SSVS"){
     if(!(all(SSVS_c0>0) & all(SSVS_c1>0))){

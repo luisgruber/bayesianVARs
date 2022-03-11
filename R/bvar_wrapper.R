@@ -155,15 +155,24 @@ bvar_fast <- function(Yraw,
     i_intercept <- rep(0,M)
   }else i_intercept <- NULL
 
-  i_mat_1 <- diag(M)
-  i_mat_1[upper.tri(i_mat_1)] <-
-    i_mat_1[lower.tri(i_mat_1)] <- -1
-  i_mat <- NULL
-  for (j in seq_len(p)) {
-    i_mat <- rbind(i_mat, i_mat_1 * j)
-  }
-  i_mat <- rbind(i_mat, i_intercept)
-  i_vec <- as.vector(i_mat)
+    if(priorPHI$prior == "DL" | priorPHI$prior == "R2D2"){
+      i_mat <- matrix(1, K, M)
+      if(priorPHI$fol){
+        diag(i_mat[1:M,1:M]) <- 2
+      }
+
+    }else{
+      i_mat_1 <- diag(M)
+      i_mat_1[upper.tri(i_mat_1)] <-
+        i_mat_1[lower.tri(i_mat_1)] <- -1
+      i_mat <- NULL
+      for (j in seq_len(p)) {
+        i_mat <- rbind(i_mat, i_mat_1 * j)
+      }
+    }
+
+    i_mat <- rbind(i_mat, i_intercept)
+    i_vec <- as.vector(i_mat)
 
 # Hyperparameter settigns -------------------------------------------------
 
@@ -231,7 +240,19 @@ bvar_fast <- function(Yraw,
 
   h_init <- matrix(rep(-10, T*M), T,M)
 
-  if(priorPHI$prior == "DL"){
+  if(priorPHI$prior == "R2D2"){
+    clusters <- unique(i_vec[i_vec!=0])
+    n_coefs_cl <- length(clusters)
+    #cluster_ind <- vector("list", n_coefs_cl)
+    n_i <- rep(NA, n_coefs_cl)
+    for (j in seq.int(n_coefs_cl)) {
+      n_i[j] <- length(i_vec[i_vec == clusters[j]])
+    #  cluster_ind[[j]] <- which(i_vec == clusters[[j]])
+    }
+    #priorPHI$cluster_ind <- cluster_ind
+    priorPHI$n_coefs_cl <- n_coefs_cl
+    priorPHI$n_i <- n_i
+  }else if(priorPHI$prior == "DL"){
     if(priorPHI$DL_a == "1/K") priorPHI$DL_a <- 1/K
     if(priorPHI$DL_a == "1/n") priorPHI$DL_a <- 1/n
 
@@ -389,7 +410,7 @@ bvar_fast <- function(Yraw,
     colnames(res$phi_hyperparameter) <- c("zeta", paste0("psi: ", phinames), paste0("theta: ", phinames), "a")#
 
   }else if(priorPHI$prior == "R2D2"){
-    colnames(res$phi_hyperparameter) <- c("zeta", paste0("psi: ", phinames), paste0("theta: ", phinames), "xi")#
+    colnames(res$phi_hyperparameter) <- c(paste0("zeta",1:priorPHI$n_coefs_cl), paste0("psi: ", phinames), paste0("theta: ", phinames), paste0("xi",1:priorPHI$n_coefs_cl))#
 
   }else if(priorPHI$prior == "SSVS"){
   colnames(res$phi_hyperparameter) <- c(paste0("gamma: ", phinames), paste0("p_i: ", phinames))#

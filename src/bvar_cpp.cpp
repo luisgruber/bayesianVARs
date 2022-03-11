@@ -98,21 +98,35 @@ List bvar_cpp(const arma::mat Y,
   arma::mat prep1(prep1_in.begin(), prep1_in.nrow(), prep1_in.ncol(), false);
 
   //----R2D2 on PHI
-  double api;
-  double a_r2d2;
-  double xi = 1;
+  int n_coefs_cl;
+  NumericVector n_i_in;
+  if(priorPHI == "R2D2"){
+    n_coefs_cl = priorPHI_in["n_coefs_cl"];
+    n_i_in = priorPHI_in["n_i"];
+  }
+
+  vec n_i(n_i_in.begin(), n_i_in.length(), false);
+  vec api(n_coefs_cl);
+  vec a_r2d2(n_coefs_cl);
+  vec xi(n_coefs_cl, fill::ones);
   arma::vec theta_r2d2(n); theta_r2d2.fill(1/static_cast<double>(n));
-  double zeta_r2d2 = 10;
+  vec zeta_r2d2(n_coefs_cl); zeta_r2d2.fill(10);
   arma::vec psi_r2d2(n); psi_r2d2.fill(1/static_cast<double>(n));
 
-  double b_r2d2;
-  if(priorPHI== "R2D2"){
-    double b_r2d2_in = priorPHI_in["R2D2_b"];
-    b_r2d2= b_r2d2_in;
+  vec b_r2d2(n);
+  if(priorPHI == "R2D2"){
 
-    api = 1/(pow(n,(b_r2d2/2)) * pow(T,(b_r2d2/2)) *log(T));
-    a_r2d2 = n*api;
+    vec b_r2d2_in = priorPHI_in["R2D2_b"];
+    b_r2d2 = b_r2d2_in;
+
+    for(int i=0; i<n_coefs_cl; i++){
+      api(i) = 1/(pow(n_i(i),(b_r2d2(i)/2)) * pow(T,(b_r2d2(i)/2)) *log(T));
+      a_r2d2(i) = n_i(i)*api(i);
+    }
+    //api = 1/(pow(n,(b_r2d2/2)) * pow(T,(b_r2d2/2)) *log(T));
+    //a_r2d2 = n*api;
     V_i = psi_r2d2%theta_r2d2*zeta_r2d2/2;
+
   }
 
   //---- SSVS on PHI
@@ -318,7 +332,7 @@ List bvar_cpp(const arma::mat Y,
   if(priorPHI == "DL" || priorPHI == "DL_h"){
     phi_hyperparameter_size += 2. + 2*n; // a + zeta + n(theta + psi)
   }else if(priorPHI == "R2D2"){
-    phi_hyperparameter_size += 2. + 2*n; // xi + zeta + n(theta + psi)
+    phi_hyperparameter_size += 2*n_coefs_cl + 2*n; // xi + zeta + n(theta + psi)
   }else if(priorPHI == "SSVS"){
     phi_hyperparameter_size += 2*n; // n(gammas + p_i)
   }else if(priorPHI == "HMP"){
@@ -408,22 +422,25 @@ List bvar_cpp(const arma::mat Y,
 
 
       //try{
-      sample_V_i_R2D2(V_i, PHI_diff(i_ocl), api , zeta_r2d2, psi_r2d2,
-                      theta_r2d2, xi, a_r2d2, b_r2d2 ); //, priorPHI == "DL_h"
+      //sample_V_i_R2D2(V_i, PHI_diff(i_ocl), api , zeta_r2d2, psi_r2d2,
+      //                theta_r2d2, xi, a_r2d2, b_r2d2 ); //, priorPHI == "DL_h"
       // }catch(...){
       //  ::Rf_error("Couldn't sample V_i (R2D2 prior) in run %i.",  rep);
       //}
 
-//      for(int i=0; i<p; i++){
-//        uvec i_cl_i = arma::find(i_vec==(i+1));
-//        uvec i_ol_i = arma::find(i_vec==-(i+1));
-//
-//        sample_V_i_R2D2(V_i_long(i_cl_i), PHI_diff(i_cl_i), api_cl(i) ,
-//                        zeta_cl_r2d2(i), psi_r2d2(i_cl_i), theta_r2d2(i_cl_i),
-//                        xi_cl(i), a_cl_r2d2(i), b_cl_r2d2(i) );
-//        sample_V_i_R2D2(V_i_long(i_ol_i), PHI_diff(i_ol_i), api_ol(i), zeta_r2d2,
-//                        psi_r2d2, theta_r2d2, xi, a_r2d2, b_r2d2 );
-//      }
+      for(int i=0; i<n_coefs_cl; i++){
+        uvec indi = arma::find(i_vec_small==(i+1));
+        uvec indi2 = arma::find(i_vec == (i+1));
+        vec V_i_tmp = V_i(indi);
+        vec psi_tmp = psi_r2d2(indi);
+        vec theta_tmp = theta_r2d2(indi);
+        sample_V_i_R2D2(V_i_tmp, PHI_diff(indi2), api(i) ,
+                        zeta_r2d2(i), psi_tmp, theta_tmp,
+                        xi(i), a_r2d2(i), b_r2d2(i) );
+        V_i(indi) = V_i_tmp;
+        psi_r2d2(indi) = psi_tmp;
+        theta_r2d2(indi) = theta_tmp;
+      }
 
     }else if(priorPHI == "SSVS"){
 
@@ -560,10 +577,10 @@ List bvar_cpp(const arma::mat Y,
 
       }else if(priorPHI == "R2D2"){
 
-        phi_hyperparameter_draws(rep-burnin, 0) = zeta_r2d2 ;
-        phi_hyperparameter_draws(rep-burnin, span(1,(n))) = trans(psi_r2d2.as_col());
-        phi_hyperparameter_draws(rep-burnin, span(n+1.,(2*n))) = trans(theta_r2d2.as_col());
-        phi_hyperparameter_draws(rep-burnin, phi_hyperparameter_size-1.) = xi ;
+        phi_hyperparameter_draws(rep-burnin, span(0,(n_coefs_cl-1))) = zeta_r2d2 ;
+        phi_hyperparameter_draws(rep-burnin, span(n_coefs_cl,(n_coefs_cl+n-1))) = trans(psi_r2d2.as_col());
+        phi_hyperparameter_draws(rep-burnin, span((n_coefs_cl+n),(n_coefs_cl+2*n-1))) = trans(theta_r2d2.as_col());
+        phi_hyperparameter_draws(rep-burnin, span((n_coefs_cl+2*n),phi_hyperparameter_size-1.)) = xi ;
 
       }else if(priorPHI == "SSVS"){
 
