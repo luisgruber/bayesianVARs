@@ -113,14 +113,14 @@ List bvar_cpp(const arma::mat Y,
   vec zeta_r2d2(n_coefs_cl); zeta_r2d2.fill(10);
   arma::vec psi_r2d2(n); psi_r2d2.fill(1/static_cast<double>(n));
 
-  vec b_r2d2(n);
+  vec b_r2d2(n_coefs_cl);
   if(priorPHI == "R2D2"){
 
     vec b_r2d2_in = priorPHI_in["R2D2_b"];
     b_r2d2 = b_r2d2_in;
 
     for(int i=0; i<n_coefs_cl; i++){
-      api(i) = 1/(pow(n_i(i),(b_r2d2(i)/2)) * pow(T,(b_r2d2(i)/2)) *log(T));
+      api(i) = 1/(pow(n,(b_r2d2(i)/2)) * pow(T,(b_r2d2(i)/2)) *log(T)); //(pow(n_i(i),(b_r2d2(i)/2)) * pow(T,(b_r2d2(i)/2)) *log(T))
       a_r2d2(i) = n_i(i)*api(i);
     }
     //api = 1/(pow(n,(b_r2d2/2)) * pow(T,(b_r2d2/2)) *log(T));
@@ -420,6 +420,8 @@ List bvar_cpp(const arma::mat Y,
 
     }else if(priorPHI == "R2D2"){
 
+      sample_V_i_R2D2_new(V_i, PHI_diff(i_ocl), api, zeta_r2d2, psi_r2d2,
+                          theta_r2d2, xi, a_r2d2, b_r2d2, n_coefs_cl, i_vec_small);
 
       //try{
       //sample_V_i_R2D2(V_i, PHI_diff(i_ocl), api , zeta_r2d2, psi_r2d2,
@@ -428,19 +430,19 @@ List bvar_cpp(const arma::mat Y,
       //  ::Rf_error("Couldn't sample V_i (R2D2 prior) in run %i.",  rep);
       //}
 
-      for(int i=0; i<n_coefs_cl; i++){
-        uvec indi = arma::find(i_vec_small==(i+1));
-        uvec indi2 = arma::find(i_vec == (i+1));
-        vec V_i_tmp = V_i(indi);
-        vec psi_tmp = psi_r2d2(indi);
-        vec theta_tmp = theta_r2d2(indi);
-        sample_V_i_R2D2(V_i_tmp, PHI_diff(indi2), api(i) ,
-                        zeta_r2d2(i), psi_tmp, theta_tmp,
-                        xi(i), a_r2d2(i), b_r2d2(i) );
-        V_i(indi) = V_i_tmp;
-        psi_r2d2(indi) = psi_tmp;
-        theta_r2d2(indi) = theta_tmp;
-      }
+  //    for(int i=0; i<n_coefs_cl; i++){
+  //      uvec indi = arma::find(i_vec_small==(i+1));
+  //      uvec indi2 = arma::find(i_vec == (i+1));
+  //      vec V_i_tmp = V_i(indi);
+  //      vec psi_tmp = psi_r2d2(indi);
+  //      vec theta_tmp = theta_r2d2(indi);
+  //      sample_V_i_R2D2(V_i_tmp, PHI_diff(indi2), api(i) ,
+  //                      zeta_r2d2(i), psi_tmp, theta_tmp,
+  //                      xi(i), a_r2d2(i), b_r2d2(i) );
+  //      V_i(indi) = V_i_tmp;
+  //      psi_r2d2(indi) = psi_tmp;
+  //      theta_r2d2(indi) = theta_tmp;
+  //    }
 
     }else if(priorPHI == "SSVS"){
 

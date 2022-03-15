@@ -16,6 +16,7 @@ specify_priorPHI(
   HMP_lambda1 = c(0.01, 0.01),
   HMP_lambda2 = c(0.01, 0.01),
   V_i = 10,
+  global_local_grouping = "global",
   ...
 )
 }

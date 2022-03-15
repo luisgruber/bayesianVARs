@@ -385,6 +385,36 @@ void sample_V_i_R2D2(arma::vec& V_i, const arma::vec& coefs,  const double& api,
   V_i = psi % theta * zeta / 2;
 }
 
+void sample_V_i_R2D2_new(arma::vec& V_i, const arma::vec& coefs,  const arma::vec& api,
+                     arma::vec& zeta, arma::vec& psi, arma::vec& theta, arma::vec& xi,
+                     const arma::vec& a , const arma::vec& b,
+                     const int& n_coefs_cl, const arma::ivec& i_vec ){ //, bool hyper
+
+
+  arma::vec theta_prep(theta.size());
+  double n;
+  for(int i = 0; i<n_coefs_cl; i++){
+    arma::uvec ind = arma::find(i_vec == (i+1));
+    n = ind.size();
+
+    arma::uvec::iterator it;
+    for(it = ind.begin(); it != ind.end(); ++it){
+      psi(*it) = 1./do_rgig1(-0.5, 1, (coefs(*it) * coefs(*it)) /
+        ( zeta(i) * theta(*it)/2));
+      theta_prep(*it) = do_rgig1(api(i) - .5, 2*coefs(*it)*coefs(*it)/psi(*it), 2*xi(i));
+    }
+
+    double tmp4samplingzeta = arma::accu(square(coefs(ind)) / (theta(ind)%psi(ind)));
+    zeta(i) = do_rgig1(a(i) - n/2, 2*tmp4samplingzeta, 2*xi(i));
+    xi(i) = R::rgamma(a(i) + b(i), 1/(1+ zeta(i))); // uses scale
+    theta(ind) = theta_prep(ind) / arma::accu(theta_prep(ind));
+    V_i(ind) = psi(ind) % theta(ind) * zeta(i) / 2;
+
+  }
+
+
+}
+
 void sample_PHI_SL(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
                    const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,
                    arma::mat& Gamma, const int& K, const int& M,

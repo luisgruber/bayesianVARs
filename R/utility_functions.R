@@ -22,7 +22,7 @@
 specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
                              SSVS_c0 = 0.01, SSVS_c1 = 100, SSVS_semiautomatic = TRUE, SSVS_sa = 0.5, SSVS_sb = 0.5,
                              HMP_lambda1 = c(0.01,0.01), HMP_lambda2 = c(0.01,0.01),
-                             V_i = 10,...){
+                             V_i = 10, global_local_grouping="global",...){
   if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "SL"))){
     stop("Argument 'prior' must be one of 'DL', 'SSVS', 'HMP' or 'normal'. \n")
   }
@@ -42,8 +42,14 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
     out <- list(prior = prior, DL_a = DL_a)
 
   }else if(prior == "R2D2"){
+    if(is.character(global_local_grouping)){
+      if(!(global_local_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
+        stop("Argument 'global_local_grouping' must be one of 'global',
+           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
+      }
+    }
 
-    out <- list(prior = prior, R2D2_b = R2D2_b,...)
+    out <- list(prior = prior, R2D2_b = R2D2_b, global_local_grouping = global_local_grouping)
 
   }else if(prior == "SSVS"){
     if(!(all(SSVS_c0>0) & all(SSVS_c1>0))){

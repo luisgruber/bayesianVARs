@@ -156,9 +156,35 @@ bvar_fast <- function(Yraw,
   }else i_intercept <- NULL
 
     if(priorPHI$prior == "DL" | priorPHI$prior == "R2D2"){
-      i_mat <- matrix(1, K, M)
-      if(priorPHI$fol){
+
+      if(all(is.numeric(priorPHI$global_local_grouping))){
+        i_mat <- priorPHI$global_local_grouping
+        if(!(identical(dim(i_mat), as.integer(c(K,M))) & all(is.numeric(i_mat))) )
+          stop("Something went wrong specifying 'global_local_grouping'.")
+      }else if(priorPHI$global_local_grouping=="global"){
+        i_mat <- matrix(1, K, M)
+      }else if(priorPHI$global_local_grouping=="fol"){
+        i_mat <- matrix(1, K, M)
         diag(i_mat[1:M,1:M]) <- 2
+      }else if(priorPHI$global_local_grouping=="olcl-lagwise"){
+        i_mat <- matrix(1, K, M)
+        diag(i_mat[1:M,1:M]) <- 2
+        for (j in 1:(p-1)) {
+          i_mat[(j*M+1):((j+1)*M),] <- i_mat[((j-1)*M+1):(j*M),] + 2
+        }
+      }else if(priorPHI$global_local_grouping == "equation-wise"){
+        i_mat <- matrix(
+          rep(1:M, K),
+          K,M,
+          byrow = TRUE
+        )
+      }else if(priorPHI$global_local_grouping == "covariate-wise"){
+        i_mat <- matrix(
+          rep(1:K, M),
+          K,M
+        )
+      }else {
+          stop("Something went wrong specifying 'global_local_grouping'.")
       }
 
     }else{
@@ -243,6 +269,7 @@ bvar_fast <- function(Yraw,
   if(priorPHI$prior == "R2D2"){
     clusters <- unique(i_vec[i_vec!=0])
     n_coefs_cl <- length(clusters)
+    priorPHI$R2D2_b <- rep_len(priorPHI$R2D2_b, n_coefs_cl)
     #cluster_ind <- vector("list", n_coefs_cl)
     n_i <- rep(NA, n_coefs_cl)
     for (j in seq.int(n_coefs_cl)) {
