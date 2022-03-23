@@ -155,7 +155,7 @@ bvar_fast <- function(Yraw,
     i_intercept <- rep(0,M)
   }else i_intercept <- NULL
 
-    if(priorPHI$prior == "DL" | priorPHI$prior == "R2D2"){
+    if(priorPHI$prior == "DL" | priorPHI$prior == "R2D2" | priorPHI$prior == "DL_h"){
 
       if(all(is.numeric(priorPHI$global_local_grouping))){
         i_mat <- priorPHI$global_local_grouping
@@ -222,17 +222,10 @@ bvar_fast <- function(Yraw,
 
   }
 
-
-  ##V_i_L <- rep(1, n_L) cpp
-
   if(!(priorPHI$prior %in% c("DL", "DL_h", "HMP", "SSVS", "normal", "R2D2", "SL"))){
     stop("Argument 'priorPHI$prior' must be one of
            'DL', 'SSVS', 'HMP' or 'normal'. \n")
   }
-
-  ##if(is.null(priorPHI$V_i)){ cpp
-  ##  V_i <- rep(1, n)}
-
 
 # Initialize --------------------------------------------------------------
 
@@ -252,6 +245,7 @@ bvar_fast <- function(Yraw,
     L_flat <- backsolve(L_inv, diag(M))
   }
 
+    #some proper checks missing!!!
   if(is.null(PHI_in)){
     PHI_in <- PHI_flat
   }
@@ -266,31 +260,54 @@ bvar_fast <- function(Yraw,
 
   h_init <- matrix(rep(-10, T*M), T,M)
 
+  if(priorPHI$prior == "R2D2" | priorPHI$prior == "DL" | priorPHI$prior == "DL_h"){
+
+    groups <- unique(i_vec[i_vec!=0])
+    n_groups <- length(groups)
+    #n_i <- rep(NA, n_groups)
+    #for (j in seq.int(n_groups)) {
+    #  n_i[j] <- length(i_vec[i_vec == j])
+    #}
+    priorPHI$n_groups <- n_groups
+    priorPHI$groups <- groups
+    #priorPHI$n_i <- n_i
+  }
+
   if(priorPHI$prior == "R2D2"){
-    clusters <- unique(i_vec[i_vec!=0])
-    n_coefs_cl <- length(clusters)
-    priorPHI$R2D2_b <- rep_len(priorPHI$R2D2_b, n_coefs_cl)
-    #cluster_ind <- vector("list", n_coefs_cl)
-    n_i <- rep(NA, n_coefs_cl)
-    for (j in seq.int(n_coefs_cl)) {
-      n_i[j] <- length(i_vec[i_vec == clusters[j]])
-    #  cluster_ind[[j]] <- which(i_vec == clusters[[j]])
+
+    if(all(is.numeric(priorPHI$R2D2_b))){
+      priorPHI$R2D2_b <- rep_len(priorPHI$R2D2_b, n_groups)
+      priorPHI$R2D2_hyper <- FALSE
+    }else{
+      priorPHI$R2D2_hyper <- TRUE
+      priorPHI$R2D2_b <- rep(0.5, n_groups)
     }
-    #priorPHI$cluster_ind <- cluster_ind
-    priorPHI$n_coefs_cl <- n_coefs_cl
-    priorPHI$n_i <- n_i
+
+
   }else if(priorPHI$prior == "DL"){
+
     if(priorPHI$DL_a == "1/K") priorPHI$DL_a <- 1/K
     if(priorPHI$DL_a == "1/n") priorPHI$DL_a <- 1/n
+
+    priorPHI$DL_a <- rep_len(priorPHI$DL_a, n_groups)
 
   }else if(priorPHI$prior == "DL_h"){
 
     grid <- 1000
     priorPHI$a_vec <- seq(1/(n),1/2,length.out = grid)
-    priorPHI$a_mat <- matrix(rep(priorPHI$a_vec,n), nrow = grid)
-    priorPHI$prep1 <- t(priorPHI$a_mat - 1)
-    priorPHI$prep2 <- matrix(lgamma(rowSums(priorPHI$a_mat)) - rowSums(lgamma(priorPHI$a_mat)), nrow = 1, ncol = grid)
-    priorPHI$DL_a <- 1/n
+    # prep1 &prep2: some preparations for the evaluation of the
+    # Dirichlet-density
+    priorPHI$prep1 <- priorPHI$a_vec-1
+    prep2 <- matrix(NA, n_groups, grid)
+    ii <- 1
+    for(j in groups){
+      n_tmp <- length(which(i_vec == j))
+      # exploit the fact, that we use the symmetric Dirichlet distribution
+      prep2[ii,] <- lgamma(n_tmp*priorPHI$a_vec) - n_tmp*lgamma(priorPHI$a_vec)
+      ii <- ii + 1
+    }
+    priorPHI$prep2 <- prep2
+    priorPHI$DL_a <- rep_len(1/K, n_groups) # initial value
 
   }else if(priorPHI$prior == "SSVS"){
 
@@ -434,10 +451,10 @@ bvar_fast <- function(Yraw,
   dimnames(res$L)[2] <- dimnames(res$L)[3] <- list(colnames(Y))
   phinames <- as.vector((vapply(seq_len(M), function(i) paste0(colnames(Y)[i], "~", colnames(X[,1:(ncol(X)-intercept)])), character(K))))
   if(priorPHI$prior %in% c("DL","DL_h")){
-    colnames(res$phi_hyperparameter) <- c("zeta", paste0("psi: ", phinames), paste0("theta: ", phinames), "a")#
+    colnames(res$phi_hyperparameter) <- c(paste0("zeta",1:priorPHI$n_groups), paste0("psi: ", phinames), paste0("theta: ", phinames), paste0("a",1:priorPHI$n_groups))#
 
   }else if(priorPHI$prior == "R2D2"){
-    colnames(res$phi_hyperparameter) <- c(paste0("zeta",1:priorPHI$n_coefs_cl), paste0("psi: ", phinames), paste0("theta: ", phinames), paste0("xi",1:priorPHI$n_coefs_cl))#
+    colnames(res$phi_hyperparameter) <- c(paste0("zeta",1:priorPHI$n_groups), paste0("psi: ", phinames), paste0("theta: ", phinames), paste0("xi",1:priorPHI$n_groups),paste0("b",1:priorPHI$n_groups))#
 
   }else if(priorPHI$prior == "SSVS"){
   colnames(res$phi_hyperparameter) <- c(paste0("gamma: ", phinames), paste0("p_i: ", phinames))#

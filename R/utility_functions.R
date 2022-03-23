@@ -37,9 +37,15 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
     }
     if(DL_a == "hyperprior"){
       prior <- "DL_h"
-      DL_a <- 0.5 # initial value
+      DL_a <- NULL
     }
-    out <- list(prior = prior, DL_a = DL_a)
+    if(is.character(global_local_grouping)){
+      if(!(global_local_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
+        stop("Argument 'global_local_grouping' must be one of 'global',
+           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
+      }
+    }
+    out <- list(prior = prior, DL_a = DL_a, global_local_grouping = global_local_grouping)
 
   }else if(prior == "R2D2"){
     if(is.character(global_local_grouping)){
