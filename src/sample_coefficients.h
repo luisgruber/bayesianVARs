@@ -53,10 +53,10 @@ void sample_V_i_R2D2(arma::vec& V_i, const arma::vec& coefs,  const double& api,
                      double& zeta, arma::vec& psi, arma::vec& theta, double& xi,
                      const double& a , const double& b);
 
-void sample_V_i_R2D2_new(arma::vec& V_i, const arma::vec& coefs,  const arma::vec& api,
-                         arma::vec& zeta, arma::vec& psi, arma::vec& theta, arma::vec& xi,
-                         const arma::vec& a , arma::vec& b,
-                         arma::ivec& groups, const arma::ivec& i_vec, const bool b_hyper );
+void sample_V_i_R2D2_new(arma::vec& V_i, const arma::vec& coefs, arma::vec& api,
+                         arma::vec& zeta, arma::vec& psi, arma::vec& theta, arma::vec& xi,//const arma::vec& a ,
+                         arma::vec& b, arma::ivec& groups, const arma::ivec& i_vec,
+                         const bool b_hyper, const arma::vec& api_vec, const arma::vec& b_vec);
 
 void sample_PHI_SL(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
                    const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,

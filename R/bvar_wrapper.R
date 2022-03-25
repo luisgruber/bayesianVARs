@@ -281,6 +281,22 @@ bvar_fast <- function(Yraw,
     }else{
       priorPHI$R2D2_hyper <- TRUE
       priorPHI$R2D2_b <- rep(0.5, n_groups)
+      ##########################################################################
+#      grid <- 1000
+#      priorPHI$a_vec <- seq(1/(n),1/2,length.out = grid)
+#      # prep1 &prep2: some preparations for the evaluation of the
+#      # Dirichlet-density
+#      priorPHI$prep1 <- priorPHI$a_vec-1
+#      prep2 <- matrix(NA, n_groups, grid)
+#      ii <- 1
+#      for(j in groups){
+#        n_tmp <- length(which(i_vec == j))
+#        # exploit the fact, that we use the symmetric Dirichlet distribution
+#        prep2[ii,] <- lgamma(n_tmp*priorPHI$a_vec) - n_tmp*lgamma(priorPHI$a_vec)
+#        ii <- ii + 1
+#      }
+#      priorPHI$prep2 <- prep2
+      ##########################################################################
     }
 
 
@@ -454,7 +470,12 @@ bvar_fast <- function(Yraw,
     colnames(res$phi_hyperparameter) <- c(paste0("zeta",1:priorPHI$n_groups), paste0("psi: ", phinames), paste0("theta: ", phinames), paste0("a",1:priorPHI$n_groups))#
 
   }else if(priorPHI$prior == "R2D2"){
-    colnames(res$phi_hyperparameter) <- c(paste0("zeta",1:priorPHI$n_groups), paste0("psi: ", phinames), paste0("theta: ", phinames), paste0("xi",1:priorPHI$n_groups),paste0("b",1:priorPHI$n_groups))#
+    colnames(res$phi_hyperparameter) <- c(paste0("zeta",1:priorPHI$n_groups),
+                                          paste0("psi: ", phinames),
+                                          paste0("theta: ", phinames),
+                                          paste0("xi",1:priorPHI$n_groups),
+                                          paste0("b",1:priorPHI$n_groups),
+                                          paste0("api",1:priorPHI$n_groups))#
 
   }else if(priorPHI$prior == "SSVS"){
   colnames(res$phi_hyperparameter) <- c(paste0("gamma: ", phinames), paste0("p_i: ", phinames))#

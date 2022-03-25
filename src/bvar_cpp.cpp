@@ -109,6 +109,7 @@ List bvar_cpp(const arma::mat Y,
   arma::mat prep2(prep2_in.begin(), prep2_in.nrow(), prep2_in.ncol(), false);
   //arma::mat a_mat(a_mat_in.begin(), a_mat_in.nrow(), a_mat_in.ncol(), false);
   arma::vec prep1(prep1_in.begin(), prep1_in.length(), false);
+  ///////
 
   //----R2D2 on PHI
   vec api(n_groups);
@@ -120,17 +121,38 @@ List bvar_cpp(const arma::mat Y,
 
   bool R2D2_hyper;
   vec b_r2d2(n_groups);
+  arma::vec api_vec(99);
+  arma::vec b_r2d2_vec(99);
+  //////////////////////
+  //NumericVector a_vec_in;
+  //NumericMatrix prep2_in(n_groups, 1000);
+  //NumericVector prep1_in;
+  /////////////////////
   if(priorPHI == "R2D2"){
+
     R2D2_hyper = priorPHI_in["R2D2_hyper"];
-    vec b_r2d2_in = priorPHI_in["R2D2_b"];
-    b_r2d2 = b_r2d2_in;
+    if(R2D2_hyper == false){
+      vec b_r2d2_in = priorPHI_in["R2D2_b"];
+      b_r2d2 = b_r2d2_in;
+    }
+
     arma::ivec::iterator it;
     int i = 0;
     for(it=groups.begin();it!=groups.end(); ++it){
       arma::uvec ind = arma::find(i_vec_small == *it);
       //arma::uvec ind2 = arma::find(i_vec_small == (i+1));
       int n_tmp = ind.size();
-      api(i) = 1/(pow(n,(b_r2d2(i)/2)) * pow(T,(b_r2d2(i)/2)) *log(T)); //(pow(n_i(i),(b_r2d2(i)/2)) * pow(T,(b_r2d2(i)/2)) *log(T))
+      if(R2D2_hyper==true){
+        for(int ii = 0; ii<99; ii++){
+          b_r2d2_vec(ii) = (ii+1)*0.01;
+          api_vec(ii) = 1/(pow(n,(b_r2d2_vec(ii)/2)) * pow(T,(b_r2d2_vec(ii)/2)) *log(T));
+        }
+        b_r2d2(i) = b_r2d2_vec(0);
+        api(i) = api_vec(0);
+      }else{
+        api(i) = 1/(pow(n,(b_r2d2(i)/2)) * pow(T,(b_r2d2(i)/2)) *log(T));
+      }
+      //1/(pow(n,(b_r2d2(i)/2)) * pow(T,(b_r2d2(i)/2)) *log(T)); //(pow(n_i(i),(b_r2d2(i)/2)) * pow(T,(b_r2d2(i)/2)) *log(T))
       a_r2d2(i) = n_tmp*api(i);
       i += 1;
     }
@@ -139,6 +161,7 @@ List bvar_cpp(const arma::mat Y,
     V_i = psi_r2d2%theta_r2d2*zeta_r2d2(0)/2;
 
   }
+
 
   //---- SSVS on PHI
   arma::vec tau_0;
@@ -343,7 +366,7 @@ List bvar_cpp(const arma::mat Y,
   if(priorPHI == "DL" || priorPHI == "DL_h"){
     phi_hyperparameter_size += 2*n_groups + 2*n; // a + zeta + n(theta + psi)
   }else if(priorPHI == "R2D2"){
-    phi_hyperparameter_size += 3*n_groups + 2*n; // (b+)xi + zeta + n(theta + psi)
+    phi_hyperparameter_size += 4*n_groups + 2*n; // (b+)xi + zeta + n(theta + psi)
   }else if(priorPHI == "SSVS"){
     phi_hyperparameter_size += 2*n; // n(gammas + p_i)
   }else if(priorPHI == "HMP"){
@@ -435,8 +458,8 @@ List bvar_cpp(const arma::mat Y,
     }else if(priorPHI == "R2D2"){
 
       sample_V_i_R2D2_new(V_i, PHI_diff(i_ocl), api, zeta_r2d2, psi_r2d2,
-                          theta_r2d2, xi, a_r2d2, b_r2d2, groups, i_vec_small,
-                          R2D2_hyper);
+                          theta_r2d2, xi, b_r2d2, groups, i_vec_small, //, a_r2d2
+                          R2D2_hyper, api_vec, b_r2d2_vec);
 
       //try{
       //sample_V_i_R2D2(V_i, PHI_diff(i_ocl), api , zeta_r2d2, psi_r2d2,
@@ -597,8 +620,9 @@ List bvar_cpp(const arma::mat Y,
         phi_hyperparameter_draws(rep-burnin, span(0,(n_groups-1))) = zeta_r2d2 ;
         phi_hyperparameter_draws(rep-burnin, span(n_groups,(n_groups+n-1))) = trans(psi_r2d2.as_col());
         phi_hyperparameter_draws(rep-burnin, span((n_groups+n),(n_groups+2*n-1))) = trans(theta_r2d2.as_col());
-        phi_hyperparameter_draws(rep-burnin, span((n_groups+2*n),phi_hyperparameter_size-1.-n_groups)) = xi ;
-        phi_hyperparameter_draws(rep-burnin, span((2*n_groups+2*n ),phi_hyperparameter_size-1.)) = b_r2d2;
+        phi_hyperparameter_draws(rep-burnin, span((n_groups+2*n),phi_hyperparameter_size-1.-2*n_groups)) = xi ;
+        phi_hyperparameter_draws(rep-burnin, span((2*n_groups+2*n ),phi_hyperparameter_size -1.-n_groups)) = b_r2d2;
+        phi_hyperparameter_draws(rep-burnin, span((3*n_groups+2*n ),phi_hyperparameter_size-1.)) = api;
 
       }else if(priorPHI == "SSVS"){
 

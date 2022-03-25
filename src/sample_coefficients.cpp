@@ -447,20 +447,29 @@ void sample_V_i_R2D2(arma::vec& V_i, const arma::vec& coefs,  const double& api,
   V_i = psi % theta * zeta / 2;
 }
 
-void sample_V_i_R2D2_new(arma::vec& V_i, const arma::vec& coefs,  const arma::vec& api,
-                     arma::vec& zeta, arma::vec& psi, arma::vec& theta, arma::vec& xi,
-                     const arma::vec& a , arma::vec& b,
-                     arma::ivec& groups, const arma::ivec& i_vec, const bool b_hyper ){ //, bool hyper
+double logddirichlet(arma::vec x, double a){
+  int n = x.size();
+  double d = lgamma(n*a) - n*lgamma(a) +
+    sum((a - 1) * log(x));
+    return(d);
+}
+
+void sample_V_i_R2D2_new(arma::vec& V_i, const arma::vec& coefs, arma::vec& api,
+                     arma::vec& zeta, arma::vec& psi, arma::vec& theta, arma::vec& xi,//const arma::vec& a ,
+                     arma::vec& b, arma::ivec& groups, const arma::ivec& i_vec,
+                     const bool b_hyper, const arma::vec& api_vec, const arma::vec& b_vec){ //, bool hyper
 
 
   arma::vec theta_prep(theta.size());
   double n;
   arma::ivec::iterator g;
   int j=0;
+  ///
+  arma::vec a(groups.size());
   for(g=groups.begin(); g!=groups.end(); ++g){
     arma::uvec ind = arma::find(i_vec == *g);
     n = ind.size();
-
+    a(j) = n*api(j);
     arma::uvec::iterator it;
     for(it = ind.begin(); it != ind.end(); ++it){
       psi(*it) = 1./do_rgig1(-0.5, 1, (coefs(*it) * coefs(*it)) /
@@ -477,19 +486,20 @@ void sample_V_i_R2D2_new(arma::vec& V_i, const arma::vec& coefs,  const arma::ve
 
     if(b_hyper){
       arma::vec logprobs(99);
-      double b_tmp = 0.01;
-     for(int i=0; i<99; ++i){
-       logprobs(i) = R::dgamma(xi(j), b_tmp, 1, true);
-       b_tmp += 0.01;
-     }
-     arma::vec w_tmp = exp(logprobs - logprobs.max());
-     arma::vec w = w_tmp/sum(w_tmp);
+      for(int i=0; i<99; ++i){
 
-     int k = w.size();
-     arma::ivec iv(k);
-     R::rmultinom(1, w.begin(), k, iv.begin());
-     arma::uvec ii = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
-     b(j) = 0.01 + ii(0)*0.01;
+        logprobs(i) = R::dgamma(xi(j), b_vec(i), 1, true) + logddirichlet(theta(ind), api_vec(i));
+
+      }
+      arma::vec w_tmp = exp(logprobs - logprobs.max());
+      arma::vec w = w_tmp/sum(w_tmp);
+
+      int k = w.size();
+      arma::ivec iv(k);
+      R::rmultinom(1, w.begin(), k, iv.begin());
+      arma::uvec ii = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
+      b(j) = b_vec(ii(0));
+      api(j) = api_vec(ii(0));
     }
 
     j += 1;
