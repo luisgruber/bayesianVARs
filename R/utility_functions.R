@@ -30,15 +30,17 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
   if(prior == "DL"){
     text <- c("Argument 'DL_a' must be either a single positive numeric or one of 'hyperprior',
            '1/K' or '1/n'. \n ")
-    if(is.numeric(DL_a) & DL_a <= 0) stop(text)
-    if(length(DL_a)>1) stop(text)
-    if(is.character(DL_a) & !(DL_a %in% c("hyperprior", "1/K", "1/n"))){
+
+    if(any(DL_a <= 0)) {
       stop(text)
+      }else if(all(is.character(DL_a))){
+        if(!(any(is.character(DL_a)) &
+             any(DL_a %in% c("hyperprior", "1/K", "1/n")) &
+             length(DL_a)==1)){
+          stop(text)
+        }
     }
-    if(DL_a == "hyperprior"){
-      prior <- "DL_h"
-      DL_a <- NULL
-    }
+
     if(is.character(global_local_grouping)){
       if(!(global_local_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
         stop("Argument 'global_local_grouping' must be one of 'global',
@@ -110,10 +112,7 @@ specify_priorL <- function(prior, DL_b = "1/n", R2D2_b = 0.5,
     if(is.character(DL_b) & !(DL_b %in% c("hyperprior", "1/n"))){
       stop(text)
     }
-    if(DL_b == "hyperprior"){
-      prior <- "DL_h"
-      DL_b <- 0.5 # initial value
-    }
+
     out <- list(prior = prior, DL_b = DL_b)
 
   }else if(prior == "R2D2"){

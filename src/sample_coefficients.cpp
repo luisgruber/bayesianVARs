@@ -260,55 +260,6 @@ void sample_L(arma::mat& L, arma::mat& Ytilde, const arma::vec& V_i, const arma:
 
 }
 
-void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, const double& a ,
-                   double& zeta, arma::vec& psi, arma::vec& theta){ //, bool hyper
-
-  double n = coefs.size();
-  arma::vec coefs_abs = arma::abs(coefs);
-  double zeta2 = zeta*zeta;
-  arma::vec theta_prep(n);
-    for(int j = 0; j < n; j++){
-      psi(j) = 1./do_rgig1(-0.5, 1, (coefs_abs(j) * coefs_abs(j)) /
-        ( zeta2 * theta(j) * theta(j)));
-      theta_prep(j) = do_rgig1(a-1., 2*coefs_abs(j), 1);
-    }
-
-  double tmp4samplingzeta = arma::accu(coefs_abs / theta);
-  zeta = do_rgig1(n*(a-1.), 2*tmp4samplingzeta,1);
-  theta = theta_prep / arma::accu(theta_prep);
-  V_i = psi % theta%theta * zeta*zeta;
-}
-
-void sample_V_i_DL_new(arma::vec& V_i, const arma::vec& coefs, const arma::vec& a ,
-                   arma::vec& zeta, arma::vec& psi, arma::vec& theta,
-                   arma::ivec& groups, const arma::ivec& i_vec ){ //, bool hyper
-
-  arma::vec coefs_abs = arma::abs(coefs);
-  arma::vec theta_prep(theta.size());
-  double n;
-  arma::ivec::iterator g;
-  int i=0;
-  for(g=groups.begin(); g!=groups.end(); ++g){
-    arma::uvec ind = arma::find(i_vec == *g);
-    n = ind.size();
-
-   arma::uvec::iterator it;
-   for(it = ind.begin(); it != ind.end(); ++it){
-
-     psi(*it) = 1./do_rgig1(-0.5, 1, (coefs_abs(*it) * coefs_abs(*it)) /
-       ( zeta(i)*zeta(i) * theta(*it) * theta(*it)));
-     theta_prep(*it) = do_rgig1(a(i)-1., 2*coefs_abs(*it), 1);
-
-    }
-
-   double tmp4samplingzeta = arma::accu(coefs_abs(ind) / theta(ind));
-   zeta(i) = do_rgig1(n*(a(i)-1.), 2*tmp4samplingzeta,1);
-   theta(ind) = theta_prep(ind) / arma::accu(theta_prep(ind));
-   V_i(ind) = psi(ind) % theta(ind)%theta(ind) * zeta(i)*zeta(i);
-   i += 1;
-  }
-}
-
 arma::colvec ddir_prep(const arma::colvec& x, const arma::vec& prep1, const arma::rowvec& prep2){
 
   //arma::rowvec logd = sum(prep1.each_col() % log(x), 0) + prep2;
@@ -321,47 +272,96 @@ arma::colvec ddir_prep(const arma::colvec& x, const arma::vec& prep1, const arma
   return(logd.t());
 }
 
-void sample_DL_hyper(double& a, const arma::colvec& theta, const arma::mat& prep1,
-                     const arma::rowvec& prep2, const double& zeta,
-                     const arma::vec& a_vec){
-  const int n = theta.size();
-  arma::vec logprobs = ddir_prep(theta, prep1, prep2);
-  for(int j=0; j<1000; j++){
-    logprobs(j) += R::dgamma(zeta, n*a_vec(j), 1./0.5, true); // R::dgamma uses scale
-  }
+void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
+                   const arma::vec a_vec, const arma::vec prep1,
+                   const arma::vec prep2, double& zeta, arma::vec& psi,
+                   arma::vec& theta, arma::uvec ind, const bool hyper){ //, bool hyper
 
-  arma::vec w = exp(logprobs - logprobs.max());
-  arma::vec weights = w/sum(w);
-  int k = weights.size();
-  arma::ivec iv(k);
-  R::rmultinom(1, weights.begin(), k, iv.begin());
-  arma::uvec i = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
-  a = a_vec(i(0));
-}
-
-void sample_DL_hyper_new(arma::vec& a, const arma::colvec& theta, const arma::vec& prep1,
-                     const arma::mat& prep2, const arma::vec& zeta,
-                     const arma::vec& a_vec, arma::ivec& groups,
-                     const arma::ivec& i_vec ){
-  int n;
-  arma::ivec::iterator it;
-  int j = 0;
-  for(it=groups.begin(); it!=groups.end(); ++it){
-    arma::uvec ind = arma::find(i_vec == *it);
-    n = ind.size();
-
-    arma::vec logprobs = ddir_prep(theta(ind), prep1, prep2.row(j));
-    for(int r=0; r<1000; r++){
-      logprobs(r) += R::dgamma(zeta(j), n*a_vec(r), 1./0.5, true); // R::dgamma uses scale
+  double n = coefs.size();
+  arma::vec coefs_abs = arma::abs(coefs);
+  double zeta2 = zeta*zeta;
+  arma::vec theta_prep(n);
+  arma::uvec::iterator it;
+  double j = 0;
+    for(it = ind.begin(); it != ind.end(); ++it){ //int j = 0; j < n; j++
+      psi(*it) = 1./do_rgig1(-0.5, 1, (coefs_abs(j) * coefs_abs(j)) /
+        ( zeta2 * theta(*it) * theta(*it)));
+      theta_prep(j) = do_rgig1(a-1., 2*coefs_abs(j), 1);
+      j += 1;
     }
+
+  double tmp4samplingzeta = arma::accu(coefs_abs / theta(ind));
+  zeta = do_rgig1(n*(a-1.), 2*tmp4samplingzeta,1);
+  theta(ind) = theta_prep / arma::accu(theta_prep);
+  V_i(ind) = psi(ind) % theta(ind)%theta(ind) * zeta*zeta;
+
+  if(hyper){
+    int gridlength = a_vec.size();
+    arma::vec logprobs = ddir_prep(theta(ind), prep1, prep2);
+    for(int j=0; j<gridlength; j++){
+      logprobs(j) += R::dgamma(zeta, n*a_vec(j), 1./0.5, true); // R::dgamma uses scale
+    }
+
     arma::vec w = exp(logprobs - logprobs.max());
     arma::vec weights = w/sum(w);
     int k = weights.size();
     arma::ivec iv(k);
     R::rmultinom(1, weights.begin(), k, iv.begin());
     arma::uvec i = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
-    a(j) = a_vec(i(0));
+    a = a_vec(i(0));
+  }
+
+}
+
+double logddirichlet(arma::vec x, double a){
+  // symmetric dirichlet distribution
+  int n = x.size();
+  double d = lgamma(n*a) - n*lgamma(a) +
+    sum((a - 1) * log(x));
+  return(d);
+}
+
+void sample_V_i_R2D2(arma::vec& V_i, const arma::vec coefs, double& api,
+                    const arma::vec api_vec, double& zeta, arma::vec& psi,
+                    arma::vec& theta, double& xi, double& b,
+                    const arma::vec b_vec, arma::uvec ind, const bool hyper){ //, bool hyper
+
+  double n = coefs.size();
+  arma::vec theta_prep(n);
+
+  arma::uvec::iterator it;
+  double j = 0;
+  for(it = ind.begin(); it != ind.end(); ++it){ //int j = 0; j < n; j++
+    psi(*it) = 1./do_rgig1(-0.5, 1, (coefs(j) * coefs(j)) /
+      ( zeta * theta(*it)/2));
+    theta_prep(j) = do_rgig1(api - .5, 2*coefs(j)*coefs(j)/psi(*it), 2*xi);
     j += 1;
+  }
+
+  double tmp4samplingzeta = arma::accu(square(coefs) / (theta(ind)%psi(ind)));
+  zeta = do_rgig1(n*api - n/2, 2*tmp4samplingzeta, 2*xi);
+  xi = R::rgamma(n*api + b, 1/(1+ zeta)); // uses scale
+  theta(ind) = theta_prep / arma::accu(theta_prep);
+  V_i(ind) = psi(ind) % theta(ind) * zeta / 2;
+
+  if(hyper){
+    int gridlength = b_vec.size();
+    arma::vec logprobs(gridlength);
+    for(int i=0; i<gridlength; ++i){
+
+      logprobs(i) = R::dgamma(xi, b_vec(i), 1, true) +
+        logddirichlet(theta(ind), api_vec(i));
+
+    }
+    arma::vec w_tmp = exp(logprobs - logprobs.max());
+    arma::vec w = w_tmp/sum(w_tmp);
+
+    int k = w.size();
+    arma::ivec iv(k);
+    R::rmultinom(1, w.begin(), k, iv.begin());
+    arma::uvec ii = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
+    b = b_vec(ii(0));
+    api = api_vec(ii(0));
   }
 
 }
@@ -427,85 +427,7 @@ void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
 
 }
 
-void sample_V_i_R2D2(arma::vec& V_i, const arma::vec& coefs,  const double& api,
-                   double& zeta, arma::vec& psi, arma::vec& theta, double& xi,
-                   const double& a , const double& b){ //, bool hyper
 
-  double n = coefs.size();
-  arma::vec theta_prep(n);
-
-  for(int j = 0; j < n; j++){
-    psi(j) = 1./do_rgig1(-0.5, 1, (coefs(j) * coefs(j)) /
-      ( zeta * theta(j)/2));
-    theta_prep(j) = do_rgig1(api - .5, 2*coefs(j)*coefs(j)/psi(j), 2*xi);
-  }
-
-  double tmp4samplingzeta = arma::accu(square(coefs) / (theta%psi));
-  zeta = do_rgig1(a - n/2, 2*tmp4samplingzeta, 2*xi);
-  xi = R::rgamma(a + b, 1/(1+ zeta)); // uses scale
-  theta = theta_prep / arma::accu(theta_prep);
-  V_i = psi % theta * zeta / 2;
-}
-
-double logddirichlet(arma::vec x, double a){
-  int n = x.size();
-  double d = lgamma(n*a) - n*lgamma(a) +
-    sum((a - 1) * log(x));
-    return(d);
-}
-
-void sample_V_i_R2D2_new(arma::vec& V_i, const arma::vec& coefs, arma::vec& api,
-                     arma::vec& zeta, arma::vec& psi, arma::vec& theta, arma::vec& xi,//const arma::vec& a ,
-                     arma::vec& b, arma::ivec& groups, const arma::ivec& i_vec,
-                     const bool b_hyper, const arma::vec& api_vec, const arma::vec& b_vec){ //, bool hyper
-
-
-  arma::vec theta_prep(theta.size());
-  double n;
-  arma::ivec::iterator g;
-  int j=0;
-  ///
-  arma::vec a(groups.size());
-  for(g=groups.begin(); g!=groups.end(); ++g){
-    arma::uvec ind = arma::find(i_vec == *g);
-    n = ind.size();
-    a(j) = n*api(j);
-    arma::uvec::iterator it;
-    for(it = ind.begin(); it != ind.end(); ++it){
-      psi(*it) = 1./do_rgig1(-0.5, 1, (coefs(*it) * coefs(*it)) /
-        ( zeta(j) * theta(*it)/2));
-      theta_prep(*it) = do_rgig1(api(j) - .5, 2*coefs(*it)*coefs(*it)/psi(*it), 2*xi(j));
-    }
-
-    double tmp4samplingzeta = arma::accu(square(coefs(ind)) / (theta(ind)%psi(ind)));
-    zeta(j) = do_rgig1(a(j) - n/2, 2*tmp4samplingzeta, 2*xi(j));
-    xi(j) = R::rgamma(a(j) + b(j), 1/(1+ zeta(j))); // uses scale
-    theta(ind) = theta_prep(ind) / arma::accu(theta_prep(ind));
-    V_i(ind) = psi(ind) % theta(ind) * zeta(j) / 2;
-
-
-    if(b_hyper){
-      arma::vec logprobs(99);
-      for(int i=0; i<99; ++i){
-
-        logprobs(i) = R::dgamma(xi(j), b_vec(i), 1, true) + logddirichlet(theta(ind), api_vec(i));
-
-      }
-      arma::vec w_tmp = exp(logprobs - logprobs.max());
-      arma::vec w = w_tmp/sum(w_tmp);
-
-      int k = w.size();
-      arma::ivec iv(k);
-      R::rmultinom(1, w.begin(), k, iv.begin());
-      arma::uvec ii = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
-      b(j) = b_vec(ii(0));
-      api(j) = api_vec(ii(0));
-    }
-
-    j += 1;
-  }
-
-}
 
 void sample_PHI_SL(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
                    const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,

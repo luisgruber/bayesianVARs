@@ -3,7 +3,6 @@
 #include <progress.hpp>
 #include <Rcpp/Benchmark/Timer.h>
 #include "sample_coefficients.h"
-//#include "SL.h"
 
 using namespace Rcpp;
 using namespace arma;
@@ -71,97 +70,66 @@ List bvar_cpp(const arma::mat Y,
   //---- DL prior on PHI
 
   int n_groups;
-  NumericVector n_i_in;
   IntegerVector groups_in;
-  if(priorPHI == "R2D2" || priorPHI== "DL" || priorPHI== "DL_h"){
+  if(priorPHI == "R2D2" || priorPHI== "DL"){
     n_groups = priorPHI_in["n_groups"];
-    //n_i_in = priorPHI_in["n_i"];
     groups_in = priorPHI_in["groups"];
   }
-  //vec n_i(n_i_in.begin(), n_i_in.length(), false);
   arma::ivec groups(groups_in.begin(), groups_in.length(), false);
 
   arma::vec psi(n);psi.fill(1.0);
   arma::vec zeta(n_groups); zeta.fill(10);
   arma::vec theta(n);theta.fill(1/static_cast<double>(n));
 
-   arma::vec DL_a(n_groups);
-   if(priorPHI == "DL" || priorPHI == "DL_h"){
-    arma::vec DL_a_in = priorPHI_in["DL_a"];
-    DL_a = DL_a_in;
-    V_i = psi % theta % theta * zeta(0) * zeta(0);
-   }
-
+  arma::vec DL_a(n_groups);
+  bool DL_hyper;
   NumericVector a_vec_in;
   NumericMatrix prep2_in(n_groups, 1000);
-  //NumericMatrix a_mat_in(1000,n);
-  //NumericMatrix prep1_in(n,1000);
   NumericVector prep1_in;
-  if(priorPHI == "DL_h"){
-    a_vec_in = priorPHI_in["a_vec"];
-    prep2_in = wrap(priorPHI_in["prep2"]);
-    //a_mat_in = wrap(priorPHI_in["a_mat"]);
-    //prep1_in = wrap(priorPHI_in["prep1"]);
-    prep1_in = priorPHI_in["prep1"];
-
+  if(priorPHI == "DL" ){
+    DL_hyper = priorPHI_in["DL_hyper"];
+    V_i = psi % theta % theta * zeta(0) * zeta(0);
+    arma::vec DL_a_in = priorPHI_in["DL_a"];
+    DL_a = DL_a_in;
+    if(DL_hyper == true){
+      a_vec_in = priorPHI_in["a_vec"];
+      prep2_in = wrap(priorPHI_in["prep2"]);
+      prep1_in = priorPHI_in["prep1"];
+      }
   }
   arma::vec a_vec(a_vec_in.begin(), a_vec_in.length(), false);
   arma::mat prep2(prep2_in.begin(), prep2_in.nrow(), prep2_in.ncol(), false);
-  //arma::mat a_mat(a_mat_in.begin(), a_mat_in.nrow(), a_mat_in.ncol(), false);
   arma::vec prep1(prep1_in.begin(), prep1_in.length(), false);
-  ///////
 
   //----R2D2 on PHI
-  vec api(n_groups);
-  vec a_r2d2(n_groups);
   vec xi(n_groups, fill::ones);
   arma::vec theta_r2d2(n); theta_r2d2.fill(1/static_cast<double>(n));
   vec zeta_r2d2(n_groups); zeta_r2d2.fill(10);
   arma::vec psi_r2d2(n); psi_r2d2.fill(1/static_cast<double>(n));
 
   bool R2D2_hyper;
-  vec b_r2d2(n_groups);
-  arma::vec api_vec(99);
-  arma::vec b_r2d2_vec(99);
-  //////////////////////
-  //NumericVector a_vec_in;
-  //NumericMatrix prep2_in(n_groups, 1000);
-  //NumericVector prep1_in;
-  /////////////////////
+  NumericVector api_in;
+  NumericVector b_r2d2_in;
+  NumericVector api_vec_in;
+  NumericVector b_r2d2_vec_in;
   if(priorPHI == "R2D2"){
 
+    api_in = priorPHI_in["R2D2_api"];
+    b_r2d2_in = priorPHI_in["R2D2_b"];
+
     R2D2_hyper = priorPHI_in["R2D2_hyper"];
-    if(R2D2_hyper == false){
-      vec b_r2d2_in = priorPHI_in["R2D2_b"];
-      b_r2d2 = b_r2d2_in;
+    if(R2D2_hyper==true){
+          b_r2d2_vec_in = priorPHI_in["b_vec"];
+          api_vec_in = priorPHI_in["api_vec"];
     }
 
-    arma::ivec::iterator it;
-    int i = 0;
-    for(it=groups.begin();it!=groups.end(); ++it){
-      arma::uvec ind = arma::find(i_vec_small == *it);
-      //arma::uvec ind2 = arma::find(i_vec_small == (i+1));
-      int n_tmp = ind.size();
-      if(R2D2_hyper==true){
-        for(int ii = 0; ii<99; ii++){
-          b_r2d2_vec(ii) = (ii+1)*0.01;
-          api_vec(ii) = 1/(pow(n,(b_r2d2_vec(ii)/2)) * pow(T,(b_r2d2_vec(ii)/2)) *log(T));
-        }
-        b_r2d2(i) = b_r2d2_vec(0);
-        api(i) = api_vec(0);
-      }else{
-        api(i) = 1/(pow(n,(b_r2d2(i)/2)) * pow(T,(b_r2d2(i)/2)) *log(T));
-      }
-      //1/(pow(n,(b_r2d2(i)/2)) * pow(T,(b_r2d2(i)/2)) *log(T)); //(pow(n_i(i),(b_r2d2(i)/2)) * pow(T,(b_r2d2(i)/2)) *log(T))
-      a_r2d2(i) = n_tmp*api(i);
-      i += 1;
-    }
-    //api = 1/(pow(n,(b_r2d2/2)) * pow(T,(b_r2d2/2)) *log(T));
-    //a_r2d2 = n*api;
     V_i = psi_r2d2%theta_r2d2*zeta_r2d2(0)/2;
 
   }
-
+  arma::vec api(api_in.begin(), api_in.length(), false);
+  arma::vec b_r2d2(b_r2d2_in.begin(), b_r2d2_in.length(), false);
+  arma::vec b_r2d2_vec(b_r2d2_vec_in.begin(), b_r2d2_vec_in.length(), false);
+  arma::vec api_vec(api_vec_in.begin(), api_vec_in.length(), false);
 
   //---- SSVS on PHI
   arma::vec tau_0;
@@ -182,17 +150,6 @@ List bvar_cpp(const arma::mat Y,
   }
   arma::vec gammas(n, fill::zeros);
   arma::vec p_i(n); p_i.fill(0.5);
-
-  //----------------------------------------------SL
-  mat Gamma(K,M, fill::ones);
-  double nu_a;
-  double nu_b;
-  if(priorPHI == "SL"){
-    double nu_a_in = priorPHI_in["nu_a"];
-    double nu_b_in = priorPHI_in["nu_b"];
-    nu_a = nu_a_in;
-    nu_b = nu_b_in;
-  }
 
   //---- HMP on PHI
   double lambda_1=0.04;
@@ -236,45 +193,55 @@ List bvar_cpp(const arma::mat Y,
   double zeta_L=10;
   arma::vec theta_L(n_L); theta_L.fill(1/static_cast<double>(n_L));
 
+  bool DL_L_hyper;
   double DL_b;
-  if(priorL == "DL" || priorL == "DL_h"){
+  NumericVector b_vec_in;
+  NumericVector prep2_L_in;
+  NumericVector prep1_L_in;
+  if(priorL == "DL"){
     double DL_b_in = priorL_in["DL_b"];
     DL_b = DL_b_in;
 
+    DL_L_hyper = priorL_in["DL_hyper"];
+    if(DL_L_hyper){
+      b_vec_in = priorL_in["b_vec"];
+      prep2_L_in = priorL_in["prep2"];
+      prep1_L_in = priorL_in["prep1"];
+    }
+
     V_i_L= psi_L% theta_L % theta_L * zeta_L * zeta_L;
   }
-
-  NumericVector b_vec_in;
-  NumericVector prep2_L_in;
-  NumericMatrix b_mat_in(1000,n_L);
-  NumericMatrix prep1_L_in(n_L,1000);
-  if(priorL == "DL_h"){
-    b_vec_in = priorL_in["b_vec"];
-    prep2_L_in = priorL_in["prep2"];
-    b_mat_in = wrap(priorL_in["b_mat"]);
-    prep1_L_in = wrap(priorL_in["prep1"]);
-  }
   arma::vec b_vec(b_vec_in.begin(), b_vec_in.length(), false);
-  arma::rowvec prep2_L(prep2_L_in.begin(), prep2_L_in.length(), false);
-  arma::mat b_mat(b_mat_in.begin(), b_mat_in.nrow(), b_mat_in.ncol(), false);
-  arma::mat prep1_L(prep1_L_in.begin(), prep1_L_in.nrow(), prep1_L_in.ncol(), false);
+  arma::vec prep2_L(prep2_L_in.begin(), prep2_L_in.length(), false);
+  arma::vec prep1_L(prep1_L_in.begin(), prep1_L_in.length(), false);
 
   //----R2D2 on L
-  double api_L;
-  double a_L_r2d2;
+
   double xi_L = 1;
   arma::vec theta_L_r2d2(n_L); theta_L_r2d2.fill(1/static_cast<double>(n_L));
   double zeta_L_r2d2 = 10;
   arma::vec psi_L_r2d2(n_L); psi_L_r2d2.fill(1/static_cast<double>(n_L));
 
+  bool R2D2_L_hyper;
+  NumericVector api_vec_L_in;
+  NumericVector b_vec_L_r2d2_in;
   double b_L_r2d2;
+  double api_L;
   if(priorL == "R2D2"){
     double b_L_r2d2_in = priorL_in["R2D2_b"];
     b_L_r2d2 = b_L_r2d2_in;
-    api_L = 1/(pow(n_L,(b_L_r2d2/2)) * pow(T,(b_L_r2d2/2)) *log(T));
-    a_L_r2d2 = n_L*api_L;
+    double api_L_in = priorL_in["R2D2_api"];
+    api_L = api_L_in;
+
+    R2D2_L_hyper = priorL_in["R2D2_hyper"];
+    if(R2D2_L_hyper){
+      api_vec_L_in = priorL_in["api_vec"];
+      b_vec_L_r2d2_in = priorL_in["b_vec"];
+    }
     V_i_L = psi_L_r2d2 % theta_L_r2d2 * zeta_L_r2d2 /2.;
   }
+  arma::vec api_vec_L(api_vec_L_in.begin(), api_vec_L_in.length(),false);
+  arma::vec b_vec_L_r2d2(b_vec_L_r2d2_in.begin(), b_vec_L_r2d2_in.length(), false);
 
   //---- SSVS on L
   arma::vec tau_0_L;
@@ -305,18 +272,6 @@ List bvar_cpp(const arma::mat Y,
     V_i_L= lambda_3*V_i_L_tmp;
   }
   arma::vec s_r_3(s_r_3_in.begin(), s_r_3_in.length(), false);
-
-
-  //----------------------------------------------SL
-  vec omega(n_L, fill::ones);
-  double nu_a_L;
-  double nu_b_L;
-  if(priorPHI == "SL"){
-    double nu_a_L_in = priorL_in["nu_a"];
-    double nu_b_L_in = priorL_in["nu_b"];
-    nu_a_L = nu_a_L_in;
-    nu_b_L = nu_b_L_in;
-  }
 
   //-----------------------------SV-settings----------------------------------//
   // Import sv_spec
@@ -363,7 +318,7 @@ List bvar_cpp(const arma::mat Y,
   arma::cube L_draws(draws, M, M);
 
   int phi_hyperparameter_size(0);
-  if(priorPHI == "DL" || priorPHI == "DL_h"){
+  if(priorPHI == "DL" ){
     phi_hyperparameter_size += 2*n_groups + 2*n; // a + zeta + n(theta + psi)
   }else if(priorPHI == "R2D2"){
     phi_hyperparameter_size += 4*n_groups + 2*n; // (b+)xi + zeta + n(theta + psi)
@@ -371,25 +326,26 @@ List bvar_cpp(const arma::mat Y,
     phi_hyperparameter_size += 2*n; // n(gammas + p_i)
   }else if(priorPHI == "HMP"){
     phi_hyperparameter_size += 2; // lambda_1 + lambda_2
-  }else if(priorPHI == "SL"){
-    phi_hyperparameter_size += n;
   }
   arma::mat phi_hyperparameter_draws(draws, phi_hyperparameter_size);
 
   int l_hyperparameter_size(0);
-  if(priorL == "DL" || priorL == "DL_h"){
+  if(priorL == "DL" ){
     l_hyperparameter_size += 2. + 2*n_L;
   }else if(priorL == "R2D2"){
-    l_hyperparameter_size += 2. + 2*n_L; // xi + zeta + n(theta + psi)
+    l_hyperparameter_size += 4. + 2*n_L; // b + api +xi + zeta + n(theta + psi)
   }else if(priorL == "SSVS"){
     l_hyperparameter_size += 2*n_L;
   }else if(priorL == "HMP"){
     l_hyperparameter_size += 1;
-  }else if(priorL == "SL"){
-    l_hyperparameter_size += n_L;
   }
   arma::mat l_hyperparameter_draws(draws, l_hyperparameter_size);
 
+  //indicator vector needed for DL and R2D2 on L
+  arma::uvec l_ind(n_L);
+  for(int i=0; i<n_L; ++i){
+    l_ind(i)=i;
+  }
   //-----------------------------------SAMPLER--------------------------------//
 
   const int tot = draws + burnin;
@@ -400,16 +356,14 @@ List bvar_cpp(const arma::mat Y,
   for(int rep = 0; rep < tot; rep++){
 
     //----1) Draw PHI (reduced form VAR coefficients)
-    if(priorPHI == "SL"){
-      sample_PHI_SL(PHI, PHI0, Y, X, L, d_sqrt, Gamma, K, M, nu_a, nu_b);
-    }else{
+
     try{
       sample_PHI(PHI, PHI0, Y, X, L, d_sqrt, V_prior, K, M, false);
     } catch(...){
       ::Rf_error("Couldn't sample PHI in rep %i.", rep);
     }
 
-    if(priorPHI == "DL" || priorPHI == "DL_h" || priorPHI == "R2D2"){
+    if(priorPHI == "DL" || priorPHI == "R2D2"){
       PHI_diff = PHI - PHI0;
       // if regularization gets extreme, often there appear zeros (numerical issue)
       // coefficients must not be zero, otherwise problems with do_rgig1
@@ -426,61 +380,41 @@ List bvar_cpp(const arma::mat Y,
               PHI_diff(ii,jj) = -1e-100;
             }
           }else if(PHI_diff(ii,jj) < 1e-100 && PHI_diff(ii,jj) > 0){ //eps(ii,jj)
-              PHI(ii,jj) = PHI0(ii,jj) + 1e-100;//eps(ii,jj);
+            PHI(ii,jj) = PHI0(ii,jj) + 1e-100;//eps(ii,jj);
             PHI_diff(ii,jj) = 1e-100;
           }else if (PHI_diff(ii,jj) > -1e-100 && PHI_diff(ii,jj) < 0){ //-eps(ii,jj)
-              PHI(ii,jj) = PHI0(ii,jj) - 1e-100;//eps(ii,jj);
+            PHI(ii,jj) = PHI0(ii,jj) - 1e-100;//eps(ii,jj);
             PHI_diff(ii,jj) = -1e-100;
           }
         }
       }
     }else{
       PHI_diff = PHI - PHI0;
-      }
+    }
 
     //----2) Sample hyperparameters of hierarchical priors (prior variances V_i)
 
-    if(priorPHI == "DL" || priorPHI == "DL_h"){
+    if(priorPHI == "DL" || priorPHI== "R2D2"){
 
-      if(priorPHI == "DL_h"){
-        //sample_DL_hyper(DL_a, theta, prep1, prep2, zeta, a_vec);
-        sample_DL_hyper_new(DL_a, theta, prep1, prep2, zeta, a_vec, groups, i_vec_small);
+      arma::ivec::iterator g;
+      int j=0;
 
+      for(g=groups.begin(); g!=groups.end(); ++g){
+        arma::uvec ind = arma::find(i_vec_small == *g);
+        arma::uvec indplus = arma::find(i_vec == *g);
+
+        if(priorPHI=="DL"){
+          sample_V_i_DL(V_i, PHI_diff(indplus), DL_a(j) , a_vec, prep1,
+                        prep2.row(j), zeta(j), psi, theta, ind, DL_hyper);
+        }else if(priorPHI=="R2D2"){
+          sample_V_i_R2D2(V_i, PHI_diff(indplus), api(j), api_vec, zeta_r2d2(j),
+                          psi_r2d2, theta_r2d2, xi(j), b_r2d2(j), b_r2d2_vec, ind,
+                          R2D2_hyper);
+        }
+
+
+        j += 1;
       }
-      //try{
-        //sample_V_i_DL(V_i, PHI_diff(i_ocl), DL_a , zeta, psi, theta); //, priorPHI == "DL_h"
-        sample_V_i_DL_new(V_i, PHI_diff(i_ocl), DL_a , zeta, psi, theta, groups, i_vec_small);
-     // }catch(...){
-      //  ::Rf_error("Couldn't sample V_i (DL prior) in run %i.",  rep);
-      //}
-
-
-    }else if(priorPHI == "R2D2"){
-
-      sample_V_i_R2D2_new(V_i, PHI_diff(i_ocl), api, zeta_r2d2, psi_r2d2,
-                          theta_r2d2, xi, b_r2d2, groups, i_vec_small, //, a_r2d2
-                          R2D2_hyper, api_vec, b_r2d2_vec);
-
-      //try{
-      //sample_V_i_R2D2(V_i, PHI_diff(i_ocl), api , zeta_r2d2, psi_r2d2,
-      //                theta_r2d2, xi, a_r2d2, b_r2d2 ); //, priorPHI == "DL_h"
-      // }catch(...){
-      //  ::Rf_error("Couldn't sample V_i (R2D2 prior) in run %i.",  rep);
-      //}
-
-  //    for(int i=0; i<n_groups; i++){
-  //      uvec indi = arma::find(i_vec_small==(i+1));
-  //      uvec indi2 = arma::find(i_vec == (i+1));
-  //      vec V_i_tmp = V_i(indi);
-  //      vec psi_tmp = psi_r2d2(indi);
-  //      vec theta_tmp = theta_r2d2(indi);
-  //      sample_V_i_R2D2(V_i_tmp, PHI_diff(indi2), api(i) ,
-  //                      zeta_r2d2(i), psi_tmp, theta_tmp,
-  //                      xi(i), a_r2d2(i), b_r2d2(i) );
-  //      V_i(indi) = V_i_tmp;
-  //      psi_r2d2(indi) = psi_tmp;
-  //      theta_r2d2(indi) = theta_tmp;
-  //    }
 
     }else if(priorPHI == "SSVS"){
 
@@ -503,81 +437,71 @@ List bvar_cpp(const arma::mat Y,
 
     V_prior = reshape(V_i_long, K+intercept, M);
 
-    }//end if SL
-
     //----3) Draw Sigma_t = inv(L)'*D_t*inv(L), where L is upper unitriangular
     //       and D diagonal
     //----3a) Draw free off-diagonal elements in L
 
     arma::mat resid = Y - X*PHI;
 
-    if(priorL == "SL"){
-      sample_L_SL(L, resid, d_sqrt, omega, nu_a_L, nu_b_L);
-    }else{
+    try{
+      sample_L(L, resid, V_i_L, d_sqrt);
+    }
+    catch(...){
+      ::Rf_error("Couldn't sample L in rep %i.", rep);
+    }
+
+    if(priorL == "DL" || priorL == "R2D2"){
+
+      for (int jj = 0; jj<M; jj++){
+        for (int ii = 0; ii<jj; ii++) {
+          if(L(ii,jj) == 0) {
+            if(R::rbinom( 1, 0.5 )==0){
+              L(ii,jj) = 1e-100;
+            }else{
+              L(ii,jj) = -1e-100;
+            }
+          }else
+            if(L(ii,jj) < 1e-100 && L(ii,jj) > 0){
+              L(ii,jj) = 1e-100;
+            }else if (L(ii,jj) > -1e-100 && L(ii,jj) < 0){
+              L(ii,jj) = -1e-100;
+            }
+        }
+      }
+    }
+
+    //----3b) Draw hyperparameters of hierarchical priors
+    l = L(L_upper_indices);
+    if(priorL == "DL" ){
+
 
       try{
-        sample_L(L, resid, V_i_L, d_sqrt);
-      }
-      catch(...){
-        ::Rf_error("Couldn't sample L in rep %i.", rep);
-      }
+        sample_V_i_DL(V_i_L, l, DL_b , b_vec, prep1_L, prep2_L, zeta_L, psi_L,
+                      theta_L, l_ind, DL_L_hyper);
+      } catch (...) {
+        ::Rf_error("Couldn't sample V_i_L (DL prior)  in run %i", rep);
 
-      if(priorL == "DL" || priorL == "DL_h" || priorL == "R2D2"){
-
-        for (int jj = 0; jj<M; jj++){
-          for (int ii = 0; ii<jj; ii++) {
-            if(L(ii,jj) == 0) {
-              if(R::rbinom( 1, 0.5 )==0){
-                L(ii,jj) = 1e-100;
-              }else{
-                L(ii,jj) = -1e-100;
-              }
-            }else
-              if(L(ii,jj) < 1e-100 && L(ii,jj) > 0){
-                L(ii,jj) = 1e-100;
-              }else if (L(ii,jj) > -1e-100 && L(ii,jj) < 0){
-                L(ii,jj) = -1e-100;
-              }
-          }
-        }
       }
 
-      //----3b) Draw hyperparameters of hierarchical priors
-      l = L(L_upper_indices);
-      if(priorL == "DL" || priorL == "DL_h"){
+    }else if(priorL == "R2D2"){
 
-        if(priorL == "DL_h"){
+      sample_V_i_R2D2(V_i_L, l, api_L, api_vec_L, zeta_L_r2d2, psi_L_r2d2,
+                      theta_L_r2d2, xi_L, b_L_r2d2, b_vec_L_r2d2, l_ind, R2D2_L_hyper );
 
-          sample_DL_hyper(DL_b, theta_L, prep1_L, prep2_L, zeta_L, b_vec);
-        }
-        try{
-          sample_V_i_DL(V_i_L, l, DL_b , zeta_L, psi_L, theta_L); //, priorL == "DL_h"
-        } catch (...) {
-          ::Rf_error("Couldn't sample V_i_L (DL prior)  in run %i", rep);
+    }else if(priorL == "SSVS"){
 
-        }
+      sample_V_i_SSVS(V_i_L, gammas_L, p_i_L, l, tau_0_L, tau_1_L, SSVS_s_a_L, SSVS_s_b_L);
 
-      }else if(priorL == "R2D2"){
+    }else if(priorL == "HMP"){
 
-        sample_V_i_R2D2(V_i_L, l, api_L , zeta_L_r2d2, psi_L_r2d2,
-                        theta_L_r2d2, xi_L, a_L_r2d2, b_L_r2d2 );
-
-      }else if(priorL == "SSVS"){
-
-        sample_V_i_SSVS(V_i_L, gammas_L, p_i_L, l, tau_0_L, tau_1_L, SSVS_s_a_L, SSVS_s_b_L);
-
-      }else if(priorL == "HMP"){
-
-        sample_V_i_L_HMP(lambda_3, V_i_L, s_r_3(0), s_r_3(1), l);
-      }
-
-    }//--------------end if SL
+      sample_V_i_L_HMP(lambda_3, V_i_L, s_r_3(0), s_r_3(1), l);
+    }
 
     //----3c) Draw elements of D_t
     //        in case of SV use package stochvol
     arma::mat str_resid = resid*L; // structural (orthogonalized) residuals
 
-    if(SV == false || (priorPHI == "SL" && rep < 0.1*burnin)){ //|| (priorPHI == "SL" && rep < 0.1*burnin) //???
+    if(SV == false ){
       for(int i =0; i<M; i++){
         double s_p = priorHomoscedastic(i,1) + 0.5*accu(square(str_resid.col(i)));
         double d_i = 1. / R::rgamma(priorHomoscedastic(i,0)+T/2, 1./s_p);
@@ -608,7 +532,7 @@ List bvar_cpp(const arma::mat Y,
       sv_latent_draws.row(rep-burnin) = h;
       sv_para_draws.row((rep-burnin)) = sv_para;
 
-      if(priorPHI == "DL" || priorPHI == "DL_h"){
+      if(priorPHI == "DL" ){
 
         phi_hyperparameter_draws(rep-burnin, span(0,(n_groups-1))) = zeta;
         phi_hyperparameter_draws(rep-burnin, span(n_groups,(n_groups+n-1))) = trans(psi.as_col());
@@ -632,13 +556,9 @@ List bvar_cpp(const arma::mat Y,
       }else if(priorPHI == "HMP"){
         phi_hyperparameter_draws(rep-burnin, 0) = lambda_1;
         phi_hyperparameter_draws(rep-burnin, 1) = lambda_2;
-      }else if(priorPHI == "SL"){
-
-        phi_hyperparameter_draws(rep-burnin, span(0, (n-1.))) = vectorise(Gamma);
-
       }
 
-      if(priorL == "DL" || priorL == "DL_h"){
+      if(priorL == "DL"){
 
         l_hyperparameter_draws(rep-burnin, 0) = zeta_L;
         l_hyperparameter_draws(rep-burnin, span(1,n_L)) = trans(psi_L.as_col());
@@ -650,7 +570,9 @@ List bvar_cpp(const arma::mat Y,
         l_hyperparameter_draws(rep-burnin, 0) = zeta_L_r2d2 ;
         l_hyperparameter_draws(rep-burnin, span(1,(n_L))) = trans(psi_L_r2d2.as_col());
         l_hyperparameter_draws(rep-burnin, span(n_L+1.,(2*n_L))) = trans(theta_L_r2d2.as_col());
-        l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-1.) = xi_L ;
+        l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-3.) = xi_L ;
+        l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-2.) = b_L_r2d2;
+        l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-1.) = api_L;
 
       }else if(priorL == "SSVS"){
 
@@ -660,8 +582,6 @@ List bvar_cpp(const arma::mat Y,
       }else if(priorL == "HMP"){
 
         l_hyperparameter_draws(rep-burnin, 0) = lambda_3;
-      }else if(priorL == "SL"){
-        l_hyperparameter_draws(rep-burnin, span(0, (n_L-1.))) = omega;
       }
     }
 
@@ -686,13 +606,11 @@ List bvar_cpp(const arma::mat Y,
     Named("V_i_long") = V_i_long, // ???
     Named("V_i_L") = V_i_L,
     //Named("a_vec") = a_vec, // ???
-    Named("a_r2d2") = a_r2d2,
     Named("groups") = groups,
     Named("api") = api,
     Named("DL_a") = DL_a,
     Named("prep1") = prep1,
     Named("prep2") = prep2,// ???
-    Named("Gamma") = Gamma, // ???
     Named("PHI0")=PHI0,
     Named("i_vec_small") = i_vec_small
   );

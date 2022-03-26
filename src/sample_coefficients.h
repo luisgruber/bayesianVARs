@@ -12,27 +12,13 @@ void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
                 const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,
                 const arma::mat& V_prior, const int& K, const int& M, bool subs);
 
-void sample_L(arma::mat& L, arma::mat& Ytilde, const arma::vec& V_i, const arma::mat& d_sqrt);
+void sample_L(arma::mat& L, arma::mat& Ytilde, const arma::vec& V_i,
+              const arma::mat& d_sqrt);
 
-void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, const double& a ,
-                   double& zeta, arma::vec& psi, arma::vec& theta); //, bool hyper
-
-void sample_V_i_DL_new(arma::vec& V_i, const arma::vec& coefs, const arma::vec& a ,
-                       arma::vec& zeta, arma::vec& psi, arma::vec& theta,
-                       arma::ivec& groups, const arma::ivec& i_vec );
-
-arma::colvec ddir_prep(const arma::colvec& x, const arma::vec& prep1,
-                       const arma::rowvec& prep2);
-
-
-void sample_DL_hyper(double& a, const arma::vec& theta, const arma::mat& prep1,
-                     const arma::rowvec& prep2, const double& zeta,
-                     const arma::vec& a_vec);
-
-void sample_DL_hyper_new(arma::vec& a, const arma::colvec& theta, const arma::vec& prep1,
-                         const arma::mat& prep2, const arma::vec& zeta,
-                         const arma::vec& a_vec, arma::ivec& groups,
-                         const arma::ivec& i_vec );
+void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
+                   const arma::vec a_vec, const arma::vec prep1,
+                   const arma::vec prep2, double& zeta, arma::vec& psi,
+                   arma::vec& theta, arma::uvec ind, const bool hyper);
 
 double do_rgig1(double lambda, double chi, double psi);
 
@@ -49,14 +35,10 @@ void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const do
 void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
                       const double& r1, const arma::vec& l);
 
-void sample_V_i_R2D2(arma::vec& V_i, const arma::vec& coefs,  const double& api,
-                     double& zeta, arma::vec& psi, arma::vec& theta, double& xi,
-                     const double& a , const double& b);
-
-void sample_V_i_R2D2_new(arma::vec& V_i, const arma::vec& coefs, arma::vec& api,
-                         arma::vec& zeta, arma::vec& psi, arma::vec& theta, arma::vec& xi,//const arma::vec& a ,
-                         arma::vec& b, arma::ivec& groups, const arma::ivec& i_vec,
-                         const bool b_hyper, const arma::vec& api_vec, const arma::vec& b_vec);
+void sample_V_i_R2D2(arma::vec& V_i, const arma::vec coefs, double& api,
+                     const arma::vec api_vec, double& zeta, arma::vec& psi,
+                     arma::vec& theta, double& xi, double& b,
+                     const arma::vec b_vec, arma::uvec ind, const bool hyper);
 
 void sample_PHI_SL(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
                    const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,
