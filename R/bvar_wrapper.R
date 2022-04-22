@@ -262,6 +262,25 @@ bvar_fast <- function(Yraw,
 
   h_init <- matrix(rep(-10, T*M), T,M)
 
+  ##############################
+  #GL priors
+  priorPHI$n_groups <- 1
+  priorPHI$groups <- 1
+  #DL
+  DL_a <- 1
+  a_vec <- 1
+  prep1 <- 1
+  prep2 <- matrix(1,1,1)
+  DL_hyper <- FALSE
+  #R2D2
+  R2D2_hyper <- FALSE
+  R2D2_api <- 1
+  R2D2_b <- 1
+  api_vec <- 1
+  b_vec <- 1
+
+  ##############################
+
   if(priorPHI$prior == "R2D2" | priorPHI$prior == "DL" | priorPHI$prior == "DL_h"){
 
     groups <- unique(i_vec[i_vec!=0])
@@ -274,36 +293,49 @@ bvar_fast <- function(Yraw,
   if(priorPHI$prior == "R2D2"){
 
     if(all(is.numeric(priorPHI$R2D2_b))){
-      priorPHI$R2D2_hyper <- FALSE
+      #priorPHI$R2D2_hyper <- FALSE
+      R2D2_hyper <- FALSE
     }else if("hyperprior" %in% priorPHI$R2D2_b & length(priorPHI$R2D2_b) == 1){
 
-      priorPHI$R2D2_hyper <- TRUE
+      #priorPHI$R2D2_hyper <- TRUE
+      R2D2_hyper <- TRUE
 
     }else{
       stop("Something went wrong specifying R2D2_b!")
     }
 
-    if(!priorPHI$R2D2_hyper){
+    if(!R2D2_hyper){ #priorPHI$
 
-      priorPHI$R2D2_b <- rep_len(priorPHI$R2D2_b, n_groups)
-      priorPHI$R2D2_api <- rep(as.numeric(NA), n_groups)
+      #priorPHI$R2D2_b <- rep_len(priorPHI$R2D2_b, n_groups)
+      R2D2_b <- rep_len(priorPHI$R2D2_b, n_groups)
+      #priorPHI$R2D2_api <- rep(as.numeric(NA), n_groups)
+      R2D2_api <- rep(as.numeric(NA), n_groups)
       for(j in seq.int(n_groups)){
-        priorPHI$R2D2_api[j] <- 1/(n^(priorPHI$R2D2_b[j]/2) *
-                                     (T^(priorPHI$R2D2_b[j]/2)) *log(T))
+        #priorPHI$R2D2_api[j] <- 1/(n^(priorPHI$R2D2_b[j]/2) *
+        #                             (T^(priorPHI$R2D2_b[j]/2)) *log(T))
+        R2D2_api[j] <- 1/(n^(R2D2_b[j]/2) *
+                            (T^(R2D2_b[j]/2)) *log(T))
       }
 
-    }else if(priorPHI$R2D2_hyper){
+    }else if(R2D2_hyper){#priorPHI$
 
       grid <- 100
-      priorPHI$b_vec <- seq(.01,1,length.out=grid)
-      priorPHI$api_vec <- rep(as.numeric(NA), grid)
+      #priorPHI$b_vec <- seq(.01,1,length.out=grid)
+      b_vec <- seq(.01,1,length.out=grid)
+      #priorPHI$api_vec <- rep(as.numeric(NA), grid)
+      api_vec <- rep(as.numeric(NA), grid)
       for(j in seq.int(grid)){
-        priorPHI$api_vec[j] <- 1/(n^(priorPHI$b_vec[j]/2) *
-                                    (T^(priorPHI$b_vec[j]/2)) *log(T))
+        #priorPHI$api_vec[j] <- 1/(n^(priorPHI$b_vec[j]/2) *
+        #                            (T^(priorPHI$b_vec[j]/2)) *log(T))
+        api_vec[j] <- 1/(n^(b_vec[j]/2) *
+                                    (T^(b_vec[j]/2)) *log(T))
       }
-      priorPHI$R2D2_b <- rep(0.5, n_groups)
-      priorPHI$R2D2_api <- rep(priorPHI$api_vec[which(priorPHI$b_vec==0.5)],
-                               n_groups)
+      #priorPHI$R2D2_b <- rep(0.5, n_groups)
+      R2D2_b <- rep(0.5, n_groups)
+      #priorPHI$R2D2_api <- rep(priorPHI$api_vec[which(priorPHI$b_vec==0.5)],
+       #                        n_groups)
+      R2D2_api <- rep(api_vec[which(b_vec==0.5)], n_groups)
+
 
     }
 
@@ -311,42 +343,50 @@ bvar_fast <- function(Yraw,
   }else if(priorPHI$prior == "DL"){
 
     if(all(is.numeric(priorPHI$DL_a))){
-      priorPHI$DL_hyper <- FALSE
+      #priorPHI$DL_hyper <- FALSE
+      DL_hyper <- FALSE
     }else if("hyperprior" %in% priorPHI$DL_a & length(priorPHI$DL_a) == 1){
 
-      priorPHI$DL_hyper <- TRUE
-
+      #priorPHI$DL_hyper <- TRUE
+      DL_hyper <- TRUE
     }else if(any(c("1/K", "1/n") %in% priorPHI$DL_a) &
              length(priorPHI$DL_a) == 1){
-      priorPHI$DL_hyper <- FALSE
+      #priorPHI$DL_hyper <- FALSE
+      DL_hyper <- FALSE
       if(priorPHI$DL_a == "1/K") {
-        priorPHI$DL_a <- rep(1/K, n_groups)
+        #priorPHI$DL_a <- rep(1/K, n_groups)
+        DL_a <- rep(1/K, n_groups)
       }else if(priorPHI$DL_a == "1/n") {
-          priorPHI$DL_a <- rep(1/n, n_groups)
+          #priorPHI$DL_a <- rep(1/n, n_groups)
+        DL_a <- rep(1/n, n_groups)
       }
     }else{
       stop("Something went wrong specifying DL_a!")
     }
 
-    if(priorPHI$DL_hyper){
+    if(DL_hyper){#priorPHI$
       grid <- 1000
-      priorPHI$a_vec <- seq(1/(n),1/2,length.out = grid)
+      #priorPHI$a_vec <- seq(1/(n),1/2,length.out = grid)
+      a_vec <- seq(1/(n),1/2,length.out = grid)
       # prep1 &prep2: some preparations for the evaluation of the
       # Dirichlet-density
-      priorPHI$prep1 <- priorPHI$a_vec-1
+      #priorPHI$prep1 <- priorPHI$a_vec-1
+      prep1 <- a_vec-1
       prep2 <- matrix(NA, n_groups, grid)
       ii <- 1
       for(j in groups){
         n_tmp <- length(which(i_vec == j))
         # normalizing constant of symmetric Dirichlet density in logs
-        prep2[ii,] <- lgamma(n_tmp*priorPHI$a_vec) - n_tmp*lgamma(priorPHI$a_vec)
+        prep2[ii,] <- lgamma(n_tmp*a_vec) - n_tmp*lgamma(a_vec)
         ii <- ii + 1
       }
-      priorPHI$prep2 <- prep2
-      priorPHI$DL_a <- rep_len(1/2, n_groups) #initial value
-    }else if(!priorPHI$DL_hyper){
+      #priorPHI$prep2 <- prep2
+      #priorPHI$DL_a <- rep_len(1/2, n_groups) #initial value
+      DL_a <- rep_len(1/2, n_groups) #initial value
+    }else if(!DL_hyper){#priorPHI$
       if(all(is.numeric(priorPHI$DL_a))){
-        priorPHI$DL_a <- rep_len(priorPHI$DL_a, n_groups)
+        #priorPHI$DL_a <- rep_len(priorPHI$DL_a, n_groups)
+        DL_a <- rep_len(priorPHI$DL_a, n_groups)
       }
     }
 
@@ -372,6 +412,20 @@ bvar_fast <- function(Yraw,
     # prepare prior variances down to lambdas
     priorPHI$V_i_prep <- MP_V_prior_prep(sigma_sq, (K+intercept), M, intercept>0)
   }
+
+  ################################
+  priorPHI$DL_a <- DL_a
+  priorPHI$a_vec <- a_vec
+  priorPHI$prep1 <- prep1
+  priorPHI$prep2 <- prep2
+  priorPHI$DL_hyper <- DL_hyper
+
+  priorPHI$R2D2_hyper <- R2D2_hyper
+  priorPHI$R2D2_api <- R2D2_api
+  priorPHI$R2D2_b <- R2D2_b
+  priorPHI$api_vec <- api_vec
+  priorPHI$b_vec <- b_vec
+  ################################
 
   if(priorL$prior == "DL"){
     if(is.numeric(priorL$DL_b)){

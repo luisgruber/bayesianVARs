@@ -34,7 +34,7 @@ List bvar_cpp(const arma::mat Y,
 //-------------------------Preliminaries--------------------------------------//
 
   const double n = K*M; // number of VAR coefficients // ??? without intercept
-  arma::mat PHI_diff; // will hold PHI - PHI0
+  arma::mat PHI_diff(K+intercept,M); // will hold PHI - PHI0
   //const arma::uvec i_ol = arma::find(i_vec > 0); // indicator for ownlags
   //const arma::uvec i_cl = arma::find(i_vec < 0); // indicator for crosslags
   // int n_ol = i_ol.size(); // nr. of ownlags
@@ -69,33 +69,41 @@ List bvar_cpp(const arma::mat Y,
 
   //---- DL prior on PHI
 
-  int n_groups;
-  IntegerVector groups_in;
-  if(priorPHI == "R2D2" || priorPHI== "DL"){
-    n_groups = priorPHI_in["n_groups"];
-    groups_in = priorPHI_in["groups"];
-  }
+//  int n_groups;
+  int n_groups = priorPHI_in["n_groups"];
+//  IntegerVector groups_in;
+  IntegerVector groups_in = priorPHI_in["groups"];
+//  if(priorPHI == "R2D2" || priorPHI== "DL"){
+    //n_groups = priorPHI_in["n_groups"];
+    //groups_in = priorPHI_in["groups"];
+//  }
   arma::ivec groups(groups_in.begin(), groups_in.length(), false);
 
   arma::vec psi(n);psi.fill(1.0);
   arma::vec zeta(n_groups); zeta.fill(10);
   arma::vec theta(n);theta.fill(1/static_cast<double>(n));
 
-  arma::vec DL_a(n_groups);
-  bool DL_hyper;
-  NumericVector a_vec_in;
-  NumericMatrix prep2_in(n_groups, 1000);
-  NumericVector prep1_in;
+  NumericVector DL_a_in = priorPHI_in["DL_a"];
+  arma::vec DL_a(DL_a_in.begin(), DL_a_in.length(), false);
+//  arma::vec DL_a(n_groups);
+//  bool DL_hyper;
+  bool DL_hyper = priorPHI_in["DL_hyper"];
+//  NumericVector a_vec_in;
+  NumericVector a_vec_in = priorPHI_in["a_vec"];
+//  NumericMatrix prep2_in(n_groups, 1000);
+  NumericMatrix prep2_in = priorPHI_in["prep2"];
+//  NumericVector prep1_in;
+  NumericVector prep1_in = priorPHI_in["prep1"];
   if(priorPHI == "DL" ){
-    DL_hyper = priorPHI_in["DL_hyper"];
+//    DL_hyper = priorPHI_in["DL_hyper"];
     V_i = psi % theta % theta * zeta(0) * zeta(0);
-    arma::vec DL_a_in = priorPHI_in["DL_a"];
-    DL_a = DL_a_in;
-    if(DL_hyper == true){
-      a_vec_in = priorPHI_in["a_vec"];
-      prep2_in = wrap(priorPHI_in["prep2"]);
-      prep1_in = priorPHI_in["prep1"];
-      }
+//    arma::vec DL_a_in = priorPHI_in["DL_a"];
+//    DL_a = DL_a_in;
+//    if(DL_hyper == true){
+//      a_vec_in = priorPHI_in["a_vec"];
+//      prep2_in = wrap(priorPHI_in["prep2"]);
+//      prep1_in = priorPHI_in["prep1"];
+//      }
   }
   arma::vec a_vec(a_vec_in.begin(), a_vec_in.length(), false);
   arma::mat prep2(prep2_in.begin(), prep2_in.nrow(), prep2_in.ncol(), false);
@@ -107,21 +115,26 @@ List bvar_cpp(const arma::mat Y,
   vec zeta_r2d2(n_groups); zeta_r2d2.fill(10);
   arma::vec psi_r2d2(n); psi_r2d2.fill(1/static_cast<double>(n));
 
-  bool R2D2_hyper;
-  NumericVector api_in;
-  NumericVector b_r2d2_in;
-  NumericVector api_vec_in;
-  NumericVector b_r2d2_vec_in;
+//  bool R2D2_hyper;
+  bool R2D2_hyper = priorPHI_in["R2D2_hyper"];
+//  NumericVector api_in;
+  NumericVector api_in = priorPHI_in["R2D2_api"];
+//  NumericVector b_r2d2_in;
+  NumericVector b_r2d2_in = priorPHI_in["R2D2_b"];
+//  NumericVector api_vec_in;
+  NumericVector api_vec_in = priorPHI_in["api_vec"];
+//  NumericVector b_r2d2_vec_in;
+  NumericVector b_r2d2_vec_in = priorPHI_in["b_vec"];
   if(priorPHI == "R2D2"){
 
-    api_in = priorPHI_in["R2D2_api"];
-    b_r2d2_in = priorPHI_in["R2D2_b"];
+//    api_in = priorPHI_in["R2D2_api"];
+//    b_r2d2_in = priorPHI_in["R2D2_b"];
 
-    R2D2_hyper = priorPHI_in["R2D2_hyper"];
-    if(R2D2_hyper==true){
-          b_r2d2_vec_in = priorPHI_in["b_vec"];
-          api_vec_in = priorPHI_in["api_vec"];
-    }
+//    R2D2_hyper = priorPHI_in["R2D2_hyper"];
+//    if(R2D2_hyper==true){
+//          b_r2d2_vec_in = priorPHI_in["b_vec"];
+//          api_vec_in = priorPHI_in["api_vec"];
+//    }
 
     V_i = psi_r2d2%theta_r2d2*zeta_r2d2(0)/2;
 
@@ -612,7 +625,11 @@ List bvar_cpp(const arma::mat Y,
     Named("prep1") = prep1,
     Named("prep2") = prep2,// ???
     Named("PHI0")=PHI0,
-    Named("i_vec_small") = i_vec_small
+    Named("i_vec_small") = i_vec_small,
+    Named("PHI_diff") = PHI_diff,
+    Named("n_groups") = n_groups,
+    Named("groups") = groups
+
   );
 
   return out;
