@@ -20,6 +20,7 @@ devtools::install_github("luisgruber/bayesianVARs")
 # Getting started
 
 ``` r
+set.seed(537)
 # load package
 library(bayesianVARs)
 
@@ -30,6 +31,7 @@ data <- dat_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 Y_est <- data[1:100,]
 
 # Specify prior for reduced-form VAR coefficients (with default settings)
+prior <- "R2D2" # or "DL", "SSVS", "HMP", "normal"
 priorPHI <- specify_priorPHI(prior = "R2D2")
 
 # Specify prior for L (Decomposition of variance-covariance matrix in the form of t(L^(-1))%*%D_t%*%L^(-1), where L is upper triangular)
@@ -46,30 +48,30 @@ summary(mod)
     ## 
     ## Posterior median of PHI:
     ##                  GDPC1   CPIAUCSL   FEDFUNDS
-    ## GDPC1.l1     1.638e-11  8.360e-18  6.678e-09
-    ## CPIAUCSL.l1 -1.109e-10  6.907e-01  1.478e-07
-    ## FEDFUNDS.l1 -2.713e-16  4.066e-02  1.287e+00
-    ## GDPC1.l2     4.869e-16 -1.247e-13  4.574e-13
-    ## CPIAUCSL.l2 -5.187e-24  7.750e-02  3.442e-12
-    ## FEDFUNDS.l2 -1.011e-01 -1.954e-05 -3.341e-01
-    ## intercept    1.651e-02  7.356e-04  1.500e-03
+    ## GDPC1.l1     2.600e-22  5.664e-14  1.146e-04
+    ## CPIAUCSL.l1 -3.823e-12  7.143e-01  7.155e-03
+    ## FEDFUNDS.l1 -2.986e-07  2.230e-02  1.265e+00
+    ## GDPC1.l2     2.325e-10 -1.249e-16  1.223e-29
+    ## CPIAUCSL.l2 -1.625e-09  6.716e-02  3.589e-11
+    ## FEDFUNDS.l2 -7.502e-02 -2.066e-07 -3.139e-01
+    ## intercept    1.646e-02  7.708e-04  1.305e-03
     ## 
     ## Posterior interquartile range of PHI:
     ##                 GDPC1  CPIAUCSL  FEDFUNDS
-    ## GDPC1.l1    4.550e-04 3.274e-04 3.012e-02
-    ## CPIAUCSL.l1 2.778e-03 2.501e-01 2.314e-01
-    ## FEDFUNDS.l1 2.536e-03 1.228e-01 1.754e-01
-    ## GDPC1.l2    6.069e-05 7.844e-06 7.049e-05
-    ## CPIAUCSL.l2 2.126e-07 2.925e-01 1.311e-03
-    ## FEDFUNDS.l2 1.155e-01 9.568e-02 1.730e-01
-    ## intercept   3.159e-03 1.319e-03 2.088e-03
+    ## GDPC1.l1    3.123e-07 0.0001682 0.0720803
+    ## CPIAUCSL.l1 8.327e-03 0.2364082 0.2927033
+    ## FEDFUNDS.l1 3.478e-02 0.0957405 0.1961262
+    ## GDPC1.l2    5.686e-04 0.0001618 0.0001116
+    ## CPIAUCSL.l2 3.252e-02 0.2697496 0.0002177
+    ## FEDFUNDS.l2 1.209e-01 0.0614795 0.1823603
+    ## intercept   3.168e-03 0.0012899 0.0022168
 
 ``` r
 # Traceplot of global shrinkage parameter
 ts.plot(mod$phi_hyperparameter$zeta1)
 ```
 
-![](read_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
 
 ``` r
 # Simulate from predictive density and compare to ex-post realized value by means
@@ -86,7 +88,7 @@ for (i in paste0("t+",1:4)) {
 }
 ```
 
-![](read_files/figure-gfm/unnamed-chunk-2-2.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-2-2.png)<!-- -->
 
 ``` r
 # Summary of predictive evaluation
@@ -96,37 +98,37 @@ summary(pred)
     ## 
     ## LPL:
     ##   t+1   t+2   t+3   t+4 
-    ## 9.205 9.187 9.279 8.829 
+    ## 9.307 9.306 9.336 8.940 
     ## 
     ## Marginal joint LPL of CPIAUCSL & FEDFUNDS:
     ##   t+1   t+2   t+3   t+4 
-    ## 5.637 5.726 5.702 5.668 
+    ## 5.690 5.784 5.728 5.708 
     ## 
     ## Marginal univariate LPLs:
     ##     GDPC1 CPIAUCSL FEDFUNDS
-    ## t+1 3.613    4.316    1.260
-    ## t+2 3.496    4.095    1.507
-    ## t+3 3.534    3.895    1.635
-    ## t+4 3.036    3.535    1.835
+    ## t+1 3.636    4.334    1.291
+    ## t+2 3.537    4.109    1.554
+    ## t+3 3.561    3.919    1.650
+    ## t+4 3.091    3.570    1.880
     ## 
     ## Prediction quantiles:
     ## , , GDPC1
     ## 
     ##           t+1       t+2       t+3       t+4
-    ## 5%  -0.011935 -0.013955 -0.014017 -0.014216
-    ## 50%  0.005112  0.004069  0.003913  0.004034
-    ## 95%  0.022006  0.021375  0.021346  0.022128
+    ## 5%  -0.012521 -0.013541 -0.013760 -0.013461
+    ## 50%  0.005351  0.004844  0.004739  0.004448
+    ## 95%  0.023620  0.022066  0.022527  0.022722
     ## 
     ## , , CPIAUCSL
     ## 
-    ##          t+1       t+2        t+3      t+4
-    ## 5%  0.002013 0.0004063 -0.0009667 -0.00150
-    ## 50% 0.010601 0.0115145  0.0122505  0.01274
-    ## 95% 0.019727 0.0232591  0.0261385  0.02839
+    ##          t+1        t+2       t+3       t+4
+    ## 5%  0.001726 -0.0001635 -0.001052 -0.002234
+    ## 50% 0.010477  0.0111110  0.011822  0.012336
+    ## 95% 0.019874  0.0232649  0.025888  0.028110
     ## 
     ## , , FEDFUNDS
     ## 
     ##         t+1     t+2     t+3     t+4
-    ## 5%  0.09688 0.08249 0.06949 0.05796
-    ## 50% 0.11483 0.11369 0.11152 0.10963
-    ## 95% 0.12995 0.13943 0.14718 0.15575
+    ## 5%  0.09626 0.08008 0.06766 0.05618
+    ## 50% 0.11501 0.11409 0.11192 0.11050
+    ## 95% 0.12911 0.13768 0.14495 0.15230
