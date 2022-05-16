@@ -77,7 +77,7 @@ specified the normalized cholesky factor of the posterior mean of the
 variance-covariance matrix of a flat conjugate prior will be used.}
 }
 \description{
-\code{bvar_fast} simulates from the joint posterior distribution of the
+\code{bvar} simulates from the joint posterior distribution of the
 parameters and latent variables and returns the posterior draws.
 }
 \details{

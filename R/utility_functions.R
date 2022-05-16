@@ -137,81 +137,6 @@ specify_priorL <- function(prior, DL_b = "1/n", R2D2_b = 0.5,
   out
 }
 
-#' Specify hyperparameters for Dirichlet-Laplace prior on VAR coefficients
-#'
-#' @param a single non-negative number, indicating the concentration parameter of
-#' the DL prior. Only necessary if \code{hyperhyper=FALSE}. Good properties somewhere in
-#' the interval \code{[1/n,1/2]}, where \code{n} is the number of VAR coefficients.
-#' Smaller values imply heavier regularization towards zero.
-#' @param hyperhyper logical. \code{TRUE} imposes a discrete uniform hyperprior on
-#' the concentration parameter on the interval \code{[1/n,1/2]} with 1000 support points.
-#' If set to \code{FALSE}, \code{a} has to be specified.
-#'
-#' @return list
-#' @export
-specify_PHI_DLprior <- function(a=0.5, hyperhyper = FALSE){
-  theta_dirichlet <-  c("a" = a)
-  return(list(theta_dirichlet = theta_dirichlet,
-              hyperhyper=hyperhyper))
-}
-
-
-#' @export
-specify_L_DLprior <- function(theta_dirichlet = c("b" = 0.5),
-                              hyperhyper = FALSE){
-  return(list(theta_dirichlet = theta_dirichlet,
-              hyperhyper=hyperhyper))
-}
-
-specify_PHI_MPprior <- function(lambda_1_gamma = c("shape" = 0.01, "rate" = 0.01),
-                                lambda_2_gamma = c("shape" = 0.01, "rate" = 0.01)){
-  return(list(lambda_1_gamma = lambda_1_gamma,
-              lambda_2_gamma = lambda_2_gamma))
-}
-
-specify_L_MPprior <- function(lambda_4_gamma = c("shape" = 0.01, "rate" = 0.01)){
-  return(list(lambda_4_gamma = lambda_4_gamma))
-}
-
-specify_PHI_SSVSprior <- function(tau_0 = 0.01, tau_1 = 100,
-                                  p_i_beta = c("shape_a" = 0.5, "shape_b" = 0.5),
-                                  semi_automatic = TRUE, df=NULL, rate=1/3,
-                                  k_SA=5, k_AA=5){
-  #df: if PHI_prior == "SSVS-mix", df are the degrees of freedom,
-  # either numeric if wished to be fixed or "hyper" if wished to be treated as random variable
-  #rate: if df == "hyper", rate is the rate of the exponential prior on the degrees of freedom
-  return(list(tau_0 = tau_0,
-              tau_1 = tau_1,
-              p_i_beta = p_i_beta,
-              semi_automatic = semi_automatic,
-              df = df,
-              rate = rate,
-              k_SA = k_SA,
-              k_AA = k_AA))
-}
-
-specify_L_SSVSprior <- function(kappa_0 = 0.001, kappa_1 = 1,
-                                q_i_beta = c("shape_a" = 0.5,
-                                             "shape_b" = 0.5),
-                                df=NULL, rate=1/3,
-                                k_SA=5, k_AA=5){
-  return(list(kappa_0 = kappa_0,
-              kappa_1 = kappa_1,
-              q_i_beta = q_i_beta,
-              df = df,
-              rate = rate,
-              k_SA = k_SA,
-              k_AA = k_AA))
-}
-
-specify_PHI_nonhierarchical <- function(V_prior = 10) {
-  return(V_prior)
-}
-
-specify_L_nonhierarchical <- function(V_prior = 10) {
-  return(V_prior)
-}
-
 #' @export
 predict.bvar <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA,...){
 
@@ -362,138 +287,6 @@ predict.bvar <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA,...)
 }
 
 #' @export
-predict_bvar <- function(s,mod, LPL = FALSE, Y_obs = NA, LPL_VoI = NA){
-  # Y_obs: ex post observed data for evaluation
-  # mod: model object estimated via BVAR_*
-  # VoI: variables of interest for joint & marginal predictive likelihoods
-
-  # relevant mod settings
-  SV <- mod$SV
-  intercept <- mod$intercept
-
-  # data preparation
-  variables <- colnames(mod$Y)
-  draws <- dim(mod$PHI)[1]
-  M <- ncol(mod$Y)
-  K <- ncol(mod$X)
-  p <- mod$p
-
-  if(nrow(Y_obs)!=s | ncol(Y_obs) !=M){
-    stop("Y_obs has wrong dimensions! \n")
-  }
-
-
-  if(SV==TRUE) {
-    sv_mu <- mod$sv_para[,1,]
-    sv_phi <- mod$sv_para[,2,]
-    sv_sigma <- mod$sv_para[,3,]
-    sv_h_T <- mod$sv_latent[, dim(mod$sv_latent)[2],]
-  }else if(SV == FALSE){
-    D_draws <- mod$DRAWS$D$D_draws
-  }
-
-  # storage
-  predictions <- array(as.numeric(NA), c(draws, s, M), dimnames = list(NULL, paste0("s: ", 1:s), variables))
-
-  if(LPL){
-    Y_obs <- matrix(Y_obs, s, M)
-    colnames(Y_obs) <- variables
-
-    LPL_draws <- matrix(as.numeric(NA), draws, s)
-    PL_marginal_draws <- array(as.numeric(NA), c(draws, s, M), dimnames = list(NULL, NULL, variables))
-    if(!any(is.na(LPL_VoI))){
-      LPL_joint_draws <- matrix(as.numeric(NA), draws, s)
-    }
-  }
-
-  # initialization and placeholders
-  h_fore <- matrix(as.numeric(NA), M, s)
-  Sigma_padding <- matrix(0, M*p + intercept,M)
-  Sigma_padding[1:M,1:M] <- diag(M)
-  z_fore0 <- as.matrix(mod$datamat[nrow(mod$datamat), 1:(p*M)])
-  if(intercept){
-    z_fore0 <- cbind(z_fore0,1)
-  }
-  F <- get_companion(mod$PHI[1,,], p, intercept)
-  for (i in seq.int(draws)) {
-
-    # Companion form
-    # F: matrix of coefficients
-    # z: endogenous variables
-    F[,1:M] <- mod$PHI[i,,]
-    z_fore <- z_fore0
-    SIGMA_k <- matrix(0,K,K)
-
-    L_inv <- backsolve(mod$L[i,,], diag(M))
-
-    if(!SV){
-      # compute SIGMA
-      Sigma_fore <- t(L_inv) %*% diag(D_draws[i,]) %*% L_inv
-    }else if(SV){
-      # initialize latent vola
-      h_fore <- sv_h_T[i, ]
-    }
-
-    for(k in seq_len(s)){
-
-      # recursively update the predictive mean
-      z_fore <- z_fore %*% F
-      pred_mean <- z_fore[1:M]
-      names(pred_mean) <- variables
-
-      # compute prediction of variance-covariance matrix
-      if(SV){
-        # compute k-step ahead forecasts of latent log volas
-        mu_h <- sv_mu[i,] + sv_phi[i,]*(h_fore - sv_mu[i,])
-        sigma_h <- sv_sigma[i, ]
-        h_fore <- stats::rnorm(M, mean = mu_h, sd = sigma_h)
-
-        # compute SIGMA[t+s]
-        Sigma_fore <- t(L_inv) %*% diag(exp(h_fore)) %*% L_inv
-      }
-      SIGMA_k <- crossprod(F,SIGMA_k) %*% F + Sigma_padding %*% tcrossprod(Sigma_fore, Sigma_padding)
-      SIGMA_k_crop <- SIGMA_k[1:M,1:M]
-      rownames(SIGMA_k_crop) <- colnames(SIGMA_k_crop) <- variables
-
-      predictions[i,k,] <- tryCatch(pred_mean + t(chol(SIGMA_k_crop ))%*%stats::rnorm(M),
-               error=function(e) MASS::mvrnorm(1, pred_mean, SIGMA_k_crop))
-
-      if(LPL){
-        LPL_draws[i,k] <- mvtnorm::dmvnorm(as.vector(Y_obs[k,]),pred_mean,SIGMA_k_crop, log = TRUE)
-        PL_marginal_draws[i, k,] <-  stats::dnorm(as.vector(Y_obs[k, ]), pred_mean, sqrt(diag(SIGMA_k_crop)))
-        if(!any(is.na(LPL_VoI))){
-          LPL_joint_draws[i, k] <-  mvtnorm::dmvnorm(as.vector(Y_obs[k, LPL_VoI]),pred_mean[LPL_VoI],SIGMA_k_crop[LPL_VoI,LPL_VoI], log = TRUE)
-        }
-      }
-
-    }# end 1:s step ahead
-
-  }# end 1:draws
-
-  out <- list(predictions = predictions)
-
-  if(LPL){
-    numericalnormalizer <- apply(LPL_draws, 2, function(x) max(x) - 700)
-    LPL <- apply(t(t(LPL_draws) - numericalnormalizer), 2, function(x) log(mean(exp(x)))) +
-      numericalnormalizer
-    out$LPL <- LPL
-    out$LPL_draws <- LPL_draws
-    out$LPL_marginal = log(apply(PL_marginal_draws, 2:3, mean))
-    out$PL_marginal_draws <- PL_marginal_draws
-  }
-
-  if(!any(is.na(LPL_VoI))){
-    numericalnormalizer2 <- apply(LPL_joint_draws, 2, function(x) max(x) - 700)
-    LPL_joint <- apply(t(t(LPL_draws) - numericalnormalizer), 2, function(x) log(mean(exp(x)))) +
-      numericalnormalizer
-    out$LPL_joint <- LPL_joint
-    out$LPL_joint_draws <- LPL_joint_draws
-  }
-
-  return(out)
-}
-
-#' @export
 summary.bvar_predict <- function(object, ...){
   out <- list()
   if(!is.null(object$LPL)){
@@ -531,6 +324,29 @@ print.summary.bvar_predict <- function(x, ...){
 
   cat("\nPrediction quantiles:\n")
   print(x$prediction_quantiles, digits = digits)
+
+  invisible(x)
+}
+
+#' @export
+summary.bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.75, 0.975),...){
+  PHImedian <- apply(object$PHI, 2:3, median)
+  PHIquantiles <- apply(object$PHI, 2:3, quantile, quantiles)
+  PHIiqr <- apply(object$PHI, 2:3, IQR)
+  out <- list(PHImedian = PHImedian,
+             PHIquantiles = PHIquantiles,
+             PHIiqr = PHIiqr)
+  class(out) <- "summary.bvar"
+  out
+}
+
+#' @export
+print.summary.bvar <- function(x, ...){
+  digits <- max(3, getOption("digits") - 3)
+    cat("\nPosterior median of PHI:\n")
+    print(x$PHImedian, digits = digits)
+    cat("\nPosterior interquartile range of PHI:\n")
+    print(x$PHIiqr, digits = digits)
 
   invisible(x)
 }
