@@ -88,7 +88,7 @@
 #'  variance-covariance matrix of a flat conjugate prior will be used.
 #'
 #'@export
-bvar_fast <- function(Yraw,
+bvar <- function(Yraw,
                       p,
                       intercept = 100,
                       draws=1000,
