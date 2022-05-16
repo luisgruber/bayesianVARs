@@ -1,6 +1,6 @@
 #'Markov Chain Monte Carlo Sampling for Bayesian Vectorautoregressions
 #'
-#'\code{bvar_fast} simulates from the joint posterior distribution of the
+#'\code{bvar} simulates from the joint posterior distribution of the
 #'parameters and latent variables and returns the posterior draws.
 #'
 #'The VAR(p) model is of the following form:  \eqn{ \bold{y}^\prime_t =
@@ -262,80 +262,81 @@ bvar <- function(Yraw,
 
   h_init <- matrix(rep(-10, T*M), T,M)
 
-  ##############################
-  #GL priors
-  priorPHI$n_groups <- 1
-  priorPHI$groups <- 1
-  #DL
-  DL_a <- 1
-  a_vec <- 1
-  prep1 <- 1
-  prep2 <- matrix(1,1,1)
-  DL_hyper <- FALSE
-  #R2D2
-  R2D2_hyper <- FALSE
-  R2D2_api <- 1
-  R2D2_b <- 1
-  api_vec <- 1
-  b_vec <- 1
+  # creating placeholders (for cpp, maybe move to cpp code)
+  priorPHI_in <- list()
+  priorPHI_in$prior <- priorPHI$prior
 
-  ##############################
+  #GL priors
+  priorPHI_in$n_groups <- 1
+  priorPHI_in$groups <- 1
+
+  #DL
+  priorPHI_in$DL_a <- double(1)
+  priorPHI_in$a_vec <- double(1)
+  priorPHI_in$prep1 <- double(1)
+  priorPHI_in$prep2 <- matrix(0)
+  priorPHI_in$DL_hyper <- logical(1)
+  #R2D2
+  priorPHI_in$R2D2_hyper <- logical(1)
+  priorPHI_in$R2D2_api <- double(1)
+  priorPHI_in$R2D2_b <- double(1)
+  priorPHI_in$api_vec <- double(1)
+  priorPHI_in$b_vec <- double(1)
+  #SSVS
+  priorPHI_in$SSVS_tau0 <- double(1)
+  priorPHI_in$SSVS_tau1 <- double(1)
+  priorPHI_in$SSVS_s_a <- double(1)
+  priorPHI_in$SSVS_s_b <- double(1)
+  #HM
+  priorPHI_in$lambda_1 <- double(1)
+  priorPHI_in$lambda_2 <- double(1)
+  priorPHI_in$V_i_prep <- double(1)
+
+  # prior specification for PHI
 
   if(priorPHI$prior == "R2D2" | priorPHI$prior == "DL" | priorPHI$prior == "DL_h"){
 
     groups <- unique(i_vec[i_vec!=0])
     n_groups <- length(groups)
-    priorPHI$n_groups <- n_groups
-    priorPHI$groups <- groups
+    priorPHI_in$n_groups <- n_groups
+    priorPHI_in$groups <- groups
 
   }
 
   if(priorPHI$prior == "R2D2"){
 
     if(all(is.numeric(priorPHI$R2D2_b))){
-      #priorPHI$R2D2_hyper <- FALSE
       R2D2_hyper <- FALSE
     }else if("hyperprior" %in% priorPHI$R2D2_b & length(priorPHI$R2D2_b) == 1){
 
-      #priorPHI$R2D2_hyper <- TRUE
       R2D2_hyper <- TRUE
 
     }else{
       stop("Something went wrong specifying R2D2_b!")
     }
+    priorPHI_in$R2D2_hyper <- R2D2_hyper
 
-    if(!R2D2_hyper){ #priorPHI$
+    if(!R2D2_hyper){
 
-      #priorPHI$R2D2_b <- rep_len(priorPHI$R2D2_b, n_groups)
-      R2D2_b <- rep_len(priorPHI$R2D2_b, n_groups)
-      #priorPHI$R2D2_api <- rep(as.numeric(NA), n_groups)
-      R2D2_api <- rep(as.numeric(NA), n_groups)
+      priorPHI_in$R2D2_b <- rep_len(priorPHI$R2D2_b, n_groups)
+      priorPHI_in$R2D2_api <- rep(as.numeric(NA), n_groups)
       for(j in seq.int(n_groups)){
-        #priorPHI$R2D2_api[j] <- 1/(n^(priorPHI$R2D2_b[j]/2) *
-        #                             (T^(priorPHI$R2D2_b[j]/2)) *log(T))
-        R2D2_api[j] <- 1/(n^(R2D2_b[j]/2) *
-                            (T^(R2D2_b[j]/2)) *log(T))
+        priorPHI_in$R2D2_api[j] <- 1/(n^(priorPHI$R2D2_b[j]/2) *
+                                     (T^(priorPHI$R2D2_b[j]/2)) *log(T))
       }
 
-    }else if(R2D2_hyper){#priorPHI$
+    }else if(R2D2_hyper){
 
       grid <- 100
-      #priorPHI$b_vec <- seq(.01,1,length.out=grid)
-      b_vec <- seq(.01,1,length.out=grid)
-      #priorPHI$api_vec <- rep(as.numeric(NA), grid)
-      api_vec <- rep(as.numeric(NA), grid)
+      priorPHI_in$b_vec <- seq(.01,1,length.out=grid)
+      priorPHI_in$api_vec <- rep(as.numeric(NA), grid)
       for(j in seq.int(grid)){
-        #priorPHI$api_vec[j] <- 1/(n^(priorPHI$b_vec[j]/2) *
-        #                            (T^(priorPHI$b_vec[j]/2)) *log(T))
-        api_vec[j] <- 1/(n^(b_vec[j]/2) *
-                                    (T^(b_vec[j]/2)) *log(T))
+        priorPHI_in$api_vec[j] <- 1/(n^(priorPHI_in$b_vec[j]/2) *
+                                    (T^(priorPHI_in$b_vec[j]/2)) *log(T))
       }
-      #priorPHI$R2D2_b <- rep(0.5, n_groups)
-      R2D2_b <- rep(0.5, n_groups)
-      #priorPHI$R2D2_api <- rep(priorPHI$api_vec[which(priorPHI$b_vec==0.5)],
-       #                        n_groups)
-      R2D2_api <- rep(api_vec[which(b_vec==0.5)], n_groups)
-
+      priorPHI_in$R2D2_b <- rep(0.5, n_groups)
+      priorPHI_in$R2D2_api <- rep(priorPHI_in$api_vec[which(priorPHI_in$b_vec==0.5)],
+                               n_groups)
 
     }
 
@@ -343,144 +344,165 @@ bvar <- function(Yraw,
   }else if(priorPHI$prior == "DL"){
 
     if(all(is.numeric(priorPHI$DL_a))){
-      #priorPHI$DL_hyper <- FALSE
       DL_hyper <- FALSE
     }else if("hyperprior" %in% priorPHI$DL_a & length(priorPHI$DL_a) == 1){
 
-      #priorPHI$DL_hyper <- TRUE
       DL_hyper <- TRUE
     }else if(any(c("1/K", "1/n") %in% priorPHI$DL_a) &
              length(priorPHI$DL_a) == 1){
-      #priorPHI$DL_hyper <- FALSE
       DL_hyper <- FALSE
       if(priorPHI$DL_a == "1/K") {
-        #priorPHI$DL_a <- rep(1/K, n_groups)
         DL_a <- rep(1/K, n_groups)
       }else if(priorPHI$DL_a == "1/n") {
-          #priorPHI$DL_a <- rep(1/n, n_groups)
         DL_a <- rep(1/n, n_groups)
       }
     }else{
       stop("Something went wrong specifying DL_a!")
     }
-
+    priorPHI_in$DL_hyper <- DL_hyper
     if(DL_hyper){#priorPHI$
       grid <- 1000
-      #priorPHI$a_vec <- seq(1/(n),1/2,length.out = grid)
-      a_vec <- seq(1/(n),1/2,length.out = grid)
+      priorPHI_in$a_vec <- seq(1/(n),1/2,length.out = grid)
       # prep1 &prep2: some preparations for the evaluation of the
       # Dirichlet-density
-      #priorPHI$prep1 <- priorPHI$a_vec-1
-      prep1 <- a_vec-1
+      priorPHI_in$prep1 <- priorPHI_in$a_vec-1
       prep2 <- matrix(NA, n_groups, grid)
       ii <- 1
       for(j in groups){
         n_tmp <- length(which(i_vec == j))
         # normalizing constant of symmetric Dirichlet density in logs
-        prep2[ii,] <- lgamma(n_tmp*a_vec) - n_tmp*lgamma(a_vec)
+        prep2[ii,] <- lgamma(n_tmp*priorPHI_in$a_vec) - n_tmp*lgamma(priorPHI_in$a_vec)
         ii <- ii + 1
       }
-      #priorPHI$prep2 <- prep2
-      #priorPHI$DL_a <- rep_len(1/2, n_groups) #initial value
-      DL_a <- rep_len(1/2, n_groups) #initial value
-    }else if(!DL_hyper){#priorPHI$
+      priorPHI_in$prep2 <- prep2
+      priorPHI_in$DL_a <- rep_len(1/2, n_groups) #initial value
+    }else if(!DL_hyper){
       if(all(is.numeric(priorPHI$DL_a))){
-        #priorPHI$DL_a <- rep_len(priorPHI$DL_a, n_groups)
-        DL_a <- rep_len(priorPHI$DL_a, n_groups)
+        priorPHI_in$DL_a <- rep_len(priorPHI$DL_a, n_groups)
       }
     }
 
   }else if(priorPHI$prior == "SSVS"){
 
     if(priorPHI$semiautomatic) {
+      # shape parameters of beta hypeprior on prior-inclusion-probability
+      priorPHI_in$SSVS_s_a <- priorPHI$SSVS_s_a
+      priorPHI_in$SSVS_s_b <- priorPHI$SSVS_s_b
 
       # standard errors of flat phi posterior estimates
       sigma_phi <- sqrt(diag(Sigma_flat %x% V_post_flat))
 
       # scale tau with variances
-      priorPHI$SSVS_tau0 <- priorPHI$SSVS_c0*sigma_phi
-      priorPHI$SSVS_tau1 <- priorPHI$SSVS_c1*sigma_phi
+      priorPHI_in$SSVS_tau0 <- priorPHI$SSVS_c0*sigma_phi
+      priorPHI_in$SSVS_tau1 <- priorPHI$SSVS_c1*sigma_phi
     }else{
-      priorPHI$SSVS_tau0 <- rep_len(priorPHI$SSVS_c0, n)
-      priorPHI$SSVS_tau1 <- rep_len(priorPHI$SSVS_c1, n)
+      priorPHI_in$SSVS_tau0 <- rep_len(priorPHI$SSVS_c0, n)
+      priorPHI_in$SSVS_tau1 <- rep_len(priorPHI$SSVS_c1, n)
     }
 
   }else if(priorPHI$prior == "normal"){
-    priorPHI$V_i <- rep(priorPHI$V_i, length = n)
+
+    priorPHI_in$V_i <- rep(priorPHI$V_i, length = n)
+
   }else if(priorPHI$prior == "HMP"){
+
+    priorPHI_in$lambda_1 <- priorPHI$lambda_1
+    priorPHI_in$lamda_2 <- priorPHI$lambda_2
     sigma_sq <- MP_sigma_sq(Yraw, 6)
+
     # prepare prior variances down to lambdas
-    priorPHI$V_i_prep <- MP_V_prior_prep(sigma_sq, (K+intercept), M, intercept>0)
+    priorPHI_in$V_i_prep <- MP_V_prior_prep(sigma_sq, (K+intercept), M, intercept>0)
   }
 
-  ################################
-  priorPHI$DL_a <- DL_a
-  priorPHI$a_vec <- a_vec
-  priorPHI$prep1 <- prep1
-  priorPHI$prep2 <- prep2
-  priorPHI$DL_hyper <- DL_hyper
+  # creating placeholders (for cpp, maybe move to cpp code)
+  priorL_in <- list()
+  priorL_in$prior <- priorL$prior
 
-  priorPHI$R2D2_hyper <- R2D2_hyper
-  priorPHI$R2D2_api <- R2D2_api
-  priorPHI$R2D2_b <- R2D2_b
-  priorPHI$api_vec <- api_vec
-  priorPHI$b_vec <- b_vec
-  ################################
+  #DL
+  priorL_in$DL_b <- double(1)
+  priorL_in$b_vec <- double(1)
+  priorL_in$prep1 <- double(1)
+  priorL_in$prep2 <- double(1)
+  priorL_in$DL_hyper <- logical(1)
+  #R2D2
+  priorL_in$R2D2_hyper <- logical(1)
+  priorL_in$R2D2_api <- double(1)
+  priorL_in$R2D2_b <- double(1)
+  priorL_in$api_vec <- double(1)
+  priorL_in$b_vec <- double(1)
+  #SSVS
+  priorL_in$SSVS_tau0 <- double(1)
+  priorL_in$SSVS_tau1 <- double(1)
+  priorL_in$SSVS_s_a <- double(1)
+  priorL_in$SSVS_s_b <- double(1)
+  #HM
+  priorL_in$lambda_3 <- double(1)
+
+  # prior specification for L
 
   if(priorL$prior == "DL"){
     if(is.numeric(priorL$DL_b)){
-      priorL$DL_hyper <- FALSE
+      priorL_in$DL_hyper <- FALSE
+      priorL_in$DL_b <- priorL$DL_b
     }else if(priorL$DL_b == "1/n") {
-      priorL$DL_b <- 1/n_L
-      priorL$DL_hyper <- FALSE
+      priorL_in$DL_b <- 1/n_L
+      priorL_in$DL_hyper <- FALSE
     }else if(priorL$DL_b == "hyperprior"){
 
-      priorL$DL_hyper <- TRUE
+      priorL_in$DL_hyper <- TRUE
 
       grid_L <- 1000
-      priorL$b_vec <- seq(1/(n_L),1/2,length.out = grid_L)
-      priorL$prep1 <- priorL$b_vec - 1
-      priorL$prep2 <- lgamma(n_L*priorL$b_vec) - n_L*lgamma(priorL$b_vec)
-      priorL$DL_b <- 1/2
+      priorL_in$b_vec <- seq(1/(n_L),1/2,length.out = grid_L)
+      priorL_in$prep1 <- priorL_in$b_vec - 1
+      priorL_in$prep2 <- lgamma(n_L*priorL_in$b_vec) - n_L*lgamma(priorL_in$b_vec)
+      priorL_in$DL_b <- 1/2
     }
 
   }else if(priorL$prior == "SSVS"){
-    priorL$SSVS_tau0 <- rep(priorL$SSVS_c0, n_L)
-    priorL$SSVS_tau1 <- rep(priorL$SSVS_c1, n_L)
+
+    priorL_in$SSVS_tau0 <- rep(priorL$SSVS_c0, n_L)
+    priorL_in$SSVS_tau1 <- rep(priorL$SSVS_c1, n_L)
+    priorL_in$SSVS_s_a <- priorL$SSVS_s_a
+    priorL_in$SSVS_s_b <- priorL$SSVS_s_b
+
   }else if(priorL$prior == "normal"){
-    priorL$V_i <- rep(priorL$V_i, length = n_L)
+
+    priorL_in$V_i <- rep(priorL$V_i, length = n_L)
+
   }else if(priorL$prior == "R2D2"){
 
     if(is.numeric(priorL$R2D2_b)){
-      priorL$R2D2_hyper <- FALSE
+      priorL_in$R2D2_hyper <- FALSE
     }else if(priorL$R2D2_b == "hyperprior"){
 
-      priorL$R2D2_hyper <- TRUE
+      priorL_in$R2D2_hyper <- TRUE
 
     }else{
       stop("Something went wrong specifying R2D2_b (specify_L...)!")
     }
 
-    if(!priorL$R2D2_hyper){
+    if(!priorL_in$R2D2_hyper){
 
-      priorL$R2D2_b <- priorL$R2D2_b
-      priorL$R2D2_api <- 1/(n_L^(priorL$R2D2_b/2) *
-                                     (T^(priorL$R2D2_b/2)) *log(T))
+      priorL_in$R2D2_b <- priorL$R2D2_b
+      priorL_in$R2D2_api <- 1/(n_L^(priorL_in$R2D2_b/2) *
+                                     (T^(priorL_in$R2D2_b/2)) *log(T))
 
 
-    }else if(priorL$R2D2_hyper){
+    }else if(priorL_in$R2D2_hyper){
 
       grid <- 100
-      priorL$b_vec <- seq(.01,1,length.out=grid)
-      priorL$api_vec <- rep(as.numeric(NA), grid)
+      priorL_in$b_vec <- seq(.01,1,length.out=grid)
+      priorL_in$api_vec <- rep(as.numeric(NA), grid)
       for(j in seq.int(grid)){
-        priorL$api_vec[j] <- 1/(n_L^(priorL$b_vec[j]/2) *
-                                    (T^(priorL$b_vec[j]/2)) *log(T))
+        priorL_in$api_vec[j] <- 1/(n_L^(priorL_in$b_vec[j]/2) *
+                                    (T^(priorL_in$b_vec[j]/2)) *log(T))
       }
-      priorL$R2D2_b <- 0.5
-      priorL$R2D2_api <- priorL$api_vec[which(priorL$b_vec==0.5)]
+      priorL_in$R2D2_b <- 0.5
+      priorL_in$R2D2_api <- priorL_in$api_vec[which(priorL_in$b_vec==0.5)]
 
     }
+  }else if(priorL$prior == "HMP"){
+    priorL_in$lambda_3 <- priorL$lambda_3
   }
 
 
@@ -563,8 +585,8 @@ bvar <- function(Yraw,
                   priorIntercept,
                   PHI_in,
                   PHI0,
-                  priorPHI,
-                  priorL,
+                  priorPHI_in,
+                  priorL_in,
                   L_in,
                   SV,
                   priorHomoscedastic,
@@ -585,15 +607,15 @@ bvar <- function(Yraw,
   dimnames(res$L)[2] <- dimnames(res$L)[3] <- list(colnames(Y))
   phinames <- as.vector((vapply(seq_len(M), function(i) paste0(colnames(Y)[i], "~", colnames(X[,1:(ncol(X)-intercept)])), character(K))))
   if(priorPHI$prior %in% c("DL","DL_h")){
-    colnames(res$phi_hyperparameter) <- c(paste0("zeta",1:priorPHI$n_groups), paste0("psi: ", phinames), paste0("theta: ", phinames), paste0("a",1:priorPHI$n_groups))#
+    colnames(res$phi_hyperparameter) <- c(paste0("zeta",1:priorPHI_in$n_groups), paste0("psi: ", phinames), paste0("theta: ", phinames), paste0("a",1:priorPHI_in$n_groups))#
 
   }else if(priorPHI$prior == "R2D2"){
-    colnames(res$phi_hyperparameter) <- c(paste0("zeta",1:priorPHI$n_groups),
+    colnames(res$phi_hyperparameter) <- c(paste0("zeta",1:priorPHI_in$n_groups),
                                           paste0("psi: ", phinames),
                                           paste0("theta: ", phinames),
-                                          paste0("xi",1:priorPHI$n_groups),
-                                          paste0("b",1:priorPHI$n_groups),
-                                          paste0("api",1:priorPHI$n_groups))#
+                                          paste0("xi",1:priorPHI_in$n_groups),
+                                          paste0("b",1:priorPHI_in$n_groups),
+                                          paste0("api",1:priorPHI_in$n_groups))#
 
   }else if(priorPHI$prior == "SSVS"){
   colnames(res$phi_hyperparameter) <- c(paste0("gamma: ", phinames), paste0("p_i: ", phinames))#

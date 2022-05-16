@@ -35,16 +35,13 @@ List bvar_cpp(const arma::mat Y,
 
   const double n = K*M; // number of VAR coefficients // ??? without intercept
   arma::mat PHI_diff(K+intercept,M); // will hold PHI - PHI0
-  //const arma::uvec i_ol = arma::find(i_vec > 0); // indicator for ownlags
-  //const arma::uvec i_cl = arma::find(i_vec < 0); // indicator for crosslags
-  // int n_ol = i_ol.size(); // nr. of ownlags
-  //const int n_cl = i_cl.size(); // nr. of crosslags
   const arma::uvec i_ocl= arma::find(i_vec != 0.); // indicator for all coefficients except intercept
   const arma::uvec i_i= arma::find(i_vec == 0.); // indicator for intercepts
 
   //////////////////
   // indicators for coefficients without intercept
   const arma::ivec i_vec_small=i_vec(i_ocl);
+  // indicators for cross-/own-lags (relevant for HM prior)
   const arma::uvec i_ol = arma::find(i_vec_small > 0);
   const arma::uvec i_cl = arma::find(i_vec_small < 0);
   const int n_ol = i_ol.size(); // nr. of ownlags
@@ -67,97 +64,50 @@ List bvar_cpp(const arma::mat Y,
     V_i = V_i_in;
   }
 
+  //---- GL prior on PHI
+
+  //  sub-groups for semi-global-local GL priors
+  const int n_groups = priorPHI_in["n_groups"];
+  arma::ivec groups = priorPHI_in["groups"];
+
   //---- DL prior on PHI
+  const bool DL_hyper = priorPHI_in["DL_hyper"];
+  arma::vec DL_a = priorPHI_in["DL_a"];
+  const arma::vec a_vec = priorPHI_in["a_vec"];
+  const arma::mat prep2 = priorPHI_in["prep2"];
+  const arma::vec prep1 = priorPHI_in["prep1"];
 
-//  int n_groups;
-  int n_groups = priorPHI_in["n_groups"];
-//  IntegerVector groups_in;
-  IntegerVector groups_in = priorPHI_in["groups"];
-//  if(priorPHI == "R2D2" || priorPHI== "DL"){
-    //n_groups = priorPHI_in["n_groups"];
-    //groups_in = priorPHI_in["groups"];
-//  }
-  arma::ivec groups(groups_in.begin(), groups_in.length(), false);
-
+  // initialization of scaling, global, and local parameters
   arma::vec psi(n);psi.fill(1.0);
   arma::vec zeta(n_groups); zeta.fill(10);
   arma::vec theta(n);theta.fill(1/static_cast<double>(n));
-
-  NumericVector DL_a_in = priorPHI_in["DL_a"];
-  arma::vec DL_a(DL_a_in.begin(), DL_a_in.length(), false);
-//  arma::vec DL_a(n_groups);
-//  bool DL_hyper;
-  bool DL_hyper = priorPHI_in["DL_hyper"];
-//  NumericVector a_vec_in;
-  NumericVector a_vec_in = priorPHI_in["a_vec"];
-//  NumericMatrix prep2_in(n_groups, 1000);
-  NumericMatrix prep2_in = priorPHI_in["prep2"];
-//  NumericVector prep1_in;
-  NumericVector prep1_in = priorPHI_in["prep1"];
   if(priorPHI == "DL" ){
-//    DL_hyper = priorPHI_in["DL_hyper"];
     V_i = psi % theta % theta * zeta(0) * zeta(0);
-//    arma::vec DL_a_in = priorPHI_in["DL_a"];
-//    DL_a = DL_a_in;
-//    if(DL_hyper == true){
-//      a_vec_in = priorPHI_in["a_vec"];
-//      prep2_in = wrap(priorPHI_in["prep2"]);
-//      prep1_in = priorPHI_in["prep1"];
-//      }
   }
-  arma::vec a_vec(a_vec_in.begin(), a_vec_in.length(), false);
-  arma::mat prep2(prep2_in.begin(), prep2_in.nrow(), prep2_in.ncol(), false);
-  arma::vec prep1(prep1_in.begin(), prep1_in.length(), false);
 
   //----R2D2 on PHI
+  // initialization of scaling, global, and local parameters
   vec xi(n_groups, fill::ones);
   arma::vec theta_r2d2(n); theta_r2d2.fill(1/static_cast<double>(n));
   vec zeta_r2d2(n_groups); zeta_r2d2.fill(10);
   arma::vec psi_r2d2(n); psi_r2d2.fill(1/static_cast<double>(n));
 
-//  bool R2D2_hyper;
+  //  bool R2D2_hyper;
   bool R2D2_hyper = priorPHI_in["R2D2_hyper"];
-//  NumericVector api_in;
-  NumericVector api_in = priorPHI_in["R2D2_api"];
-//  NumericVector b_r2d2_in;
-  NumericVector b_r2d2_in = priorPHI_in["R2D2_b"];
-//  NumericVector api_vec_in;
-  NumericVector api_vec_in = priorPHI_in["api_vec"];
-//  NumericVector b_r2d2_vec_in;
-  NumericVector b_r2d2_vec_in = priorPHI_in["b_vec"];
+  arma::vec api = priorPHI_in["R2D2_api"];
+  arma::vec b_r2d2 = priorPHI_in["R2D2_b"];
+  const arma::vec api_vec = priorPHI_in["api_vec"];
+  const arma::vec b_r2d2_vec = priorPHI_in["b_vec"];
   if(priorPHI == "R2D2"){
-
-//    api_in = priorPHI_in["R2D2_api"];
-//    b_r2d2_in = priorPHI_in["R2D2_b"];
-
-//    R2D2_hyper = priorPHI_in["R2D2_hyper"];
-//    if(R2D2_hyper==true){
-//          b_r2d2_vec_in = priorPHI_in["b_vec"];
-//          api_vec_in = priorPHI_in["api_vec"];
-//    }
-
     V_i = psi_r2d2%theta_r2d2*zeta_r2d2(0)/2;
-
   }
-  arma::vec api(api_in.begin(), api_in.length(), false);
-  arma::vec b_r2d2(b_r2d2_in.begin(), b_r2d2_in.length(), false);
-  arma::vec b_r2d2_vec(b_r2d2_vec_in.begin(), b_r2d2_vec_in.length(), false);
-  arma::vec api_vec(api_vec_in.begin(), api_vec_in.length(), false);
 
   //---- SSVS on PHI
-  arma::vec tau_0;
-  arma::vec tau_1;
-  double SSVS_s_a;
-  double SSVS_s_b;
+  arma::vec tau_0 = priorPHI_in["SSVS_tau0"];
+  arma::vec tau_1 = priorPHI_in["SSVS_tau1"];
+  double SSVS_s_a = priorPHI_in["SSVS_s_a"];
+  double SSVS_s_b = priorPHI_in["SSVS_s_b"];
   if(priorPHI == "SSVS"){
-    arma::vec tau_0_in = priorPHI_in["SSVS_tau0"];
-    tau_0 = tau_0_in;
-    arma::vec tau_1_in = priorPHI_in["SSVS_tau1"];
-    tau_1 = tau_1_in;
-    double SSVS_s_a_in = priorPHI_in["SSVS_s_a"];
-    SSVS_s_a = SSVS_s_a_in;
-    double SSVS_s_b_in = priorPHI_in["SSVS_s_b"];
-    SSVS_s_b = SSVS_s_b_in;
 
     V_i = tau_0 % tau_0;
   }
@@ -167,23 +117,15 @@ List bvar_cpp(const arma::mat Y,
   //---- HMP on PHI
   double lambda_1=0.04;
   double lambda_2=0.0016;
-  NumericVector V_i_prep_in;
-  NumericVector s_r_1_in;
-  NumericVector s_r_2_in;
-  if(priorPHI == "HMP"){
-     V_i_prep_in = priorPHI_in["V_i_prep"];
-     s_r_1_in = priorPHI_in["lambda_1"];
-     s_r_2_in = priorPHI_in["lambda_2"];
-     }
-  arma::vec V_i_prep(V_i_prep_in.begin(), V_i_prep_in.length(), false);
+  arma::vec V_i_prep = priorPHI_in["V_i_prep"];
+  arma::vec s_r_1 = priorPHI_in["lambda_1"];
+  arma::vec s_r_2 = priorPHI_in["lambda_2"];
   if(priorPHI == "HMP"){
     //V_i_long(i_i) = priorIntercept % V_i_prep(i_i);
     arma::vec V_i_prep_small = V_i_prep(i_ocl);
     V_i(i_ol) = lambda_1*V_i_prep_small(i_ol);
     V_i(i_cl) = lambda_2*V_i_prep_small(i_cl);
   }
-  arma::vec s_r_1(s_r_1_in.begin(), s_r_1_in.length(), false);
-  arma::vec s_r_2(s_r_2_in.begin(), s_r_2_in.length(), false);
 
   //Fill V_i_long with remaining prior variances
   V_i_long(i_ocl) = V_i; // ???
@@ -201,32 +143,20 @@ List bvar_cpp(const arma::mat Y,
     arma::vec V_i_L_in = priorL_in["V_i"];
     V_i_L = V_i_L_in;
   }
+
   //---- DL prior on L
   arma::vec psi_L(n_L); psi_L.fill(1.0);
   double zeta_L=10;
   arma::vec theta_L(n_L); theta_L.fill(1/static_cast<double>(n_L));
 
-  bool DL_L_hyper;
-  double DL_b;
-  NumericVector b_vec_in;
-  NumericVector prep2_L_in;
-  NumericVector prep1_L_in;
+  bool DL_L_hyper = priorL_in["DL_hyper"];
+  double DL_b = priorL_in["DL_b"];
+  arma::vec b_vec = priorL_in["b_vec"];
+  arma::vec prep2_L = priorL_in["prep2"];;
+  arma::vec prep1_L = priorL_in["prep1"];
   if(priorL == "DL"){
-    double DL_b_in = priorL_in["DL_b"];
-    DL_b = DL_b_in;
-
-    DL_L_hyper = priorL_in["DL_hyper"];
-    if(DL_L_hyper){
-      b_vec_in = priorL_in["b_vec"];
-      prep2_L_in = priorL_in["prep2"];
-      prep1_L_in = priorL_in["prep1"];
-    }
-
     V_i_L= psi_L% theta_L % theta_L * zeta_L * zeta_L;
   }
-  arma::vec b_vec(b_vec_in.begin(), b_vec_in.length(), false);
-  arma::vec prep2_L(prep2_L_in.begin(), prep2_L_in.length(), false);
-  arma::vec prep1_L(prep1_L_in.begin(), prep1_L_in.length(), false);
 
   //----R2D2 on L
 
@@ -235,42 +165,21 @@ List bvar_cpp(const arma::mat Y,
   double zeta_L_r2d2 = 10;
   arma::vec psi_L_r2d2(n_L); psi_L_r2d2.fill(1/static_cast<double>(n_L));
 
-  bool R2D2_L_hyper;
-  NumericVector api_vec_L_in;
-  NumericVector b_vec_L_r2d2_in;
-  double b_L_r2d2;
-  double api_L;
+  bool R2D2_L_hyper = priorL_in["R2D2_hyper"];
+  arma::vec api_vec_L = priorL_in["api_vec"];
+  NumericVector b_vec_L_r2d2 = priorL_in["b_vec"];
+  double b_L_r2d2 = priorL_in["R2D2_b"];
+  double api_L = priorL_in["R2D2_api"];
   if(priorL == "R2D2"){
-    double b_L_r2d2_in = priorL_in["R2D2_b"];
-    b_L_r2d2 = b_L_r2d2_in;
-    double api_L_in = priorL_in["R2D2_api"];
-    api_L = api_L_in;
-
-    R2D2_L_hyper = priorL_in["R2D2_hyper"];
-    if(R2D2_L_hyper){
-      api_vec_L_in = priorL_in["api_vec"];
-      b_vec_L_r2d2_in = priorL_in["b_vec"];
-    }
     V_i_L = psi_L_r2d2 % theta_L_r2d2 * zeta_L_r2d2 /2.;
   }
-  arma::vec api_vec_L(api_vec_L_in.begin(), api_vec_L_in.length(),false);
-  arma::vec b_vec_L_r2d2(b_vec_L_r2d2_in.begin(), b_vec_L_r2d2_in.length(), false);
 
   //---- SSVS on L
-  arma::vec tau_0_L;
-  arma::vec tau_1_L;
-  double SSVS_s_a_L;
-  double SSVS_s_b_L;
+  arma::vec tau_0_L = priorL_in["SSVS_tau0"];
+  arma::vec tau_1_L = priorL_in["SSVS_tau1"];
+  double SSVS_s_a_L = priorL_in["SSVS_s_a"];
+  double SSVS_s_b_L = priorL_in["SSVS_s_b"];
   if(priorL == "SSVS"){
-    arma::vec tau_0_L_in = priorL_in["SSVS_tau0"];
-    tau_0_L = tau_0_L_in;
-    arma::vec tau_1_L_in = priorL_in["SSVS_tau1"];
-    tau_1_L = tau_1_L_in;
-    double SSVS_s_a_L_in = priorL_in["SSVS_s_a"];
-    SSVS_s_a_L = SSVS_s_a_L_in;
-    double SSVS_s_b_L_in = priorL_in["SSVS_s_b"];
-    SSVS_s_b_L = SSVS_s_b_L_in;
-
     V_i_L = tau_0_L % tau_0_L;
   }
   arma::vec gammas_L(n_L, fill::zeros);
@@ -278,13 +187,11 @@ List bvar_cpp(const arma::mat Y,
 
   //---- HMP on L
   double lambda_3 = 0.001;
-  NumericVector s_r_3_in;
+  NumericVector s_r_3 = priorL_in["lambda_3"];
   if(priorL == "HMP"){
-    s_r_3_in = priorL_in["lambda_3"];
     arma::vec V_i_L_tmp(n_L); V_i_L_tmp.fill(1.0);
     V_i_L= lambda_3*V_i_L_tmp;
   }
-  arma::vec s_r_3(s_r_3_in.begin(), s_r_3_in.length(), false);
 
   //-----------------------------SV-settings----------------------------------//
   // Import sv_spec
@@ -610,26 +517,7 @@ List bvar_cpp(const arma::mat Y,
     Named("sv_para") = sv_para_draws,
     Named("phi_hyperparameter") = phi_hyperparameter_draws,
     Named("l_hyperparameter") = l_hyperparameter_draws,
-    Named("bench") = time,
-    //Named("i_ocl") = i_ocl, // ???
-    //Named("i_i") = i_i, // ???
-    //Named("s_r_3") = s_r_3, // ???
-    //Named("tau0") = tau_0, // ???
-    //Named("tau1") = tau_1,// ???
-    Named("V_i_long") = V_i_long, // ???
-    Named("V_i_L") = V_i_L,
-    //Named("a_vec") = a_vec, // ???
-    Named("groups") = groups,
-    Named("api") = api,
-    Named("DL_a") = DL_a,
-    Named("prep1") = prep1,
-    Named("prep2") = prep2,// ???
-    Named("PHI0")=PHI0,
-    Named("i_vec_small") = i_vec_small,
-    Named("PHI_diff") = PHI_diff,
-    Named("n_groups") = n_groups,
-    Named("groups") = groups
-
+    Named("bench") = time
   );
 
   return out;
