@@ -2,8 +2,7 @@
 library(tidyverse)
 library(xts)
 library(lubridate)
-#dat <- readr::read_csv("data/current.csv")
-dir <- paste0("~/AAU/ZK35/BVAR/R/Bayesian VAR Project/BVAR/data/")
+dir <- paste0("")
 dat <- readr::read_csv(paste0(dir,"2021-07.csv"))
 
 # remove rows that only contain NAs
