@@ -57,7 +57,7 @@ settings. Used to select and customize the prior on the constant covariance
 \code{SV=TRUE}. Must contain}
 
 \item{priorHomoscedastic}{Only used if \code{SV=FALSE}. In that case
-\code{priorHomoscedastic} must be a \eqn{M \ times 2} matrix, where the
+\code{priorHomoscedastic} must be a \eqn{M \times 2} matrix, where the
 first column entries indicate the shape and the second column entries
 indicate the scale parameters of the inverse Gamma prior distributions of
 the orthogonalized variances. All entries must be greater than 0. A vector
