@@ -19,6 +19,11 @@ devtools::install_github("luisgruber/bayesianVARs")
 
 # Getting started
 
+Data used in the following example is from Michael W. McCracken and
+Serena Ng, “FRED-QD: A Quarterly Database for Macroeconomic Research,”
+Federal Reserve Bank of St. Louis Review, First Quarter 2021, pp. 1-44.
+<https://doi.org/10.20955/r.103.1-44>.
+
 ``` r
 set.seed(537)
 # load package
@@ -37,7 +42,7 @@ priorPHI <- specify_priorPHI(prior = "R2D2")
 # Specify prior for L (Decomposition of variance-covariance matrix in the form of t(L^(-1))%*%D_t%*%L^(-1), where L is upper triangular)
 priorL <- specify_priorL(prior = "DL")
 
-# Estimate VAR(2) with stochastic volatitlity
+# Estimate VAR(2) with stochastic volatility
 mod <- bvar(Yraw = Y_est, p = 2, draws = 5000, burnin = 1000,
             priorPHI = priorPHI, priorL = priorL, SV = TRUE, progressbar = TRUE)
 
@@ -74,9 +79,12 @@ ts.plot(mod$phi_hyperparameter$zeta1)
 ![](README_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
 
 ``` r
-# Simulate from predictive density and compare to ex-post realized value by means
-# log predictive likelihood
+# Simulate from predictive density and compare to ex-post realized value by 
+# means of log predictive likelihood
+
+# get ex-post observed data
 Y_obs <- data[101:104,]
+# predict
 pred <- predict(mod, nsteps = 4, LPL = TRUE, Y_obs = Y_obs ,LPL_VoI = c("CPIAUCSL", "FEDFUNDS"))
 
 # Histograms of predictive densities

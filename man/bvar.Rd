@@ -48,7 +48,7 @@ coefficients.}
 
 \item{priorL}{List object from \code{\link{specify_priorL}} with prior
 settings. Used to select and customize the prior on the constant covariance
-parameters.}
+(precision) parameters.}
 
 \item{SV}{logical indicating whether time-varying (\code{TRUE}) or constant
 (\code{FALSE}) variance should be estimated.}
@@ -77,8 +77,8 @@ specified the normalized cholesky factor of the posterior mean of the
 variance-covariance matrix of a flat conjugate prior will be used.}
 }
 \description{
-\code{bvar} simulates from the joint posterior distribution of the
-parameters and latent variables and returns the posterior draws.
+\code{bvar} simulates from the joint posterior distribution of the parameters
+and latent variables and returns the posterior draws.
 }
 \details{
 The VAR(p) model is of the following form:  \eqn{ \bold{y}^\prime_t =
@@ -103,13 +103,12 @@ be modeled with stochastic volatility specification. By setting
 \code{SV=FALSE} a constant matrix \eqn{\bold{D}_t=\bold{D}} will be estimated.
 }
 \section{MCMC algorithm}{
-
-To sample efficiently the reduced form VAR coefficients, the corrected
-triangular algorithm in Carriero et al. (2021) is implemented. The SV
-parameters and latent variables are sampled using package
-\code{\link{stochvol}}'s \code{\link[stochvol]{update_fast_sv}} function. The
-covariance parameters, i.e. the free off-diagonal elements in \eqn{\bold{L}},
-are sampled as in Cogley and Sargent (2005).
+ To sample efficiently the reduced form VAR
+coefficients, the corrected triangular algorithm in Carriero et al. (2021)
+is implemented. The SV parameters and latent variables are sampled using
+package \code{\link{stochvol}}'s \code{\link[stochvol]{update_fast_sv}}
+function. The precision parameters, i.e. the free off-diagonal elements in
+\eqn{\bold{L}}, are sampled as in Cogley and Sargent (2005).
 }
 
 \references{

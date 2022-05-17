@@ -1,7 +1,7 @@
 #'Markov Chain Monte Carlo Sampling for Bayesian Vectorautoregressions
 #'
-#'\code{bvar} simulates from the joint posterior distribution of the
-#'parameters and latent variables and returns the posterior draws.
+#'\code{bvar} simulates from the joint posterior distribution of the parameters
+#'and latent variables and returns the posterior draws.
 #'
 #'The VAR(p) model is of the following form:  \eqn{ \bold{y}^\prime_t =
 #'\bold{x}^\prime_t\bold{\Phi} + \bold{\epsilon}^\prime_t}, where
@@ -24,13 +24,12 @@
 #'be modeled with stochastic volatility specification. By setting
 #'\code{SV=FALSE} a constant matrix \eqn{\bold{D}_t=\bold{D}} will be estimated.
 #'
-#'@section MCMC algorithm:
-#'To sample efficiently the reduced form VAR coefficients, the corrected
-#'triangular algorithm in Carriero et al. (2021) is implemented. The SV
-#'parameters and latent variables are sampled using package
-#'\code{\link{stochvol}}'s \code{\link[stochvol]{update_fast_sv}} function. The
-#'covariance parameters, i.e. the free off-diagonal elements in \eqn{\bold{L}},
-#'are sampled as in Cogley and Sargent (2005).
+#'@section MCMC algorithm: To sample efficiently the reduced form VAR
+#'  coefficients, the corrected triangular algorithm in Carriero et al. (2021)
+#'  is implemented. The SV parameters and latent variables are sampled using
+#'  package \code{\link{stochvol}}'s \code{\link[stochvol]{update_fast_sv}}
+#'  function. The precision parameters, i.e. the free off-diagonal elements in
+#'  \eqn{\bold{L}}, are sampled as in Cogley and Sargent (2005).
 #'
 #'@references Carriero, A. and Chan, J. and  Clark, T. E. and Marcellino, M.
 #'  (2021). Corrigendum to “Large Bayesian vector autoregressions with
@@ -65,13 +64,13 @@
 #'  coefficients.
 #'@param priorL List object from \code{\link{specify_priorL}} with prior
 #'  settings. Used to select and customize the prior on the constant covariance
-#'  parameters.
+#'  (precision) parameters.
 #'@param SV logical indicating whether time-varying (\code{TRUE}) or constant
 #'  (\code{FALSE}) variance should be estimated.
 #'@param sv_spec list with stochastic volatility specification if
 #'  \code{SV=TRUE}. Must contain
 #'@param priorHomoscedastic Only used if \code{SV=FALSE}. In that case
-#'  \code{priorHomoscedastic} must be a \eqn{M \ times 2} matrix, where the
+#'  \code{priorHomoscedastic} must be a \eqn{M \times 2} matrix, where the
 #'  first column entries indicate the shape and the second column entries
 #'  indicate the scale parameters of the inverse Gamma prior distributions of
 #'  the orthogonalized variances. All entries must be greater than 0. A vector

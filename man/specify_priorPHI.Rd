@@ -21,10 +21,67 @@ specify_priorPHI(
 )
 }
 \arguments{
-\item{prior}{}
+\item{prior}{character, one of \code{"R2D2"}, \code{"DL"}, \code{"SSVS"},
+\code{"HMP"} or \code{"normal"}.}
 
-\item{...}{}
+\item{DL_a}{either single positive number -- where smaller values indicate
+heavier regularization --, or one of \code{DL_a="1/K"}, \code{DL_a="1/n"}
+or \code{DL_a="hyperprior"}. K is the number of covariables per equation
+and n the number of all covariables.  In case of \code{DL_a="hyperprior"} a
+discrete uniform hyperprior is placed on the parameter. \code{DL_a} has
+only to be specified if \code{prior="DL"}.}
+
+\item{R2D2_b}{either single positive number -- where greater values indicate
+heavier regularization --, or \code{R2D2_b="hyperprior"}. In case of the
+latter a discrete uniform hyperprior is placed on the parameter.
+\code{R2D2_b} has only to be specified if \code{prior="R2D2"}.}
+
+\item{SSVS_c0}{single positive number indicating the (unscaled) standard
+deviation of the spike component. \code{SSVS_c0} has only to be specified
+if \code{prior="SSVS"}. It should be that \eqn{SSVS_{c0} \ll SSVS_{c1}}!}
+
+\item{SSVS_c1}{single positive number indicating the (unscaled) standard
+deviation of the slab component. \code{SSVS_c0} has only to be specified if
+\code{prior="SSVS"}. It should be that \eqn{SSVS_{c0} \ll SSVS_{c1}}!}
+
+\item{SSVS_semiautomatic}{logical. If \code{SSVS_semiautomatic=TRUE} both
+\code{SSVS_c0} and \code{SSVS_c1} will be scaled by the variances of the
+posterior of PHI under a FLAT conjugate (dependent Normal-Wishart prior).
+\code{SSVS_semiautomatic} has only to be specified if \code{prior="SSVS"}.}
+
+\item{SSVS_sa}{positive number in the range \eqn{(0,1)} indicating the first
+shape parameter of the Beta hyperprior on the prior-inclusion
+probability.\code{SSVS_sa} has only to be specified if \code{prior="SSVS"}.}
+
+\item{SSVS_sb}{positive number in the range \eqn{(0,1)} indicating the second
+shape parameter of the Beta hyperprior on the prior-inclusion
+probability.\code{SSVS_sb} has only to be specified if \code{prior="SSVS"}.}
+
+\item{HMP_lambda1}{numeric vector of length 2. Both entries must be positive.
+The first indicates the shape and the second the rate of the Gamma
+hyperprior on own-lag coefficients. \code{HMP_lambda1} has only to be
+specified if \code{prior="HMP"}.}
+
+\item{HMP_lambda2}{numeric vector of length 2. Both entries must be positive.
+The first indicates the shape and the second the rate of the Gamma
+hyperprior on cross-lag coefficients. \code{HMP_lambda2} has only to be
+specified if \code{prior="HMP"}.}
+
+\item{V_i}{numeric vector of length n, where n is the number of all
+covariables indicating the prior variances. A single number will be
+recycled accordingly! Must be positive. \code{V_i} has only to be specified
+if \code{prior="HMP"}.}
+
+\item{global_local_grouping}{One of \code{"global"}, \code{"equation-wise"},
+\code{"covariate-wise"}, \code{"olcl-lagwise"} \code{"fol"} indicating the
+sub-groups of the semi-global-local modifications to R2D2 and DL prior.
+Works also with user-specified indicator matrix of dimension \eqn{K \times
+  M}, where K is the number of covariates per equation (without intercept)
+and M the number of time-series.  Only relevant if \code{prior="DL"} or
+\code{prior="R2D2"}.}
+
+\item{...}{Do not use!}
 }
 \description{
-Specify
+Configures prior on PHI.
 }

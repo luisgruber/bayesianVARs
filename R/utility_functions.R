@@ -1,22 +1,59 @@
 # specify Priors ----------------------------------------------------------
 
+
 #' Specify prior on PHI
 #'
-#' Specify
+#' Configures prior on PHI.
 #'
-#' @param prior
+#' @param prior character, one of \code{"R2D2"}, \code{"DL"}, \code{"SSVS"},
+#'   \code{"HMP"} or \code{"normal"}.
 #'
-#' @param DL_a
-#' @param R2D2_b
-#' @param SSVS_c0
-#' @param SSVS_c1
-#' @param SSVS_semiautomatic
-#' @param SSVS_sa
-#' @param SSVS_sb
-#' @param HMP_lambda1
-#' @param HMP_lambda2
-#' @param V_i
-#' @param ...
+#' @param DL_a either single positive number -- where smaller values indicate
+#'   heavier regularization --, or one of \code{DL_a="1/K"}, \code{DL_a="1/n"}
+#'   or \code{DL_a="hyperprior"}. K is the number of covariables per equation
+#'   and n the number of all covariables.  In case of \code{DL_a="hyperprior"} a
+#'   discrete uniform hyperprior is placed on the parameter. \code{DL_a} has
+#'   only to be specified if \code{prior="DL"}.
+#' @param R2D2_b either single positive number -- where greater values indicate
+#'   heavier regularization --, or \code{R2D2_b="hyperprior"}. In case of the
+#'   latter a discrete uniform hyperprior is placed on the parameter.
+#'   \code{R2D2_b} has only to be specified if \code{prior="R2D2"}.
+#' @param SSVS_c0 single positive number indicating the (unscaled) standard
+#'   deviation of the spike component. \code{SSVS_c0} has only to be specified
+#'   if \code{prior="SSVS"}. It should be that \eqn{SSVS_{c0} \ll SSVS_{c1}}!
+#' @param SSVS_c1 single positive number indicating the (unscaled) standard
+#'   deviation of the slab component. \code{SSVS_c0} has only to be specified if
+#'   \code{prior="SSVS"}. It should be that \eqn{SSVS_{c0} \ll SSVS_{c1}}!
+#' @param SSVS_semiautomatic logical. If \code{SSVS_semiautomatic=TRUE} both
+#'   \code{SSVS_c0} and \code{SSVS_c1} will be scaled by the variances of the
+#'   posterior of PHI under a FLAT conjugate (dependent Normal-Wishart prior).
+#'   \code{SSVS_semiautomatic} has only to be specified if \code{prior="SSVS"}.
+#' @param SSVS_sa positive number in the range \eqn{(0,1)} indicating the first
+#'   shape parameter of the Beta hyperprior on the prior-inclusion
+#'   probability.\code{SSVS_sa} has only to be specified if \code{prior="SSVS"}.
+#' @param SSVS_sb positive number in the range \eqn{(0,1)} indicating the second
+#'   shape parameter of the Beta hyperprior on the prior-inclusion
+#'   probability.\code{SSVS_sb} has only to be specified if \code{prior="SSVS"}.
+#' @param HMP_lambda1 numeric vector of length 2. Both entries must be positive.
+#'   The first indicates the shape and the second the rate of the Gamma
+#'   hyperprior on own-lag coefficients. \code{HMP_lambda1} has only to be
+#'   specified if \code{prior="HMP"}.
+#' @param HMP_lambda2 numeric vector of length 2. Both entries must be positive.
+#'   The first indicates the shape and the second the rate of the Gamma
+#'   hyperprior on cross-lag coefficients. \code{HMP_lambda2} has only to be
+#'   specified if \code{prior="HMP"}.
+#' @param V_i numeric vector of length n, where n is the number of all
+#'   covariables indicating the prior variances. A single number will be
+#'   recycled accordingly! Must be positive. \code{V_i} has only to be specified
+#'   if \code{prior="HMP"}.
+#' @param global_local_grouping One of \code{"global"}, \code{"equation-wise"},
+#'   \code{"covariate-wise"}, \code{"olcl-lagwise"} \code{"fol"} indicating the
+#'   sub-groups of the semi-global-local modifications to R2D2 and DL prior.
+#'   Works also with user-specified indicator matrix of dimension \eqn{K \times
+#'   M}, where K is the number of covariates per equation (without intercept)
+#'   and M the number of time-series.  Only relevant if \code{prior="DL"} or
+#'   \code{prior="R2D2"}.
+#' @param ... Do not use!
 #'
 #' @export
 specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
@@ -80,19 +117,42 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
 
 #' Specify prior on L
 #'
-#' Specify
+#' Configures prior on L.
 #'
-#' @param prior
+#' @param prior character, one of \code{"R2D2"}, \code{"DL"}, \code{"SSVS"},
+#'   \code{"HMP"} or \code{"normal"}.
 #'
-#' @param DL_b
-#' @param R2D2_b
-#' @param SSVS_c0
-#' @param SSVS_c1
-#' @param SSVS_sa
-#' @param SSVS_sb
-#' @param HMP_lambda3
-#' @param V_i
-#' @param ...
+#' @param DL_b either single positive number -- where smaller values indicate
+#'   heavier regularization --, or one of \code{DL_b="1/n"} or
+#'   \code{DL_b="hyperprior"}. n is the number of free off-diagonal elements in
+#'   L.  In case of \code{DL_b="hyperprior"} a discrete uniform hyperprior is
+#'   placed on the parameter. \code{DL_b} has only to be specified if
+#'   \code{prior="DL"}.
+#' @param R2D2_b either single positive number -- where greater values indicate
+#'   heavier regularization --, or \code{R2D2_b="hyperprior"}. In case of the
+#'   latter a discrete uniform hyperprior is placed on the parameter.
+#'   \code{R2D2_b} has only to be specified if \code{prior="R2D2"}.
+#' @param SSVS_c0 single positive number indicating the standard deviation of
+#'   the spike component. \code{SSVS_c0} has only to be specified if
+#'   \code{prior="SSVS"}. It should be that \eqn{SSVS_{c0} \ll SSVS_{c1}}!
+#' @param SSVS_c1 single positive number indicating the standard deviation of
+#'   the slab component. \code{SSVS_c1} has only to be specified if
+#'   \code{prior="SSVS"}. It should be that \eqn{SSVS_{c0} \ll SSVS_{c1}}!
+#' @param SSVS_sa positive number in the range \eqn{(0,1)} indicating the first
+#'   shape parameter of the Beta hyperprior on the prior-inclusion
+#'   probability.\code{SSVS_sa} has only to be specified if \code{prior="SSVS"}.
+#' @param SSVS_sb positive number in the range \eqn{(0,1)} indicating the second
+#'   shape parameter of the Beta hyperprior on the prior-inclusion
+#'   probability.\code{SSVS_sb} has only to be specified if \code{prior="SSVS"}.
+#' @param HMP_lambda3 numeric vector of length 2. Both entries must be positive.
+#'   The first indicates the shape and the second the rate of the Gamma
+#'   hyperprior on the free off-diagonal elements in L. \code{HMP_lambda3} has
+#'   only to be specified if \code{prior="HMP"}.
+#' @param V_i numeric vector of length n, where n is the number of free
+#'   off-diagonal elements in L, indicating the prior variances. A single number
+#'   will be recycled accordingly! Must be positive. \code{V_i} has only to be
+#'   specified if \code{prior="HMP"}.
+#' @param ... Do not use!
 #'
 #' @export
 specify_priorL <- function(prior, DL_b = "1/n", R2D2_b = 0.5,
@@ -137,18 +197,37 @@ specify_priorL <- function(prior, DL_b = "1/n", R2D2_b = 0.5,
   out
 }
 
+#' Predict method for Bayesian VARs
+#'
+#' Simulates from (out-of-sample) predictive density for Bayesian VARs estimated
+#' via \code{\link{bvar}} and computes log predictive likelhoods if ex-post
+#' observed data is supplied.
+#'
+#' @param object A \code{bvar} object, obtained from \code{\link{bvar}}.
+#'
+#' @param nsteps single positive integer indicating the forecasting horizon.
+#' @param LPL logical indicating whether log predictive likelihood should be
+#'   computed. If \code{LPL=TRUE}, \code{Y_obs} has to be specified.
+#' @param Y_obs Data matrix of observed values for computation of LPL. Each of
+#'   \eqn{M} columns is assumed to contain a single time-series of length
+#'   \code{nsteps}.
+#' @param LPL_VoI either integer vector or character vector of column-names
+#'   indicating for which subgroup of time-series in \code{Yraw} from
+#'   \code{bvar}-object a joint LPL will be returned.
+#' @param ...
+#'
 #' @export
-predict.bvar <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA,...){
+predict.bvar <- function(object, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA,...){
 
   # relevant mod settings
-  SV <- mod$SV
-  intercept <- mod$intercept
+  SV <- object$SV
+  intercept <- object$intercept
 
   # data preparation
-  variables <- colnames(mod$Y)
-  draws <- dim(mod$PHI)[1]
-  p <- mod$p
-  M <- ncol(mod$Y)
+  variables <- colnames(object$Y)
+  draws <- dim(object$PHI)[1]
+  p <- object$p
+  M <- ncol(object$Y)
   if(LPL){
     if(!any(is.na(LPL_VoI))){
       LPL_subset <- TRUE
@@ -168,13 +247,13 @@ predict.bvar <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA,...)
   }
   if(SV==TRUE) {
     # extract sv parameters
-    sv_mu <- mod$sv_para[,1,]
-    sv_phi <- mod$sv_para[,2,]
-    sv_sigma <- mod$sv_para[,3,]
+    sv_mu <- object$sv_para[,1,]
+    sv_phi <- object$sv_para[,2,]
+    sv_sigma <- object$sv_para[,3,]
     # extract current state of log-vola
-    sv_h_T <- mod$sv_latent[, dim(mod$sv_latent)[2],]
+    sv_h_T <- object$sv_latent[, dim(object$sv_latent)[2],]
   }else if(SV == FALSE){
-    D_sqrt_draws <- exp(mod$sv_latent[, dim(mod$sv_latent)[2],]/2)
+    D_sqrt_draws <- exp(object$sv_latent[, dim(object$sv_latent)[2],]/2)
   }
 
   # storage
@@ -192,13 +271,13 @@ predict.bvar <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA,...)
   }
 
   ## X_fore1: predictors for one-step ahead forecasts
-  X_fore1 <- as.vector(t(mod$Yraw[mod$Traw:(mod$Traw-p+1),]))
+  X_fore1 <- as.vector(t(object$Yraw[object$Traw:(object$Traw-p+1),]))
 
   if(intercept) X_fore1 <- c(X_fore1, 1)
 
   for (i in seq.int(draws)) {
 
-    L_inv <- backsolve(mod$L[i,,], diag(M))
+    L_inv <- backsolve(object$L[i,,], diag(M))
 
       X_fore_k <- X_fore1
 
@@ -215,7 +294,7 @@ predict.bvar <- function(mod, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA,...)
 
       for(k in seq.int(nsteps)){
 
-        mean_fore <- as.vector(X_fore_k%*%mod$PHI[i,,])
+        mean_fore <- as.vector(X_fore_k%*%object$PHI[i,,])
 
         # compute prediction of variance-covariance matrix
         if(SV){
