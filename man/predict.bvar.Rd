@@ -22,7 +22,7 @@ computed. If \code{LPL=TRUE}, \code{Y_obs} has to be specified.}
 indicating for which subgroup of time-series in \code{Yraw} from
 \code{bvar}-object a joint LPL will be returned.}
 
-\item{...}{}
+\item{...}{Do not use!}
 }
 \description{
 Simulates from (out-of-sample) predictive density for Bayesian VARs estimated
