@@ -1,7 +1,7 @@
 #' @useDynLib bayesianVARs, .registration = TRUE
 #' @importFrom Rcpp sourceCpp
 #' @importFrom GIGrvg rgig
-#' @importFrom stats rnorm dnorm rgamma dgamma rbeta rbinom rmultinom sd embed
+#' @importFrom stats rnorm dnorm rgamma dgamma rbeta rbinom rmultinom sd embed "IQR", "median", "quantile"
 #' @importFrom utils setTxtProgressBar txtProgressBar
 #' @importFrom MASS mvrnorm
 #' @importFrom stochvol svsample validate_and_process_expert specify_priors svsample_fast_cpp

@@ -214,7 +214,7 @@ specify_priorL <- function(prior, DL_b = "1/n", R2D2_b = 0.5,
 #' @param LPL_VoI either integer vector or character vector of column-names
 #'   indicating for which subgroup of time-series in \code{Yraw} from
 #'   \code{bvar}-object a joint LPL will be returned.
-#' @param ...
+#' @param ... Do not use!
 #'
 #' @export
 predict.bvar <- function(object, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA,...){
@@ -376,7 +376,7 @@ summary.bvar_predict <- function(object, ...){
     out$LPL_VoI <- object$LPL_VoI
     out$VoI <- object$VoI
   }
-  out$prediction_quantiles <- apply(object$predictions, 2:3, quantile, c(.05,.5,.95))
+  out$prediction_quantiles <- apply(object$predictions, 2:3, stats::quantile, c(.05,.5,.95))
   class(out) <- "summary.bvar_predict"
   out
 }
@@ -409,9 +409,9 @@ print.summary.bvar_predict <- function(x, ...){
 
 #' @export
 summary.bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.75, 0.975),...){
-  PHImedian <- apply(object$PHI, 2:3, median)
-  PHIquantiles <- apply(object$PHI, 2:3, quantile, quantiles)
-  PHIiqr <- apply(object$PHI, 2:3, IQR)
+  PHImedian <- apply(object$PHI, 2:3, stats::median)
+  PHIquantiles <- apply(object$PHI, 2:3, stats::quantile, quantiles)
+  PHIiqr <- apply(object$PHI, 2:3, stats::IQR)
   out <- list(PHImedian = PHImedian,
              PHIquantiles = PHIquantiles,
              PHIiqr = PHIiqr)

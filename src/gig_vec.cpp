@@ -2,6 +2,15 @@
 // #include <GIGrvg.h>
 using namespace Rcpp;
 
+//' Draw from generalized inverse Gaussian
+//'
+//' Vectorized version of \code{\link[GIGrvg]{rgig}}
+//'
+//' @param n A single integer indicating the number of draws to generate.
+//' @param lambda vector of shape parameters.
+//' @param chi vector of shape/scale parameters. Must be nonnegative for positive lambdas and positive else.
+//' @param psi vector of shape/scale parameters. Must be nonnegative for negative lambdas and positive else.
+//'
 //' @export
 //[[Rcpp::export]]
 NumericMatrix my_gig(int n, NumericVector lambda, NumericVector chi, NumericVector psi) {
