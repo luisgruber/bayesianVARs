@@ -5,6 +5,15 @@ bvar_cpp <- function(Y, X, M, T, K, draws, burnin, intercept, priorIntercept, PH
     .Call(`_bayesianVARs_bvar_cpp`, Y, X, M, T, K, draws, burnin, intercept, priorIntercept, PHI, PHI0, priorPHI_in, priorL_in, L, SV, priorHomoscedastic, sv_spec, h, sv_para, i_mat, i_vec, progressbar)
 }
 
+#' Draw from generalized inverse Gaussian
+#'
+#' Vectorized version of \code{\link[GIGrvg]{rgig}}
+#'
+#' @param n A single integer indicating the number of draws to generate.
+#' @param lambda vector of shape parameters.
+#' @param chi vector of shape/scale parameters. Must be nonnegative for positive lambdas and positive else.
+#' @param psi vector of shape/scale parameters. Must be nonnegative for negative lambdas and positive else.
+#'
 #' @export
 my_gig <- function(n, lambda, chi, psi) {
     .Call(`_bayesianVARs_my_gig`, n, lambda, chi, psi)
