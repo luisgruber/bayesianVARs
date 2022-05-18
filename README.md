@@ -37,7 +37,7 @@ Y_est <- data[1:100,]
 
 # Specify prior for reduced-form VAR coefficients (with default settings)
 prior <- "R2D2" # or "DL", "SSVS", "HMP", "normal"
-priorPHI <- specify_priorPHI(prior = "R2D2")
+priorPHI <- specify_priorPHI(prior = prior)
 
 # Specify prior for L (Decomposition of variance-covariance matrix in the form of t(L^(-1))%*%D_t%*%L^(-1), where L is upper triangular)
 priorL <- specify_priorL(prior = "DL")
@@ -51,7 +51,7 @@ summary(mod)
 ```
 
     ## 
-    ## Posterior median of PHI:
+    ## Posterior median of reduced-form coefficients:
     ##                  GDPC1   CPIAUCSL   FEDFUNDS
     ## GDPC1.l1     2.600e-22  5.664e-14  1.146e-04
     ## CPIAUCSL.l1 -3.823e-12  7.143e-01  7.155e-03
@@ -61,7 +61,7 @@ summary(mod)
     ## FEDFUNDS.l2 -7.502e-02 -2.066e-07 -3.139e-01
     ## intercept    1.646e-02  7.708e-04  1.305e-03
     ## 
-    ## Posterior interquartile range of PHI:
+    ## Posterior interquartile range of of reduced-form coefficients:
     ##                 GDPC1  CPIAUCSL  FEDFUNDS
     ## GDPC1.l1    3.123e-07 0.0001682 0.0720803
     ## CPIAUCSL.l1 8.327e-03 0.2364082 0.2927033
@@ -70,13 +70,35 @@ summary(mod)
     ## CPIAUCSL.l2 3.252e-02 0.2697496 0.0002177
     ## FEDFUNDS.l2 1.209e-01 0.0614795 0.1823603
     ## intercept   3.168e-03 0.0012899 0.0022168
+    ## 
+    ## Posterior median of contemporaneous coefficients:
+    ##          GDPC1   CPIAUCSL   FEDFUNDS
+    ## GDPC1        -  1.871e-11 -8.322e-02
+    ## CPIAUCSL     -          - -1.260e-01
+    ## FEDFUNDS     -          -          -
+    ## 
+    ## Posterior interquartile range of contemporaneous coefficients:
+    ##          GDPC1 CPIAUCSL FEDFUNDS
+    ## GDPC1        - 0.005107 0.122551
+    ## CPIAUCSL     -        - 0.322422
+    ## FEDFUNDS     -        -        -
 
 ``` r
-# Traceplot of global shrinkage parameter
-ts.plot(mod$phi_hyperparameter$zeta1)
+# Visualize Posterior of PHI
+par(mar=c(4,5,5,1)+.1, mfrow=c(2,1))
+plot(mod$PHI, summary = "median", add_numbers = TRUE)
+plot(mod$PHI, summary = "IQR", add_numbers = TRUE)
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
+
+``` r
+# Traceplot of global shrinkage parameters
+ts.plot(mod$phi_hyperparameter$zeta1, ylab="")
+ts.plot(mod$l_hyperparameter$zeta, ylab="")
+```
+
+![](README_files/figure-gfm/unnamed-chunk-2-2.png)<!-- -->
 
 ``` r
 # Simulate from predictive density and compare to ex-post realized value by 
@@ -96,7 +118,7 @@ for (i in paste0("t+",1:4)) {
 }
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-2-2.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-2-3.png)<!-- -->
 
 ``` r
 # Summary of predictive evaluation
