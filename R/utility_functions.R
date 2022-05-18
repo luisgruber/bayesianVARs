@@ -412,9 +412,15 @@ summary.bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.75, 0.975),..
   PHImedian <- apply(object$PHI, 2:3, stats::median)
   PHIquantiles <- apply(object$PHI, 2:3, stats::quantile, quantiles)
   PHIiqr <- apply(object$PHI, 2:3, stats::IQR)
+  Lmedian <- apply(object$L, 2:3, stats::median)
+  Lquantiles <- apply(object$L, 2:3, stats::quantile, quantiles)
+  Liqr <- apply(object$L, 2:3, stats::IQR)
   out <- list(PHImedian = PHImedian,
              PHIquantiles = PHIquantiles,
-             PHIiqr = PHIiqr)
+             PHIiqr = PHIiqr,
+             Lmedian = Lmedian,
+             Lquantiles = Lquantiles,
+             Liqr = Liqr)
   class(out) <- "summary.bvar"
   out
 }
@@ -422,10 +428,13 @@ summary.bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.75, 0.975),..
 #' @export
 print.summary.bvar <- function(x, ...){
   digits <- max(3, getOption("digits") - 3)
-    cat("\nPosterior median of PHI:\n")
+    cat("\nPosterior median of reduced-form coefficients:\n")
     print(x$PHImedian, digits = digits)
-    cat("\nPosterior interquartile range of PHI:\n")
+    cat("\nPosterior interquartile range of of reduced-form coefficients:\n")
     print(x$PHIiqr, digits = digits)
-
-  invisible(x)
+    cat("\nPosterior median of contemporaneous coefficients:\n")
+    print(as.table(x$Lmedian - diag(3)), digits = digits, zero.print = "-")
+    cat("\nPosterior interquartile range of contemporaneous coefficients:\n")
+    print(as.table(x$Liqr), digits = digits, zero.print = "-")
+    invisible(x)
 }

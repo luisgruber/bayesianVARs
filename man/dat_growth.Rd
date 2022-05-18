@@ -5,7 +5,7 @@
 \alias{dat_growth}
 \title{Data from the US-economy}
 \format{
-A 'xts' object with 250 rows and 21 variables.
+A 'xts' object with 247 rows and 21 variables.
 }
 \source{
 \url{https://research.stlouisfed.org/econ/mccracken/fred-databases/}

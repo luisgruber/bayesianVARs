@@ -646,6 +646,8 @@ bvar <- function(Yraw,
   res$Yraw <- Y_tmp
   res$Traw <- Traw
   res$datamat <- data.frame(cbind(Y, X))
+  class(res$PHI) <- "PHI"
+  class(res$L) <- "L"
   class(res) <- "bvar"
   res
 }
