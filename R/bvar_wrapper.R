@@ -154,18 +154,19 @@ bvar <- function(Yraw,
     i_intercept <- rep(0,M)
   }else i_intercept <- NULL
 
-    if(priorPHI$prior == "DL" | priorPHI$prior == "R2D2" | priorPHI$prior == "DL_h"){
+    if(priorPHI$prior == "DL" | priorPHI$prior == "R2D2" |
+       priorPHI$prior == "DL_h" | priorPHI$prior == "SSVS"){
 
-      if(all(is.numeric(priorPHI$global_local_grouping))){
-        i_mat <- priorPHI$global_local_grouping
+      if(all(is.numeric(priorPHI$global_grouping))){
+        i_mat <- priorPHI$global_grouping
         if(!(identical(dim(i_mat), as.integer(c(K,M))) & all(is.numeric(i_mat))) )
-          stop("Something went wrong specifying 'global_local_grouping'.")
-      }else if(priorPHI$global_local_grouping=="global"){
+          stop("Something went wrong specifying 'global_grouping'.")
+      }else if(priorPHI$global_grouping=="global"){
         i_mat <- matrix(1, K, M)
-      }else if(priorPHI$global_local_grouping=="fol"){
+      }else if(priorPHI$global_grouping=="fol"){
         i_mat <- matrix(1, K, M)
         diag(i_mat[1:M,1:M]) <- 2
-      }else if(priorPHI$global_local_grouping=="olcl-lagwise"){
+      }else if(priorPHI$global_grouping=="olcl-lagwise"){
         i_mat <- matrix(1, K, M)
         diag(i_mat[1:M,1:M]) <- 2
         if(p>1){
@@ -173,19 +174,19 @@ bvar <- function(Yraw,
             i_mat[(j*M+1):((j+1)*M),] <- i_mat[((j-1)*M+1):(j*M),] + 2
           }
         }
-      }else if(priorPHI$global_local_grouping == "equation-wise"){
+      }else if(priorPHI$global_grouping == "equation-wise"){
         i_mat <- matrix(
           rep(1:M, K),
           K,M,
           byrow = TRUE
         )
-      }else if(priorPHI$global_local_grouping == "covariate-wise"){
+      }else if(priorPHI$global_grouping == "covariate-wise"){
         i_mat <- matrix(
           rep(1:K, M),
           K,M
         )
       }else {
-          stop("Something went wrong specifying 'global_local_grouping'.")
+          stop("Something went wrong specifying 'global_grouping'.")
       }
 
     }else{
@@ -286,6 +287,8 @@ bvar <- function(Yraw,
   priorPHI_in$SSVS_tau1 <- double(1)
   priorPHI_in$SSVS_s_a <- double(1)
   priorPHI_in$SSVS_s_b <- double(1)
+  priorPHI_in$SSVS_p <- double(1)
+  priorPHI_in$SSVS_hyper <- logical(1)
   #HM
   priorPHI_in$lambda_1 <- double(1)
   priorPHI_in$lambda_2 <- double(1)
@@ -293,7 +296,8 @@ bvar <- function(Yraw,
 
   # prior specification for PHI
 
-  if(priorPHI$prior == "R2D2" | priorPHI$prior == "DL" | priorPHI$prior == "DL_h"){
+  if(priorPHI$prior == "R2D2" | priorPHI$prior == "DL" |
+     priorPHI$prior == "DL_h" | priorPHI$prior == "SSVS"){
 
     groups <- unique(i_vec[i_vec!=0])
     n_groups <- length(groups)
@@ -382,14 +386,20 @@ bvar <- function(Yraw,
     }
 
   }else if(priorPHI$prior == "SSVS"){
-
+    priorPHI_in$SSVS_hyper <- priorPHI$SSVS_hyper
+    priorPHI_in$SSVS_p <- rep_len(priorPHI$SSVS_p,n)
     if(priorPHI$semiautomatic) {
-      # shape parameters of beta hypeprior on prior-inclusion-probability
+      # shape parameters of beta hyperprior on prior-inclusion-probability
       priorPHI_in$SSVS_s_a <- priorPHI$SSVS_s_a
       priorPHI_in$SSVS_s_b <- priorPHI$SSVS_s_b
 
       # standard errors of flat phi posterior estimates
       sigma_phi <- sqrt(diag(Sigma_flat %x% V_post_flat))
+      # select all, except those of intercept
+      sigma_phi <- sigma_phi[which(i_vec!=0)]
+      if(length(sigma_phi)!=p*M^2){
+        stop(length(sigma_phi))
+      }
 
       # scale tau with variances
       priorPHI_in$SSVS_tau0 <- priorPHI$SSVS_c0*sigma_phi
@@ -434,6 +444,8 @@ bvar <- function(Yraw,
   priorL_in$SSVS_tau1 <- double(1)
   priorL_in$SSVS_s_a <- double(1)
   priorL_in$SSVS_s_b <- double(1)
+  priorL_in$SSVS_hyper <- logical(1)
+  priorL_in$SSVS_p <- double(1L)
   #HM
   priorL_in$lambda_3 <- double(1)
 
@@ -458,7 +470,8 @@ bvar <- function(Yraw,
     }
 
   }else if(priorL$prior == "SSVS"){
-
+    priorL_in$SSVS_hyper <- priorL$SSVS_hyper
+    priorL_in$SSVS_p <- rep_len(priorL$SSVS_p, n_L)
     priorL_in$SSVS_tau0 <- rep(priorL$SSVS_c0, n_L)
     priorL_in$SSVS_tau1 <- rep(priorL$SSVS_c1, n_L)
     priorL_in$SSVS_s_a <- priorL$SSVS_s_a

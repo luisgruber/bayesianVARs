@@ -10,8 +10,7 @@ specify_priorL(
   R2D2_b = 0.5,
   SSVS_c0 = 0.001,
   SSVS_c1 = 1,
-  SSVS_sa = 0.5,
-  SSVS_sb = 0.5,
+  SSVS_p = 0.5,
   HMP_lambda3 = c(0.01, 0.01),
   V_i = 10,
   ...
@@ -41,14 +40,6 @@ the spike component. \code{SSVS_c0} has only to be specified if
 the slab component. \code{SSVS_c1} has only to be specified if
 \code{prior="SSVS"}. It should be that \eqn{SSVS_{c0} \ll SSVS_{c1}}!}
 
-\item{SSVS_sa}{positive number in the range \eqn{(0,1)} indicating the first
-shape parameter of the Beta hyperprior on the prior-inclusion
-probability.\code{SSVS_sa} has only to be specified if \code{prior="SSVS"}.}
-
-\item{SSVS_sb}{positive number in the range \eqn{(0,1)} indicating the second
-shape parameter of the Beta hyperprior on the prior-inclusion
-probability.\code{SSVS_sb} has only to be specified if \code{prior="SSVS"}.}
-
 \item{HMP_lambda3}{numeric vector of length 2. Both entries must be positive.
 The first indicates the shape and the second the rate of the Gamma
 hyperprior on the free off-diagonal elements in L. \code{HMP_lambda3} has
@@ -60,6 +51,14 @@ will be recycled accordingly! Must be positive. \code{V_i} has only to be
 specified if \code{prior="HMP"}.}
 
 \item{...}{Do not use!}
+
+\item{SSVS_sa}{positive number in the range \eqn{(0,1)} indicating the first
+shape parameter of the Beta hyperprior on the prior-inclusion
+probability.\code{SSVS_sa} has only to be specified if \code{prior="SSVS"}.}
+
+\item{SSVS_sb}{positive number in the range \eqn{(0,1)} indicating the second
+shape parameter of the Beta hyperprior on the prior-inclusion
+probability.\code{SSVS_sb} has only to be specified if \code{prior="SSVS"}.}
 }
 \description{
 Configures prior on L.

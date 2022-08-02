@@ -31,18 +31,22 @@ plot.PHI <- function(object, summary = "median", ylabels = NULL, xlabels = NULL,
   }
 
   if(summary %in% c("median", "mean")){
-    colspace <- colorspace::diverge_hcl(1000, alpha = alpha)
+    colspace <- colorspace::diverge_hcl(1000, alpha = alpha, palette = "Blue-Red")
+    zlim <- c(-max(abs(PHI)),max(abs(PHI)))
   }else if(summary %in% c("sd", "var", "IQR")){
-    colspace <- colorspace::sequential_hcl(1000, alpha = alpha, rev = TRUE)
+    colspace <- colorspace::sequential_hcl(1000, alpha = alpha, rev = TRUE,
+                                           palette = "Reds 2")#colorspace::sequential_hcl(1000, alpha = alpha, rev = TRUE)#colorspace::sequential_hcl(5, h = 0, c = c(100, 0), l = 65, rev = TRUE, power = 1, alpha = alpha) #colorspace::sequential_hcl(1000, alpha = alpha, rev = TRUE)
+    zlim <- c(0,max(abs(PHI)))
   }
 
   M <- ncol(PHI)
   Kp <- nrow(PHI)
   p <- floor(Kp/M)
-  lim <- max(abs(PHI))
-  image((PHI_star), zlim = c(-lim,lim) ,xaxt = "n", yaxt="n", col = colspace,
+  image((PHI_star), zlim = zlim ,xaxt = "n", yaxt="n", col = colspace,
         bty="n")
-  abline(v = seq(M,Kp-1, M)/(Kp-1) - 0.5/(Kp-1), xpd = FALSE)
+  if((Kp-1)>M){
+    abline(v = seq(M,Kp-1, M)/(Kp-1) - 0.5/(Kp-1), xpd = FALSE)
+  }
   if(is.null(xlabels)){
     axis(3, labels = rownames(PHI), at = seq(0,1, length.out=Kp),
          tick = FALSE, las=2, cex.axis=.75)

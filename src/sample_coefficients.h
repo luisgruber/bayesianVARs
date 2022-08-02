@@ -22,9 +22,15 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
 
 double do_rgig1(double lambda, double chi, double psi);
 
+void sample_V_i_SSVS_beta(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
+                          const arma::vec coeffs, const arma::vec tau_0,
+                          const arma::vec tau_1, const double s_a, const double s_b,
+                          const bool hyper, arma::uvec ind);
+
 void sample_V_i_SSVS(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
                      const arma::vec& coeffs, const arma::vec& tau_0,
-                     const arma::vec& tau_1, const double& s_a, const double& s_b);
+                     const arma::vec& tau_1, const double& s_a, const double& s_b,
+                     const std::string type);
 
 void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const double& s1,
                     const double& r1, const double& s2, const double& r2,

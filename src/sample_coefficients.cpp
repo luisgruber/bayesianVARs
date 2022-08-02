@@ -366,9 +366,54 @@ void sample_V_i_R2D2(arma::vec& V_i, const arma::vec coefs, double& api,
 
 }
 
+void sample_V_i_SSVS_beta(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
+                     const arma::vec coeffs, const arma::vec tau_0,
+                     const arma::vec tau_1, const double s_a, const double s_b,
+                     const bool hyper, arma::uvec ind){
+
+  int n = ind.size();
+  // Compute conditional posterior inclusion probability
+  // taking logs is much stabler!!!
+  arma::vec u_i1 = -log(tau_1) - 0.5 * square((coeffs)/tau_1) + log(p_i);
+  arma::vec u_i2 = -log(tau_0) - 0.5 * square((coeffs)/tau_0) + log(1 - p_i);
+  arma::vec logdif = u_i2 - u_i1;
+  arma::vec gst = 1/(1 + exp(logdif)); // == exp(u_i1)/(exp(u_i2) + exp(u_i1))
+
+  arma::uvec::iterator it;
+  double j = 0;
+  for(it = ind.begin(); it != ind.end(); ++it){
+
+    // Draw gammas
+    gammas(*it) = R::rbinom(1,gst(*it));
+
+    // Compute prior variances
+    if(gammas(*it)==1){
+      V_i(*it) = tau_1(*it)*tau_1(*it);
+    }else{
+      V_i(*it) = tau_0(*it)*tau_0(*it);
+    }
+
+//    if(type=="local"){
+//      // Draw prior inclusion probabilities
+//      p_i(*it) = R::rbeta(s_a + gammas(*it), s_b + 1 - gammas(*it));
+//    }
+
+  }
+
+  if(hyper){
+    int incl = accu(gammas(ind));
+    double p = R::rbeta(s_a + incl, s_b + n - incl);
+    //Rcout << "The value of n : " << n << "\n";
+    p_i(ind).fill(p);
+  }
+
+
+}
+
 void sample_V_i_SSVS(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
                      const arma::vec& coeffs, const arma::vec& tau_0,
-                     const arma::vec& tau_1, const double& s_a, const double& s_b){
+                     const arma::vec& tau_1, const double& s_a, const double& s_b,
+                     const std::string type){
 
   int n = coeffs.size();
   // Compute conditional posterior inclusion probability
@@ -390,12 +435,20 @@ void sample_V_i_SSVS(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
       V_i(j) = tau_0(j)*tau_0(j);
     }
 
-    // Draw prior inclusion probabilites
-    p_i(j) = R::rbeta(s_a + gammas(j), s_b + 1 - gammas(j));
+    if(type=="local"){
+      // Draw prior inclusion probabilites
+      p_i(j) = R::rbeta(s_a + gammas(j), s_b + 1 - gammas(j));
+    }
+
   }
 
-  //V_i.elem(find(gammas==1)) = square(tau_1.elem(find(gammas==1)));
-  //V_i.elem(find(gammas==0)) = square(tau_0.elem(find(gammas==0)));
+  if(type=="global"){
+    int incl = accu(gammas);
+    double p = R::rbeta(s_a + incl, s_b + n - incl);
+
+    p_i.fill(p);
+  }
+
 
 }
 

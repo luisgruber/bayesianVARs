@@ -24,16 +24,16 @@
 #' @param SSVS_c1 single positive number indicating the (unscaled) standard
 #'   deviation of the slab component. \code{SSVS_c0} has only to be specified if
 #'   \code{prior="SSVS"}. It should be that \eqn{SSVS_{c0} \ll SSVS_{c1}}!
+#' @param SSVS_p Either a single positive number in the range \code{(0,1)}
+#'   indicating the (fixed) prior inclusion probability of each coefficient. Or
+#'   numeric vector of length 2 with positive entries indicating the shape
+#'   parameters of the Beta distribution. In that case a Beta hyperprior is
+#'   placed on the prior inclusion probability. \code{SSVS_p} has only to be
+#'   specified if \code{prior="SSVS"}.
 #' @param SSVS_semiautomatic logical. If \code{SSVS_semiautomatic=TRUE} both
 #'   \code{SSVS_c0} and \code{SSVS_c1} will be scaled by the variances of the
 #'   posterior of PHI under a FLAT conjugate (dependent Normal-Wishart prior).
 #'   \code{SSVS_semiautomatic} has only to be specified if \code{prior="SSVS"}.
-#' @param SSVS_sa positive number in the range \eqn{(0,1)} indicating the first
-#'   shape parameter of the Beta hyperprior on the prior-inclusion
-#'   probability.\code{SSVS_sa} has only to be specified if \code{prior="SSVS"}.
-#' @param SSVS_sb positive number in the range \eqn{(0,1)} indicating the second
-#'   shape parameter of the Beta hyperprior on the prior-inclusion
-#'   probability.\code{SSVS_sb} has only to be specified if \code{prior="SSVS"}.
 #' @param HMP_lambda1 numeric vector of length 2. Both entries must be positive.
 #'   The first indicates the shape and the second the rate of the Gamma
 #'   hyperprior on own-lag coefficients. \code{HMP_lambda1} has only to be
@@ -46,20 +46,21 @@
 #'   covariables indicating the prior variances. A single number will be
 #'   recycled accordingly! Must be positive. \code{V_i} has only to be specified
 #'   if \code{prior="HMP"}.
-#' @param global_local_grouping One of \code{"global"}, \code{"equation-wise"},
+#' @param global_grouping One of \code{"global"}, \code{"equation-wise"},
 #'   \code{"covariate-wise"}, \code{"olcl-lagwise"} \code{"fol"} indicating the
-#'   sub-groups of the semi-global-local modifications to R2D2 and DL prior.
-#'   Works also with user-specified indicator matrix of dimension \eqn{K \times
-#'   M}, where K is the number of covariates per equation (without intercept)
-#'   and M the number of time-series.  Only relevant if \code{prior="DL"} or
-#'   \code{prior="R2D2"}.
+#'   sub-groups of the semi-global(-local) modifications to R2D2, DL and SSVS
+#'   prior. Works also with user-specified indicator matrix of dimension \eqn{K
+#'   \times M}, where K is the number of covariates per equation (without
+#'   intercept) and M the number of time-series.  Only relevant if
+#'   \code{prior="DL"}, \code{prior="R2D2"} or \code{prior="SSVS"}.
 #' @param ... Do not use!
 #'
 #' @export
 specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
-                             SSVS_c0 = 0.01, SSVS_c1 = 100, SSVS_semiautomatic = TRUE, SSVS_sa = 0.5, SSVS_sb = 0.5,
+                             SSVS_c0 = 0.01, SSVS_c1 = 100,
+                             SSVS_semiautomatic = TRUE, SSVS_p=0.5,
                              HMP_lambda1 = c(0.01,0.01), HMP_lambda2 = c(0.01,0.01),
-                             V_i = 10, global_local_grouping="global",...){
+                             V_i = 10, global_grouping="global",...){
   if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "SL"))){
     stop("Argument 'prior' must be one of 'DL', 'SSVS', 'HMP' or 'normal'. \n")
   }
@@ -78,30 +79,45 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
         }
     }
 
-    if(is.character(global_local_grouping)){
-      if(!(global_local_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
-        stop("Argument 'global_local_grouping' must be one of 'global',
+    if(is.character(global_grouping)){
+      if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
+        stop("Argument 'global_grouping' must be one of 'global',
            'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
       }
     }
-    out <- list(prior = prior, DL_a = DL_a, global_local_grouping = global_local_grouping)
+    out <- list(prior = prior, DL_a = DL_a, global_grouping = global_grouping)
 
   }else if(prior == "R2D2"){
-    if(is.character(global_local_grouping)){
-      if(!(global_local_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
-        stop("Argument 'global_local_grouping' must be one of 'global',
+    if(is.character(global_grouping)){
+      if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
+        stop("Argument 'global_grouping' must be one of 'global',
            'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
       }
     }
 
-    out <- list(prior = prior, R2D2_b = R2D2_b, global_local_grouping = global_local_grouping)
+    out <- list(prior = prior, R2D2_b = R2D2_b, global_grouping = global_grouping)
 
   }else if(prior == "SSVS"){
     if(!(all(SSVS_c0>0) & all(SSVS_c1>0))){
       stop("'SSVS_c0' and 'SSVS_c1' must be positive numeric values. \n")
     }
+    if(length(SSVS_p)==2L){
+      SSVS_sa <- SSVS_p[1]
+      SSVS_sb <- SSVS_p[2]
+      SSVS_p <- 0.5 # initial value
+      SSVS_hyper <- TRUE
+    }else if(length(SSVS_p)==1L){
+      SSVS_p <- SSVS_p
+      SSVS_sa <- SSVS_sb <- NA
+      SSVS_hyper <- FALSE
+    }else{
+      stop("SSVS_p must be either numeric vector of length 1L or 2L!")
+    }
     out <- list(prior = prior, SSVS_c0=SSVS_c0, SSVS_c1=SSVS_c1,
-                semiautomatic=SSVS_semiautomatic, SSVS_s_a=SSVS_sa, SSVS_s_b=SSVS_sb)
+                semiautomatic=SSVS_semiautomatic, SSVS_s_a=SSVS_sa,
+                SSVS_s_b=SSVS_sb, SSVS_p = SSVS_p, SSVS_hyper = SSVS_hyper,
+                global_grouping = global_grouping)
+
   }else if(prior == "normal"){
     if(!(all(V_i>0))){
       stop("'V_i' must be positive. \n")
@@ -156,7 +172,7 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
 #'
 #' @export
 specify_priorL <- function(prior, DL_b = "1/n", R2D2_b = 0.5,
-                             SSVS_c0 = 0.001, SSVS_c1 = 1, SSVS_sa = 0.5, SSVS_sb = 0.5,
+                             SSVS_c0 = 0.001, SSVS_c1 = 1, SSVS_p = 0.5,
                            HMP_lambda3 = c(0.01,0.01),
                              V_i = 10,
                            ...){
@@ -183,7 +199,21 @@ specify_priorL <- function(prior, DL_b = "1/n", R2D2_b = 0.5,
     if(!(SSVS_c0>0 & SSVS_c1>0)){
       stop("'SSVS_c0' and 'SSVS_c1' must be positive numeric values.")
     }
-    out <- list(prior = prior, SSVS_c0=SSVS_c0, SSVS_c1=SSVS_c1, SSVS_s_a=SSVS_sa, SSVS_s_b=SSVS_sb)
+    if(length(SSVS_p)==2L){
+      SSVS_sa <- SSVS_p[1]
+      SSVS_sb <- SSVS_p[2]
+      SSVS_p <- 0.5 # initial value
+      SSVS_hyper <- TRUE
+    }else if(length(SSVS_p)==1L){
+      SSVS_p <- SSVS_p
+      SSVS_sa <- SSVS_sb <- NA
+      SSVS_hyper <- FALSE
+    }else{
+      stop("SSVS_p must be either numeric vector of length 1L or 2L!")
+    }
+    out <- list(prior = prior, SSVS_c0=SSVS_c0, SSVS_c1=SSVS_c1,
+                SSVS_s_a=SSVS_sa, SSVS_s_b=SSVS_sb, SSVS_p = SSVS_p,
+                SSVS_hyper = SSVS_hyper)
   }else if(prior == "normal"){
     if(!(all(V_i>0))){
       stop("'V_i' must be positive. \n")

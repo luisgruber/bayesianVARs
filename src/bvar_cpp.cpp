@@ -107,12 +107,17 @@ List bvar_cpp(const arma::mat Y,
   arma::vec tau_1 = priorPHI_in["SSVS_tau1"];
   double SSVS_s_a = priorPHI_in["SSVS_s_a"];
   double SSVS_s_b = priorPHI_in["SSVS_s_b"];
-  if(priorPHI == "SSVS"){
+  bool SSVS_hyper = priorPHI_in["SSVS_hyper"];
+  arma::vec p_i = priorPHI_in["SSVS_p"];
 
-    V_i = tau_0 % tau_0;
+  if(priorPHI == "SSVS"){
+    if(SSVS_hyper){
+      V_i = tau_1 % tau_1;
+    }else{
+      V_i = tau_0 % tau_0; // !!! tau_0 % tau_0
+    }
   }
   arma::vec gammas(n, fill::zeros);
-  arma::vec p_i(n); p_i.fill(0.5);
 
   //---- HMP on PHI
   double lambda_1=0.04;
@@ -175,6 +180,8 @@ List bvar_cpp(const arma::mat Y,
   }
 
   //---- SSVS on L
+  bool SSVS_hyper_L = priorL_in["SSVS_hyper"];
+  arma::vec p_i_L = priorL_in["SSVS_p"];
   arma::vec tau_0_L = priorL_in["SSVS_tau0"];
   arma::vec tau_1_L = priorL_in["SSVS_tau1"];
   double SSVS_s_a_L = priorL_in["SSVS_s_a"];
@@ -183,7 +190,6 @@ List bvar_cpp(const arma::mat Y,
     V_i_L = tau_0_L % tau_0_L;
   }
   arma::vec gammas_L(n_L, fill::zeros);
-  arma::vec p_i_L(n_L); p_i_L.fill(0.5);
 
   //---- HMP on L
   double lambda_3 = 0.001;
@@ -314,7 +320,7 @@ List bvar_cpp(const arma::mat Y,
 
     //----2) Sample hyperparameters of hierarchical priors (prior variances V_i)
 
-    if(priorPHI == "DL" || priorPHI== "R2D2"){
+    if(priorPHI == "DL" || priorPHI== "R2D2" || priorPHI=="SSVS" ){
 
       arma::ivec::iterator g;
       int j=0;
@@ -330,18 +336,19 @@ List bvar_cpp(const arma::mat Y,
           sample_V_i_R2D2(V_i, PHI_diff(indplus), api(j), api_vec, zeta_r2d2(j),
                           psi_r2d2, theta_r2d2, xi(j), b_r2d2(j), b_r2d2_vec, ind,
                           R2D2_hyper);
+        }else if(priorPHI == "SSVS"){
+
+          if(rep > 0.1*burnin || SSVS_hyper){
+
+            sample_V_i_SSVS_beta(V_i, gammas, p_i, PHI_diff(i_ocl), tau_0,
+                                 tau_1, SSVS_s_a, SSVS_s_b, SSVS_hyper, ind);
+
+          }
+
         }
 
 
         j += 1;
-      }
-
-    }else if(priorPHI == "SSVS"){
-
-      if(rep > 0.1*burnin){
-        sample_V_i_SSVS(V_i, gammas, p_i, PHI_diff(i_ocl), tau_0, tau_1,
-                        SSVS_s_a, SSVS_s_b);
-
       }
 
     }else if(priorPHI == "HMP"){
@@ -351,7 +358,15 @@ List bvar_cpp(const arma::mat Y,
                        s_r_2(1), PHI_diff(i_ocl), V_i_prep(i_ocl), n_ol, n_cl,
                        i_ol, i_cl);
       }
-    }
+    }//else if(priorPHI == "SSVS"){
+//
+//      if(rep > 0.1*burnin){
+//        sample_V_i_SSVS(V_i, gammas, p_i, PHI_diff(i_ocl), tau_0,
+//                        tau_1, SSVS_s_a, SSVS_s_b, SSVS_type);
+//
+//      }
+//
+//    }
 
     V_i_long(i_ocl) = V_i;
 
@@ -410,7 +425,8 @@ List bvar_cpp(const arma::mat Y,
 
     }else if(priorL == "SSVS"){
 
-      sample_V_i_SSVS(V_i_L, gammas_L, p_i_L, l, tau_0_L, tau_1_L, SSVS_s_a_L, SSVS_s_b_L);
+      sample_V_i_SSVS_beta(V_i_L, gammas_L, p_i_L, l, tau_0_L, tau_1_L, SSVS_s_a_L,
+                      SSVS_s_b_L, SSVS_hyper_L, l_ind);
 
     }else if(priorL == "HMP"){
 

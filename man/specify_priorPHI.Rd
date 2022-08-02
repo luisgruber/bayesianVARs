@@ -11,12 +11,11 @@ specify_priorPHI(
   SSVS_c0 = 0.01,
   SSVS_c1 = 100,
   SSVS_semiautomatic = TRUE,
-  SSVS_sa = 0.5,
-  SSVS_sb = 0.5,
+  SSVS_p = 0.5,
   HMP_lambda1 = c(0.01, 0.01),
   HMP_lambda2 = c(0.01, 0.01),
   V_i = 10,
-  global_local_grouping = "global",
+  global_grouping = "global",
   ...
 )
 }
@@ -49,13 +48,12 @@ deviation of the slab component. \code{SSVS_c0} has only to be specified if
 posterior of PHI under a FLAT conjugate (dependent Normal-Wishart prior).
 \code{SSVS_semiautomatic} has only to be specified if \code{prior="SSVS"}.}
 
-\item{SSVS_sa}{positive number in the range \eqn{(0,1)} indicating the first
-shape parameter of the Beta hyperprior on the prior-inclusion
-probability.\code{SSVS_sa} has only to be specified if \code{prior="SSVS"}.}
-
-\item{SSVS_sb}{positive number in the range \eqn{(0,1)} indicating the second
-shape parameter of the Beta hyperprior on the prior-inclusion
-probability.\code{SSVS_sb} has only to be specified if \code{prior="SSVS"}.}
+\item{SSVS_p}{Either a single positive number in the range \code{(0,1)}
+indicating the (fixed) prior inclusion probability of each coefficient. Or
+numeric vector of length 2 with positive entries indicating the shape
+parameters of the Beta distribution. In that case a Beta hyperprior is
+placed on the prior inclusion probability. \code{SSVS_p} has only to be
+specified if \code{prior="SSVS"}.}
 
 \item{HMP_lambda1}{numeric vector of length 2. Both entries must be positive.
 The first indicates the shape and the second the rate of the Gamma
@@ -72,13 +70,13 @@ covariables indicating the prior variances. A single number will be
 recycled accordingly! Must be positive. \code{V_i} has only to be specified
 if \code{prior="HMP"}.}
 
-\item{global_local_grouping}{One of \code{"global"}, \code{"equation-wise"},
+\item{global_grouping}{One of \code{"global"}, \code{"equation-wise"},
 \code{"covariate-wise"}, \code{"olcl-lagwise"} \code{"fol"} indicating the
-sub-groups of the semi-global-local modifications to R2D2 and DL prior.
-Works also with user-specified indicator matrix of dimension \eqn{K \times
-  M}, where K is the number of covariates per equation (without intercept)
-and M the number of time-series.  Only relevant if \code{prior="DL"} or
-\code{prior="R2D2"}.}
+sub-groups of the semi-global(-local) modifications to R2D2, DL and SSVS
+prior. Works also with user-specified indicator matrix of dimension \eqn{K
+  \times M}, where K is the number of covariates per equation (without
+intercept) and M the number of time-series.  Only relevant if
+\code{prior="DL"}, \code{prior="R2D2"} or \code{prior="SSVS"}.}
 
 \item{...}{Do not use!}
 }
