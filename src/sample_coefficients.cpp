@@ -264,7 +264,7 @@ arma::colvec ddir_prep(const arma::colvec& x, const arma::vec& prep1, const arma
 
   //arma::rowvec logd = sum(prep1.each_col() % log(x), 0) + prep2;
   arma::rowvec logd(prep2.size());
-  for(int j=0; j<prep2.size(); j++){
+  for(unsigned int j=0; j<prep2.size(); j++){
     logd(j) = sum(prep1(j) * log(x));
   }
   logd += prep2;
@@ -380,7 +380,7 @@ void sample_V_i_SSVS_beta(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
   arma::vec gst = 1/(1 + exp(logdif)); // == exp(u_i1)/(exp(u_i2) + exp(u_i1))
 
   arma::uvec::iterator it;
-  double j = 0;
+  //double j = 0;
   for(it = ind.begin(); it != ind.end(); ++it){
 
     // Draw gammas
@@ -557,7 +557,7 @@ void sample_L_SL(arma::mat& L, arma::mat& Ytilde, const arma::mat& d_sqrt,
     mat Z = -1 * (Ytilde.cols(0, i-1).each_col() / normalizer);
     vec c = vectorise(Ytilde.col(i)) / normalizer;
 
-    for(int j=0; j<Z.n_cols; j++){
+    for(unsigned int j=0; j<Z.n_cols; j++){
 
       double p_i = R::rbeta(0.5 + omega(ind), 0.5 + 1 - omega(ind));
       double v_i = 1./R::rgamma((nu_a + omega(ind))/2, 1./((nu_b + L(j,i)*L(j,i))/2));

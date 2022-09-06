@@ -10,6 +10,7 @@
   ylabels = NULL,
   xlabels = NULL,
   add_numbers = TRUE,
+  zlim = NULL,
   ...
 )
 }
@@ -20,17 +21,21 @@
 One of \code{"median"}, \code{"mean"}, \code{"IQR"}, \code{"sd"} or
 \code{"var"}.}
 
-\item{ylabels}{\code{ylabels=""} indicates that no ylabels are displayed.
-\code{ylabels=NULL}, the default, indicates that the names of the dependent
-variables will be displayed.}
+\item{ylabels}{\code{ylabels=NULL}, the default, indicates that the names of
+the dependent variables will be displayed. \code{ylabels=""} indicates that
+no ylabels will be displayed.}
 
-\item{xlabels}{\code{xlabels=NULL}, the default, indicates that the lags all
-dependent variables will be displayed. \code{xlabels="lags"} indicates that
-only the lags will be displayed. \code{xlabels=""} indicates that no
-ylabels are displayed.}
+\item{xlabels}{\code{xlabels=NULL}, the default, indicates that the labels of
+all covariables (the lagged values of the dependent variables) will be
+displayed. \code{xlabels="lags"} indicates that only the lags will be
+marked. \code{xlabels=""} indicates that no ylabels are displayed.}
 
 \item{add_numbers}{logical. \code{add_numbers=TRUE}, the default indicates
 that the actual values of \code{summary} will be displayed.}
+
+\item{zlim}{numeric vector of length two indicating the minimum and maximum
+values for which colors should be plotted. By default this range is
+determined by the maximum of the absolute values of the selected summary.}
 
 \item{...}{}
 }
