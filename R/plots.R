@@ -4,21 +4,24 @@
 #' @param summary character indicating the posterior summary to be visualized.
 #'   One of \code{"median"}, \code{"mean"}, \code{"IQR"}, \code{"sd"} or
 #'   \code{"var"}.
-#' @param ylabels \code{ylabels=""} indicates that no ylabels are displayed.
-#'   \code{ylabels=NULL}, the default, indicates that the names of the dependent
-#'   variables will be displayed.
-#' @param xlabels \code{xlabels=NULL}, the default, indicates that the lags all
-#'   dependent variables will be displayed. \code{xlabels="lags"} indicates that
-#'   only the lags will be displayed. \code{xlabels=""} indicates that no
-#'   ylabels are displayed.
+#' @param ylabels \code{ylabels=NULL}, the default, indicates that the names of
+#'   the dependent variables will be displayed. \code{ylabels=""} indicates that
+#'   no ylabels will be displayed.
+#' @param xlabels \code{xlabels=NULL}, the default, indicates that the labels of
+#'   all covariables (the lagged values of the dependent variables) will be
+#'   displayed. \code{xlabels="lags"} indicates that only the lags will be
+#'   marked. \code{xlabels=""} indicates that no ylabels are displayed.
 #' @param add_numbers logical. \code{add_numbers=TRUE}, the default indicates
 #'   that the actual values of \code{summary} will be displayed.
+#' @param zlim numeric vector of length two indicating the minimum and maximum
+#'   values for which colors should be plotted. By default this range is
+#'   determined by the maximum of the absolute values of the selected summary.
 #' @param ...
 #'
 #' @export
 #'
 plot.PHI <- function(object, summary = "median", ylabels = NULL, xlabels = NULL,
-                 add_numbers = TRUE, ...){
+                 add_numbers = TRUE, zlim = NULL,...){
 
   PHI <- apply(object, 2:3, function(x) do.call(what = summary,
                                                  args = list(x)))
@@ -32,11 +35,15 @@ plot.PHI <- function(object, summary = "median", ylabels = NULL, xlabels = NULL,
 
   if(summary %in% c("median", "mean")){
     colspace <- colorspace::diverge_hcl(1000, alpha = alpha, palette = "Blue-Red")
-    zlim <- c(-max(abs(PHI)),max(abs(PHI)))
+    if(is.null(zlim)){
+      zlim <- c(-max(abs(PHI)),max(abs(PHI)))
+    }
   }else if(summary %in% c("sd", "var", "IQR")){
     colspace <- colorspace::sequential_hcl(1000, alpha = alpha, rev = TRUE,
                                            palette = "Reds 2")#colorspace::sequential_hcl(1000, alpha = alpha, rev = TRUE)#colorspace::sequential_hcl(5, h = 0, c = c(100, 0), l = 65, rev = TRUE, power = 1, alpha = alpha) #colorspace::sequential_hcl(1000, alpha = alpha, rev = TRUE)
-    zlim <- c(0,max(abs(PHI)))
+    if(is.null(zlim)){
+      zlim <- c(0,max(abs(PHI)))
+    }
   }
 
   M <- ncol(PHI)
@@ -67,16 +74,33 @@ plot.PHI <- function(object, summary = "median", ylabels = NULL, xlabels = NULL,
 
 }
 
+#' Plot method for contemporaneous coefficients
+#'
+#' @param object \code{L}-object obtained from \code{\link{bvar}}.
+#' @param summary character indicating the posterior summary to be visualized.
+#'   One of \code{"median"}, \code{"mean"}, \code{"IQR"}, \code{"sd"} or
+#'   \code{"var"}.
+#' @param ylabels \code{NULL}, the default, indicates that ylabels will be
+#'   displayed. \code{""} indicates that no ylabels will be displayed.
+#' @param xlabels \code{NULL}, the default, indicates that xlabels will be
+#'   displayed. \code{""} indicates that no xlabels will be displayed.
+#' @param add_numbers logical. \code{add_numbers=TRUE}, the default indicates
+#'   that the actual values of \code{summary} will be displayed.
+#' @param zlim numeric vector of length two indicating the minimum and maximum
+#'   values for which colors should be plotted. By default this range is
+#'   determined by the maximum of the absolute values of the selected summary.
+#' @param ...
 #'
 #' @export
 #'
 plot.L <- function(object, summary = "median", ylabels = NULL, xlabels = NULL,
-                     add_numbers = TRUE, ...){
+                     add_numbers = TRUE, zlim = NULL, ...){
 
   L <- apply(object, 2:3, function(x) do.call(what = summary,
                                                 args = list(x)))
   M <- ncol(L)
-    L[lower.tri(L, diag = TRUE)] <- NA
+  L[lower.tri(L, diag = TRUE)] <- NA
+  maxz <- max(abs(L), na.rm = TRUE)
 
   L_star <- t(apply(L, 1, rev)) # image orders differently
 
@@ -87,13 +111,19 @@ plot.L <- function(object, summary = "median", ylabels = NULL, xlabels = NULL,
   }
 
   if(summary %in% c("median", "mean")){
-    colspace <- colorspace::diverge_hcl(1000, alpha = alpha)
+    colspace <- colorspace::diverge_hcl(1000, alpha = alpha, palette = "Blue-Red")
+    if(is.null(zlim)){
+      zlim <- c(-maxz,maxz)
+    }
   }else if(summary %in% c("sd", "var", "IQR")){
-    colspace <- colorspace::sequential_hcl(1000, alpha = alpha, rev = TRUE)
+    colspace <- colorspace::sequential_hcl(1000, alpha = alpha, rev = TRUE,
+                                           palette = "Reds 2")#colorspace::sequential_hcl(1000, alpha = alpha, rev = TRUE)#colorspace::sequential_hcl(5, h = 0, c = c(100, 0), l = 65, rev = TRUE, power = 1, alpha = alpha) #colorspace::sequential_hcl(1000, alpha = alpha, rev = TRUE)
+    if(is.null(zlim)){
+      zlim <- c(0,maxz)
+    }
   }
 
-  maxz <- max(abs(L), na.rm = TRUE)
-  image((L_star), zlim=c(-maxz,maxz) ,xaxt = "n", yaxt="n", col = colspace, bty="n")
+  image((L_star), zlim= zlim ,xaxt = "n", yaxt="n", col = colspace, bty="n")
   if(is.null(xlabels)){
     axis(3, labels = rownames(L), at = seq(0,1, length.out=M),
          tick = FALSE, las=2, cex.axis=.75)
