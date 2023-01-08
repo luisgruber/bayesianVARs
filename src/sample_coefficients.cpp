@@ -260,6 +260,58 @@ void sample_L(arma::mat& L, arma::mat& Ytilde, const arma::vec& V_i, const arma:
 
 }
 
+void sample_V_i_NG(arma::vec& V_i, const arma::vec coefs, arma::vec& theta_tilde,
+                   double& zeta, double& a , const arma::vec a_vec,
+                   const double varrho0, const double varrho1, arma::uvec ind,
+                   const bool hyper){
+
+  const int n = ind.size();
+  int gridlength = a_vec.size();
+  arma::vec logprobs(gridlength); logprobs.fill(0);
+
+  arma::uvec::iterator it;
+  for(it = ind.begin(); it != ind.end(); ++it){
+    theta_tilde(*it) = do_rgig1(a-0.5, coefs(*it)*coefs(*it), a/zeta);
+
+    if(hyper){
+      for(int i=0; i<gridlength; ++i){
+          logprobs(i) += R::dgamma(theta_tilde(*it),a_vec(i), 2/a_vec(i), true); // scale!!!
+      }
+      }
+  }
+  zeta = 1./R::rgamma(varrho0 + a*n, 1./(varrho1 + 0.5*a*arma::accu(theta_tilde(ind))));
+
+  if(hyper){
+    arma::vec w_tmp = exp(logprobs - logprobs.max());
+    arma::vec w = w_tmp/sum(w_tmp);
+    int k = w.size();
+    arma::ivec iv(k);
+    R::rmultinom(1, w.begin(), k, iv.begin());
+    arma::uvec i = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
+    a = a_vec(i(0));
+  }
+
+
+  V_i(ind) = theta_tilde(ind);
+
+}
+
+void sample_V_i_HS(arma::vec& V_i, const arma::vec coefs, arma::vec& theta,
+                   double& zeta, arma::vec& nu, double& varpi ,arma::uvec ind){
+
+  int n = ind.size();
+  arma::uvec::iterator it;
+  for(it = ind.begin(); it != ind.end(); ++it){
+    // R::rgamma uses scale!!!!
+    theta(*it) = 1./(R::rgamma(1, 1./( 1/nu(*it) + (coefs(*it)*coefs(*it))/(2*zeta) )));
+    nu(*it) = 1./(R::rgamma(1, 1./(1 + 1./theta(*it)) ));
+  }
+  zeta = 1./(R::rgamma((n+1)/2., 1./(1./varpi + 0.5*arma::accu(square(coefs(ind))/theta(ind))) ));
+  varpi = 1./(R::rgamma(1, 1./(1 + 1/zeta) ));
+  V_i(ind) = theta(ind)*zeta;
+
+}
+
 arma::colvec ddir_prep(const arma::colvec& x, const arma::vec& prep1, const arma::rowvec& prep2){
 
   //arma::rowvec logd = sum(prep1.each_col() % log(x), 0) + prep2;

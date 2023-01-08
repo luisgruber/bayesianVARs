@@ -155,7 +155,8 @@ bvar <- function(Yraw,
   }else i_intercept <- NULL
 
     if(priorPHI$prior == "DL" | priorPHI$prior == "R2D2" |
-       priorPHI$prior == "DL_h" | priorPHI$prior == "SSVS"){
+       priorPHI$prior == "HS" | priorPHI$prior == "SSVS" |
+       priorPHI$prior == "NG"){
 
       if(all(is.numeric(priorPHI$global_grouping))){
         i_mat <- priorPHI$global_grouping
@@ -224,9 +225,9 @@ bvar <- function(Yraw,
 
   }
 
-  if(!(priorPHI$prior %in% c("DL", "DL_h", "HMP", "SSVS", "normal", "R2D2", "SL"))){
+  if(!(priorPHI$prior %in% c("DL", "HS","NG", "HMP", "SSVS", "normal", "R2D2", "SL"))){
     stop("Argument 'priorPHI$prior' must be one of
-           'DL', 'SSVS', 'HMP' or 'normal'. \n")
+           'DL', 'R2D2', 'HS', 'NG', 'SSVS', 'HMP' or 'normal'. \n")
   }
 
 # Initialize --------------------------------------------------------------
@@ -282,6 +283,12 @@ bvar <- function(Yraw,
   priorPHI_in$R2D2_b <- double(1)
   priorPHI_in$api_vec <- double(1)
   priorPHI_in$b_vec <- double(1)
+  #NG
+  priorPHI_in$NG_a <- double(1)
+  priorPHI_in$NG_varrho0 <- double(1)
+  priorPHI_in$NG_varrho1 <- double(1)
+  priorPHI_in$NG_hyper <- logical(1)
+  priorPHI_in$NG_a_vec <- double(1)
   #SSVS
   priorPHI_in$SSVS_tau0 <- double(1)
   priorPHI_in$SSVS_tau1 <- double(1)
@@ -297,7 +304,8 @@ bvar <- function(Yraw,
   # prior specification for PHI
 
   if(priorPHI$prior == "R2D2" | priorPHI$prior == "DL" |
-     priorPHI$prior == "DL_h" | priorPHI$prior == "SSVS"){
+     priorPHI$prior == "DL_h" | priorPHI$prior == "SSVS" |
+     priorPHI$prior == "HS" | priorPHI$prior == "NG"){
 
     groups <- unique(i_vec[i_vec!=0])
     n_groups <- length(groups)
@@ -324,8 +332,8 @@ bvar <- function(Yraw,
       priorPHI_in$R2D2_b <- rep_len(priorPHI$R2D2_b, n_groups)
       priorPHI_in$R2D2_api <- rep(as.numeric(NA), n_groups)
       for(j in seq.int(n_groups)){
-        priorPHI_in$R2D2_api[j] <- 1/(n^(priorPHI$R2D2_b[j]/2) *
-                                     (T^(priorPHI$R2D2_b[j]/2)) *log(T))
+        priorPHI_in$R2D2_api[j] <- 1/(n^(priorPHI_in$R2D2_b[j]/2) *
+                                     (T^(priorPHI_in$R2D2_b[j]/2)) *log(T))
       }
 
     }else if(R2D2_hyper){
@@ -383,6 +391,26 @@ bvar <- function(Yraw,
       if(all(is.numeric(priorPHI$DL_a))){
         priorPHI_in$DL_a <- rep_len(priorPHI$DL_a, n_groups)
       }
+    }
+
+  }else if(priorPHI$prior == "NG"){
+    #priorPHI_in$NG_a <- priorPHI$NG_a
+    #priorPHI_in$NG_varrho0 <- priorPHI$NG_varrho0
+    #priorPHI_in$NG_varrho1 <- priorPHI$NG_varrho1
+
+    if(all(is.numeric(priorPHI$NG_a))){
+      NG_hyper <- FALSE
+    }else if(priorPHI$NG_a == "hyperprior"){
+      NG_hyper <- TRUE
+    }else{
+      stop("Something went wrong specifying NG_a!")
+    }
+    priorPHI_in$NG_hyper <- NG_hyper
+    if(NG_hyper){
+      priorPHI_in$NG_a_vec <- seq(0.01,1,length.out=100)
+      priorPHI_in$NG_a <- rep_len(0.1, n_groups)
+    }else{
+      priorPHI_in$NG_a <- rep_len(priorPHI$NG_a, n_groups)
     }
 
   }else if(priorPHI$prior == "SSVS"){
@@ -628,6 +656,16 @@ bvar <- function(Yraw,
                                           paste0("xi",1:priorPHI_in$n_groups),
                                           paste0("b",1:priorPHI_in$n_groups),
                                           paste0("api",1:priorPHI_in$n_groups))#
+
+  }else if(priorPHI$prior == "HS"){
+    colnames(res$phi_hyperparameter) <- c(paste0("zeta", 1:priorPHI_in$n_groups),
+                                          paste0("theta: ", phinames),
+                                          paste0("varpi", 1:priorPHI_in$n_groups),
+                                          paste0("nu: ", phinames))
+  }else if(priorPHI$prior == "NG"){
+    colnames(res$phi_hyperparameter) <- c(paste0("zeta", 1:priorPHI_in$n_groups),
+                                          paste0("a",1:priorPHI_in$n_groups),
+                                          paste0("theta_tilde: ", phinames))
 
   }else if(priorPHI$prior == "SSVS"){
   colnames(res$phi_hyperparameter) <- c(paste0("gamma: ", phinames), paste0("p_i: ", phinames))#

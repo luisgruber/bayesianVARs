@@ -5,9 +5,8 @@
 #'
 #' Configures prior on PHI.
 #'
-#' @param prior character, one of \code{"R2D2"}, \code{"DL"}, \code{"SSVS"},
+#' @param prior character, one of \code{"R2D2"}, \code{"DL"}, \code{"HS"}, \code{"SSVS"},
 #'   \code{"HMP"} or \code{"normal"}.
-#'
 #' @param DL_a either single positive number -- where smaller values indicate
 #'   heavier regularization --, or one of \code{DL_a="1/K"}, \code{DL_a="1/n"}
 #'   or \code{DL_a="hyperprior"}. K is the number of covariables per equation
@@ -57,12 +56,13 @@
 #'
 #' @export
 specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
+                             NG_a = 0.1, NG_varrho0 = 1, NG_varrho1 = 1,
                              SSVS_c0 = 0.01, SSVS_c1 = 100,
                              SSVS_semiautomatic = TRUE, SSVS_p=0.5,
                              HMP_lambda1 = c(0.01,0.01), HMP_lambda2 = c(0.01,0.01),
                              V_i = 10, global_grouping="global",...){
-  if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "SL"))){
-    stop("Argument 'prior' must be one of 'DL', 'SSVS', 'HMP' or 'normal'. \n")
+  if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "SL", "HS", "NG"))){
+    stop("Argument 'prior' must be one of 'DL', 'HS', 'NG', 'SSVS', 'HMP' or 'normal'. \n")
   }
 
   if(prior == "DL"){
@@ -127,6 +127,23 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
     out <- list(prior = prior, lambda_1 = HMP_lambda1, lambda_2 = HMP_lambda2)
   }else if(prior == "SL"){
     out <- list(prior = prior, ...)
+  }else if(prior == "HS"){
+    if(is.character(global_grouping)){
+      if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
+        stop("Argument 'global_grouping' must be one of 'global',
+           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
+      }
+    }
+    out <- list(prior = prior, global_grouping = global_grouping)
+  }else if(prior == "NG"){
+    if(is.character(global_grouping)){
+      if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
+        stop("Argument 'global_grouping' must be one of 'global',
+           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
+      }
+    }
+    out <- list(prior = prior, NG_a = NG_a, NG_varrho0 = NG_varrho0,
+                NG_varrho1 = NG_varrho1, global_grouping = global_grouping)
   }
   out
 }

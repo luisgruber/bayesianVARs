@@ -22,6 +22,14 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
 
 double do_rgig1(double lambda, double chi, double psi);
 
+void sample_V_i_HS(arma::vec& V_i, const arma::vec coefs, arma::vec& theta,
+                   double& zeta, arma::vec& nu, double& varpi ,arma::uvec ind);
+
+void sample_V_i_NG(arma::vec& V_i, const arma::vec coefs, arma::vec& theta_tilde,
+                   double& zeta, double& a , const arma::vec a_vec,
+                   const double varrho0, const double varrho1, arma::uvec ind,
+                   const bool hyper);
+
 void sample_V_i_SSVS_beta(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
                           const arma::vec coeffs, const arma::vec tau_0,
                           const arma::vec tau_1, const double s_a, const double s_b,

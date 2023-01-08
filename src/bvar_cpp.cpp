@@ -56,7 +56,7 @@ List bvar_cpp(const arma::mat Y,
   arma::vec V_i(n);
 
   arma::vec V_i_long(n+M*intercept); // ??? V_i plus intercept prior variances
-  V_i_long(i_i) = priorIntercept; // in case of HM prior, these will be scaled later (probably not???)
+  V_i_long(i_i) = priorIntercept;
 
   if(priorPHI == "normal"){
     arma::vec V_i_in = priorPHI_in["V_i"];
@@ -100,6 +100,29 @@ List bvar_cpp(const arma::mat Y,
   const arma::vec b_r2d2_vec = priorPHI_in["b_vec"];
   if(priorPHI == "R2D2"){
     V_i = psi_r2d2%theta_r2d2*zeta_r2d2(0)/2;
+  }
+
+  //---- Horseshoe on PHI
+  // initialization of global, local and auxiliary scaling parameters
+  arma::vec theta_hs(n); theta_hs.fill(1/static_cast<double>(n));
+  arma::vec zeta_hs(n_groups); zeta_hs.fill(10);
+  arma::vec nu(n); nu.fill(1);
+  arma::vec varpi(n_groups); varpi.fill(1);
+  if(priorPHI == "HS"){
+    V_i = theta_hs*zeta_hs;
+  }
+
+  //---- NG on PHI
+  //theta_ng, zeta_ng(j), NG_a, varrho0, varrho1
+  arma::vec theta_ng(n); theta_ng.fill(0.1);
+  arma::vec zeta_ng(n_groups); zeta_ng.fill(10);
+  arma::vec NG_a = priorPHI_in["NG_a"];
+  double varrho0 = priorPHI_in["NG_varrho0"];
+  double varrho1 = priorPHI_in["NG_varrho1"];
+  const arma::vec a_ng_vec = priorPHI_in["NG_a_vec"];
+  const bool NG_hyper = priorPHI_in["NG_hyper"];
+  if(priorPHI == "NG"){
+    V_i = theta_ng;
   }
 
   //---- SSVS on PHI
@@ -248,6 +271,10 @@ List bvar_cpp(const arma::mat Y,
     phi_hyperparameter_size += 2*n_groups + 2*n; // a + zeta + n(theta + psi)
   }else if(priorPHI == "R2D2"){
     phi_hyperparameter_size += 4*n_groups + 2*n; // (b+)xi + zeta + n(theta + psi)
+  }else if(priorPHI == "HS"){
+    phi_hyperparameter_size += 2*n_groups + 2*n; // zeta + varpi + n(theta + nu)
+  }else if (priorPHI == "NG"){
+    phi_hyperparameter_size += n + 2*n_groups;
   }else if(priorPHI == "SSVS"){
     phi_hyperparameter_size += 2*n; // n(gammas + p_i)
   }else if(priorPHI == "HMP"){
@@ -320,7 +347,8 @@ List bvar_cpp(const arma::mat Y,
 
     //----2) Sample hyperparameters of hierarchical priors (prior variances V_i)
 
-    if(priorPHI == "DL" || priorPHI== "R2D2" || priorPHI=="SSVS" ){
+    if(priorPHI == "DL" || priorPHI== "R2D2" || priorPHI=="SSVS" ||
+       priorPHI =="HS" || priorPHI== "NG" ){
 
       arma::ivec::iterator g;
       int j=0;
@@ -344,6 +372,15 @@ List bvar_cpp(const arma::mat Y,
                                  tau_1, SSVS_s_a, SSVS_s_b, SSVS_hyper, ind);
 
           }
+
+        }else if(priorPHI == "HS"){
+
+          sample_V_i_HS(V_i, PHI_diff(i_ocl), theta_hs, zeta_hs(j), nu, varpi(j), ind);
+
+        }else if(priorPHI == "NG"){
+
+          sample_V_i_NG(V_i, PHI_diff(i_ocl), theta_ng, zeta_ng(j), NG_a(j),
+                        a_ng_vec, varrho0, varrho1, ind, NG_hyper);
 
         }
 
@@ -484,6 +521,19 @@ List bvar_cpp(const arma::mat Y,
         phi_hyperparameter_draws(rep-burnin, span((2*n_groups+2*n ),phi_hyperparameter_size -1.-n_groups)) = b_r2d2;
         phi_hyperparameter_draws(rep-burnin, span((3*n_groups+2*n ),phi_hyperparameter_size-1.)) = api;
 
+      }else if(priorPHI == "HS"){
+
+        phi_hyperparameter_draws(rep-burnin, span(0, (n_groups -1))) = zeta_hs ;
+        phi_hyperparameter_draws(rep-burnin, span(n_groups, (n_groups+n-1))) = theta_hs;
+        phi_hyperparameter_draws(rep-burnin, span((n_groups+n), (n_groups+n+n_groups-1))) = varpi;
+        phi_hyperparameter_draws(rep-burnin, span((n_groups+n+n_groups),phi_hyperparameter_size-1))= nu;
+
+      }else if(priorPHI == "NG"){
+
+        phi_hyperparameter_draws(rep-burnin, span(0, (n_groups -1))) = zeta_ng ;
+        phi_hyperparameter_draws(rep-burnin, span(n_groups, (2*n_groups -1))) = NG_a ;
+        phi_hyperparameter_draws(rep-burnin, span(2*n_groups, (phi_hyperparameter_size-1.))) = theta_ng;
+
       }else if(priorPHI == "SSVS"){
 
         phi_hyperparameter_draws(rep-burnin, span(0, (n-1.))) = gammas;
@@ -533,7 +583,9 @@ List bvar_cpp(const arma::mat Y,
     Named("sv_para") = sv_para_draws,
     Named("phi_hyperparameter") = phi_hyperparameter_draws,
     Named("l_hyperparameter") = l_hyperparameter_draws,
-    Named("bench") = time
+    Named("bench") = time,
+    Named("V_i_long") = V_i_long,
+    Named("V_i") = V_i
   );
 
   return out;
