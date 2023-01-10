@@ -33,7 +33,7 @@ List bvar_cpp(const arma::mat Y,
 
 //-------------------------Preliminaries--------------------------------------//
 
-  const double n = K*M; // number of VAR coefficients // ??? without intercept
+  const double n = K*M; // number of VAR coefficients without intercept
   arma::mat PHI_diff(K+intercept,M); // will hold PHI - PHI0
   const arma::uvec i_ocl= arma::find(i_vec != 0.); // indicator for all coefficients except intercept
   const arma::uvec i_i= arma::find(i_vec == 0.); // indicator for intercepts
@@ -117,8 +117,8 @@ List bvar_cpp(const arma::mat Y,
   arma::vec theta_ng(n); theta_ng.fill(0.1);
   arma::vec zeta_ng(n_groups); zeta_ng.fill(10);
   arma::vec NG_a = priorPHI_in["NG_a"];
-  double varrho0 = priorPHI_in["NG_varrho0"];
-  double varrho1 = priorPHI_in["NG_varrho1"];
+  const double varrho0 = priorPHI_in["NG_varrho0"];
+  const double varrho1 = priorPHI_in["NG_varrho1"];
   const arma::vec a_ng_vec = priorPHI_in["NG_a_vec"];
   const bool NG_hyper = priorPHI_in["NG_hyper"];
   if(priorPHI == "NG"){
@@ -303,7 +303,8 @@ List bvar_cpp(const arma::mat Y,
 
   const int tot = draws + burnin;
   // Initialize progressbar
-  Progress p(tot, progressbar);
+  //Progress p(tot, progressbar);
+  int space4print = floor(log10(tot + .1)) + 1;
   Timer timer;
   timer.step("start");
   for(int rep = 0; rep < tot; rep++){
@@ -311,12 +312,16 @@ List bvar_cpp(const arma::mat Y,
     //----1) Draw PHI (reduced form VAR coefficients)
 
     try{
-      sample_PHI(PHI, PHI0, Y, X, L, d_sqrt, V_prior, K, M, false);
+      sample_PHI(PHI, PHI0, Y, X, L, d_sqrt, V_prior, K+intercept, M, false);
     } catch(...){
       ::Rf_error("Couldn't sample PHI in rep %i.", rep);
     }
 
-    if(priorPHI == "DL" || priorPHI == "R2D2"){
+    if(!PHI.is_finite()){
+      ::Rf_error("non-finite PHI in rep %i.", rep);
+    }
+
+    if(priorPHI == "DL" || priorPHI == "R2D2" || priorPHI == "NG"){
       PHI_diff = PHI - PHI0;
       // if regularization gets extreme, often there appear zeros (numerical issue)
       // coefficients must not be zero, otherwise problems with do_rgig1
@@ -379,12 +384,78 @@ List bvar_cpp(const arma::mat Y,
 
         }else if(priorPHI == "NG"){
 
+//          arma::colvec coefs = PHI(i_ocl).as_col();
+//          int nnn = coefs.size();
+//          int nn = ind.size();
+//          int gridlength = a_ng_vec.size();
+//          if(gridlength != 100.){
+//            ::Rf_error("gridlength!=100");
+//          }
+
+//          if(nnn != n){
+//            ::Rf_error("coefs.size!=n");
+//          }
+
+//          arma::vec logprobs(gridlength, fill::zeros);
+
+//          arma::uvec::iterator it;
+//          int cc=0;
+//          for(it = ind.begin(); it != ind.end(); ++it){
+//            cc +=1;
+//
+//            theta_ng(*it) = do_rgig2(NG_a(j)-0.5, coefs(*it)*coefs(*it), NG_a(j)/zeta_ng(j));
+//            if(!theta_ng.is_finite()){
+//              ::Rf_error("PHI(*): %e, a(j): %f, z(j): %e, *: %i, j: %i, lambda: %f, chi:%e, psi:%e", coefs(*it), NG_a(j), zeta_ng(j), *it, j,NG_a(j)-0.5,coefs(*it)*coefs(*it),NG_a(j)/zeta_ng(j));
+//            }
+           // if(progressbar){
+            //  Rprintf("\r %i / %i ** cc=%i ** th.it=%f ** V_i.size: %i ** coefs.size=%i ** NG_a.size: %i ** zeta.size: %i ** j=%i ** ind.size=%i ** ind.max=%i",
+            //          rep+1, tot,cc, theta_ng(*it),V_i.size(), nnn ,NG_a.size(), zeta_ng.size(), j,nn, ind.max());
+            //}
+//            if(NG_hyper){
+//              for(int ii=0; ii<gridlength; ++ii){
+//                arma::vec lptmp(1);
+//                lptmp(0) = R::dgamma(theta_ng(*it),a_ng_vec(ii), 2*zeta_ng(j)/a_ng_vec(ii), true);
+//                if(!lptmp.is_finite()){
+//                  ::Rf_error("lptmp:%f ** a:%f ** th:%f ** z:%f", lptmp(0), a_ng_vec(ii), theta_ng(*it), zeta_ng(j));
+//                }
+//                logprobs(ii) += lptmp(0); // scale!!!
+//              }
+//            }
+//          }
+//          zeta_ng(j) = 1./R::rgamma(varrho0 + NG_a(j)*nn, 1./(varrho1 + 0.5*NG_a(j)*arma::accu(theta_ng(ind))));
+
+//          if(NG_hyper){
+//            arma::vec w_tmp = exp(logprobs - logprobs.max());
+//            arma::vec w = w_tmp/sum(w_tmp);
+//            if(sum(w)==0){
+//              ::Rf_error("zero weights");
+//            }
+//            int kk = w.size();
+//            if(kk != gridlength){
+//              ::Rf_error("kk != gridlength");
+//            }
+//            arma::ivec iv(kk);
+//            R::rmultinom(1, w.begin(), kk, iv.begin());
+//            if(progressbar){
+//              Rprintf("\r %i / %i ** cc=%i ", rep+1, tot,cc);
+//            }
+//            if(sum(iv) != 1.){
+//              ::Rf_error("sum(iv) != 1");
+//            }
+//            arma::uvec iii = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
+//            NG_a(j) = a_ng_vec(iii(0));
+//          }
+//
+//
+//          V_i(ind) = theta_ng(ind);
+
           sample_V_i_NG(V_i, PHI_diff(i_ocl), theta_ng, zeta_ng(j), NG_a(j),
                         a_ng_vec, varrho0, varrho1, ind, NG_hyper);
+          if(!V_i.is_finite()){
+            ::Rf_error("non-finite V_i in rep %i after group %i.", rep, j+1);
+          }
 
         }
-
-
         j += 1;
       }
 
@@ -408,6 +479,7 @@ List bvar_cpp(const arma::mat Y,
     V_i_long(i_ocl) = V_i;
 
     V_prior = reshape(V_i_long, K+intercept, M);
+
 
     //----3) Draw Sigma_t = inv(L)'*D_t*inv(L), where L is upper unitriangular
     //       and D diagonal
@@ -571,7 +643,14 @@ List bvar_cpp(const arma::mat Y,
       }
     }
 
-    p.increment();
+    //p.increment();
+    if(progressbar){
+      //Rprintf("\r %i / %i",
+      //        rep+1, tot);
+      Rprintf("\r###  %i / %i ### (%3.0f%%) ###",
+              rep+1, tot, 100.*(rep+1)/tot);
+    }
+
   }
   timer.step("end");
   NumericVector time(timer);
