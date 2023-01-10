@@ -107,10 +107,12 @@ MP_V_prior_prep <- function(sigma_sq ,K, M, intercept){
   return(V_i_prep=as.vector(V_i))
 }
 
-get_MP_V_prior <- function(lambda1=0.04, lambda2=0.0016, lambda3=10^3, sigma_sq ,K, M, intercept){
+get_MP_V_prior <- function(lambda1=0.04, lambda2=0.0016, lambda3=10^3, sigma_sq ,p, intercept){
   # sigma_sq: vector of variances of univariate AR(p) models of the individual variables estimated via "MP_sigma_sq"
   # K: number of regressors per equation
   # M: number of variables
+  M <- length(sigma_sq)
+  K <- p*M + intercept
 
   V_i <- matrix(0,nrow = K, ncol = M)
 

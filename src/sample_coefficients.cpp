@@ -82,6 +82,13 @@ double do_rgig1(double lambda, double chi, double psi) {
   return res;
 }
 
+double do_rgig2(double lambda, double chi, double psi) {
+
+    SEXP (*fun)(int, double, double, double) = NULL;
+    if (!fun) fun = (SEXP(*)(int, double, double, double)) R_GetCCallable("GIGrvg", "do_rgig");
+
+    return as<double>(fun(1, lambda, chi, psi));
+}
 
 // draw_PHI samples VAR coefficients using the corrected triangular
 // algorithm as in Carrier, Chan, Clark & Marcellino (2021)
@@ -152,7 +159,7 @@ void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
 
     // 'subs' avoids the direct computation of the inverse needed for V_post
     // maybe in very large dimensions a little bit more efficient
-    // not thouroughly tested, hence not used in the sampler
+    // not thoroughly tested, hence not used in the sampler
     arma::mat V_post_inv_chol = chol(V_prior_inv + X_new.t()*X_new, "upper");
     if(subs){
       arma::vec phi_post_prep = V_prior_inv*PHI_prior.col(i) + X_new.t()*Y_new;
@@ -271,11 +278,13 @@ void sample_V_i_NG(arma::vec& V_i, const arma::vec coefs, arma::vec& theta_tilde
 
   arma::uvec::iterator it;
   for(it = ind.begin(); it != ind.end(); ++it){
-    theta_tilde(*it) = do_rgig1(a-0.5, coefs(*it)*coefs(*it), a/zeta);
-
+    theta_tilde(*it) = do_rgig2(a-0.5, coefs(*it)*coefs(*it), a/zeta);
+    if(!theta_tilde.is_finite()){
+                    ::Rf_error("Non-finite theta_tilde: PHI(*): %e, a(j): %f, z(j): %e, *: %i, giglambda: %f, gigchi:%e, gigpsi:%e", coefs(*it), a, zeta, *it,a-0.5,coefs(*it)*coefs(*it),a/zeta);
+                  }
     if(hyper){
       for(int i=0; i<gridlength; ++i){
-          logprobs(i) += R::dgamma(theta_tilde(*it),a_vec(i), 2/a_vec(i), true); // scale!!!
+          logprobs(i) += R::dgamma(theta_tilde(*it),a_vec(i), 2*zeta/a_vec(i), true); // scale!!!
       }
       }
   }
@@ -284,6 +293,13 @@ void sample_V_i_NG(arma::vec& V_i, const arma::vec coefs, arma::vec& theta_tilde
   if(hyper){
     arma::vec w_tmp = exp(logprobs - logprobs.max());
     arma::vec w = w_tmp/sum(w_tmp);
+
+    if(!w.is_finite()){
+      ::Rf_error("sample_V_i_NG (NG_a = 'hyperprior'): non-finite weights");
+    }else if(sum(w)==0){
+      ::Rf_error("sample_V_i_NG (NG_a = 'hyperprior'): zero weights");
+    }
+
     int k = w.size();
     arma::ivec iv(k);
     R::rmultinom(1, w.begin(), k, iv.begin());
