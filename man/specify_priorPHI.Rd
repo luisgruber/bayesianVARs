@@ -8,6 +8,9 @@ specify_priorPHI(
   prior,
   DL_a = "1/K",
   R2D2_b = 0.5,
+  NG_a = 0.1,
+  NG_varrho0 = 1,
+  NG_varrho1 = 1,
   SSVS_c0 = 0.01,
   SSVS_c1 = 100,
   SSVS_semiautomatic = TRUE,
@@ -20,7 +23,7 @@ specify_priorPHI(
 )
 }
 \arguments{
-\item{prior}{character, one of \code{"R2D2"}, \code{"DL"}, \code{"SSVS"},
+\item{prior}{character, one of \code{"R2D2"}, \code{"DL"}, \code{"HS"}, \code{"SSVS"},
 \code{"HMP"} or \code{"normal"}.}
 
 \item{DL_a}{either single positive number -- where smaller values indicate
