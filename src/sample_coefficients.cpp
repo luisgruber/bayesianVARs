@@ -343,23 +343,33 @@ arma::colvec ddir_prep(const arma::colvec& x, const arma::vec& prep1, const arma
 void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
                    const arma::vec a_vec, const arma::vec prep1,
                    const arma::vec prep2, double& zeta, arma::vec& psi,
-                   arma::vec& theta, arma::uvec ind, const bool hyper){ //, bool hyper
+                   arma::vec& theta, arma::uvec ind, const bool hyper,
+                   const int method){ //, bool hyper
 
-  double n = coefs.size();
+  const int n = coefs.size();
   arma::vec coefs_abs = arma::abs(coefs);
   double zeta2 = zeta*zeta;
   arma::vec theta_prep(n);
   arma::uvec::iterator it;
   double j = 0;
     for(it = ind.begin(); it != ind.end(); ++it){ //int j = 0; j < n; j++
-      psi(*it) = 1./do_rgig1(-0.5, 1, (coefs_abs(j) * coefs_abs(j)) /
+      psi(*it) = 1./do_rgig2(-0.5, 1, (coefs_abs(j) * coefs_abs(j)) /
         ( zeta2 * theta(*it) * theta(*it)));
-      theta_prep(j) = do_rgig1(a-1., 2*coefs_abs(j), 1);
+      theta_prep(j) = do_rgig2(a-1., 2*coefs_abs(j), 1);
       j += 1;
     }
+  //
+  //arma::vec lambda = theta_prep;
+  //zeta = arma::accu(lambda);
+  //theta(ind) = lambda / zeta;
+  //
+  if(method == 1.){
+    double tmp4samplingzeta = arma::accu(coefs_abs / theta(ind));
+    zeta = do_rgig2(n*(a-1.), 2*tmp4samplingzeta,1);
+  }else if(method == 2.){
+    zeta = arma::accu(theta_prep);
+  }
 
-  double tmp4samplingzeta = arma::accu(coefs_abs / theta(ind));
-  zeta = do_rgig1(n*(a-1.), 2*tmp4samplingzeta,1);
   theta(ind) = theta_prep / arma::accu(theta_prep);
   V_i(ind) = psi(ind) % theta(ind)%theta(ind) * zeta*zeta;
 
@@ -392,25 +402,44 @@ double logddirichlet(arma::vec x, double a){
 void sample_V_i_R2D2(arma::vec& V_i, const arma::vec coefs, double& api,
                     const arma::vec api_vec, double& zeta, arma::vec& psi,
                     arma::vec& theta, double& xi, double& b,
-                    const arma::vec b_vec, arma::uvec ind, const bool hyper){ //, bool hyper
+                    const arma::vec b_vec, arma::uvec ind, const bool hyper,
+                    const int method, const std::string kernel){ //, bool hyper
 
   double n = coefs.size();
   arma::vec theta_prep(n);
 
+  //if(kernel=="normal"){
+  //  psi.fill(1.0);
+  //}
+
   arma::uvec::iterator it;
   double j = 0;
   for(it = ind.begin(); it != ind.end(); ++it){ //int j = 0; j < n; j++
-    psi(*it) = 1./do_rgig1(-0.5, 1, (coefs(j) * coefs(j)) /
-      ( zeta * theta(*it)/2));
-    theta_prep(j) = do_rgig1(api - .5, 2*coefs(j)*coefs(j)/psi(*it), 2*xi);
+    if(kernel=="laplace"){
+      psi(*it) = 1./do_rgig2(-0.5, 1, (coefs(j) * coefs(j)) /
+        ( zeta * theta(*it)/2));
+      theta_prep(j) = do_rgig2(api - .5, 2*coefs(j)*coefs(j)/psi(*it), 2*xi);
+    }else if(kernel == "normal"){
+      theta_prep(j) = do_rgig2(api - .5, coefs(j)*coefs(j)/psi(*it), 2*xi);
+    }
+
     j += 1;
   }
 
-  double tmp4samplingzeta = arma::accu(square(coefs) / (theta(ind)%psi(ind)));
-  zeta = do_rgig1(n*api - n/2, 2*tmp4samplingzeta, 2*xi);
+  if(method==1.){
+    double tmp4samplingzeta = arma::accu(square(coefs) / (theta(ind)%psi(ind)));
+    zeta = do_rgig2(n*api - n/2, 2*tmp4samplingzeta, 2*xi);
+  }else if(method==2.){
+    zeta = arma::accu(theta_prep);
+  }
+
   xi = R::rgamma(n*api + b, 1/(1+ zeta)); // uses scale
   theta(ind) = theta_prep / arma::accu(theta_prep);
-  V_i(ind) = psi(ind) % theta(ind) * zeta / 2;
+  if(kernel=="laplace"){
+    V_i(ind) = psi(ind) % theta(ind) * zeta / 2;
+  }else if(kernel == "normal"){
+    V_i(ind) = theta(ind) * zeta;
+  }
 
   if(hyper){
     int gridlength = b_vec.size();
@@ -526,9 +555,9 @@ void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const do
                     const int& n_ol, const int& n_cl, const arma::uvec& i_ol,
                     const arma::uvec& i_cl){
 
-  lambda_1 = do_rgig1(s1 - n_ol/2, sum(square(PHI_diff(i_ol))/V_i_prep(i_ol)),
+  lambda_1 = do_rgig2(s1 - n_ol/2, sum(square(PHI_diff(i_ol))/V_i_prep(i_ol)),
                      2*r1 );
-  lambda_2 = do_rgig1(s2 - n_cl/2, sum(square(PHI_diff(i_cl))/V_i_prep(i_cl)), 2*r2 );
+  lambda_2 = do_rgig2(s2 - n_cl/2, sum(square(PHI_diff(i_cl))/V_i_prep(i_cl)), 2*r2 );
 
   V_i(i_ol) = lambda_1 * V_i_prep(i_ol);
   V_i(i_cl) = lambda_2 * V_i_prep(i_cl);
@@ -539,7 +568,7 @@ void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
                     const double& r1, const arma::vec& l){
 
   int n = l.size();
-  lambda_3 = do_rgig1(s1 - n/2, sum(square(l)), 2*r1 );
+  lambda_3 = do_rgig2(s1 - n/2, sum(square(l)), 2*r1 );
 
   //for(int j=0; j<n; ++j){
   //  V_i_L(j) = lambda_3;

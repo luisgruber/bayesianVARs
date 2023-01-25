@@ -18,7 +18,8 @@ void sample_L(arma::mat& L, arma::mat& Ytilde, const arma::vec& V_i,
 void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
                    const arma::vec a_vec, const arma::vec prep1,
                    const arma::vec prep2, double& zeta, arma::vec& psi,
-                   arma::vec& theta, arma::uvec ind, const bool hyper);
+                   arma::vec& theta, arma::uvec ind, const bool hyper,
+                   const int method);
 
 double do_rgig1(double lambda, double chi, double psi);
 double do_rgig2(double lambda, double chi, double psi);
@@ -53,7 +54,8 @@ void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
 void sample_V_i_R2D2(arma::vec& V_i, const arma::vec coefs, double& api,
                      const arma::vec api_vec, double& zeta, arma::vec& psi,
                      arma::vec& theta, double& xi, double& b,
-                     const arma::vec b_vec, arma::uvec ind, const bool hyper);
+                     const arma::vec b_vec, arma::uvec ind, const bool hyper,
+                     const int method, const std::string kernel);
 
 void sample_PHI_SL(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
                    const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,

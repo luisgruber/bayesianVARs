@@ -55,7 +55,7 @@
 #' @param ... Do not use!
 #'
 #' @export
-specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
+specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5, R2D2_api ="default",
                              NG_a = 0.1, NG_varrho0 = 1, NG_varrho1 = 1,
                              SSVS_c0 = 0.01, SSVS_c1 = 100,
                              SSVS_semiautomatic = TRUE, SSVS_p=0.5,
@@ -85,7 +85,7 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
            'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
       }
     }
-    out <- list(prior = prior, DL_a = DL_a, global_grouping = global_grouping)
+    out <- list(prior = prior, DL_a = DL_a, global_grouping = global_grouping,...)
 
   }else if(prior == "R2D2"){
     if(is.character(global_grouping)){
@@ -95,7 +95,7 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5,
       }
     }
 
-    out <- list(prior = prior, R2D2_b = R2D2_b, global_grouping = global_grouping)
+    out <- list(prior = prior, R2D2_b = R2D2_b, R2D2_api = R2D2_api, global_grouping = global_grouping,...)
 
   }else if(prior == "SSVS"){
     if(!(all(SSVS_c0>0) & all(SSVS_c1>0))){
@@ -480,7 +480,7 @@ print.summary.bvar <- function(x, ...){
     cat("\nPosterior interquartile range of of reduced-form coefficients:\n")
     print(x$PHIiqr, digits = digits)
     cat("\nPosterior median of contemporaneous coefficients:\n")
-    print(as.table(x$Lmedian - diag(3)), digits = digits, zero.print = "-")
+    print(as.table(x$Lmedian - diag(nrow(x$Lmedian))), digits = digits, zero.print = "-")
     cat("\nPosterior interquartile range of contemporaneous coefficients:\n")
     print(as.table(x$Liqr), digits = digits, zero.print = "-")
     invisible(x)

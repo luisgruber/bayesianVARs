@@ -71,6 +71,7 @@ List bvar_cpp(const arma::mat Y,
   arma::ivec groups = priorPHI_in["groups"];
 
   //---- DL prior on PHI
+  const int DL_method = priorPHI_in["DL_method"];
   const bool DL_hyper = priorPHI_in["DL_hyper"];
   arma::vec DL_a = priorPHI_in["DL_a"];
   const arma::vec a_vec = priorPHI_in["a_vec"];
@@ -98,8 +99,16 @@ List bvar_cpp(const arma::mat Y,
   arma::vec b_r2d2 = priorPHI_in["R2D2_b"];
   const arma::vec api_vec = priorPHI_in["api_vec"];
   const arma::vec b_r2d2_vec = priorPHI_in["b_vec"];
+  const int R2D2_method = priorPHI_in["R2D2_method"];
+  std::string R2D2_kernel = priorPHI_in["R2D2_kernel"];
   if(priorPHI == "R2D2"){
-    V_i = psi_r2d2%theta_r2d2*zeta_r2d2(0)/2;
+    if(R2D2_kernel=="laplace"){
+      V_i = psi_r2d2%theta_r2d2*zeta_r2d2(0)/2;
+    }else if(R2D2_kernel == "normal"){
+      psi_r2d2.fill(1.0); // needed for sample_V_i_R2D2
+      V_i = theta_r2d2*zeta_r2d2(0);
+    }
+
   }
 
   //---- Horseshoe on PHI
@@ -265,6 +274,7 @@ List bvar_cpp(const arma::mat Y,
   arma::cube sv_para_draws(draws, 4,M);
   arma::cube PHI_draws(draws, (K+intercept), M); // ??? K + intercept
   arma::cube L_draws(draws, M, M);
+  arma::mat V_prior_draws(draws, n+M*intercept);
 
   int phi_hyperparameter_size(0);
   if(priorPHI == "DL" ){
@@ -304,7 +314,6 @@ List bvar_cpp(const arma::mat Y,
   const int tot = draws + burnin;
   // Initialize progressbar
   //Progress p(tot, progressbar);
-  int space4print = floor(log10(tot + .1)) + 1;
   Timer timer;
   timer.step("start");
   for(int rep = 0; rep < tot; rep++){
@@ -364,11 +373,11 @@ List bvar_cpp(const arma::mat Y,
 
         if(priorPHI=="DL"){
           sample_V_i_DL(V_i, PHI_diff(indplus), DL_a(j) , a_vec, prep1,
-                        prep2.row(j), zeta(j), psi, theta, ind, DL_hyper);
+                        prep2.row(j), zeta(j), psi, theta, ind, DL_hyper, DL_method);
         }else if(priorPHI=="R2D2"){
           sample_V_i_R2D2(V_i, PHI_diff(indplus), api(j), api_vec, zeta_r2d2(j),
                           psi_r2d2, theta_r2d2, xi(j), b_r2d2(j), b_r2d2_vec, ind,
-                          R2D2_hyper);
+                          R2D2_hyper, R2D2_method, R2D2_kernel);
         }else if(priorPHI == "SSVS"){
 
           if(rep > 0.1*burnin || SSVS_hyper){
@@ -521,7 +530,7 @@ List bvar_cpp(const arma::mat Y,
 
       try{
         sample_V_i_DL(V_i_L, l, DL_b , b_vec, prep1_L, prep2_L, zeta_L, psi_L,
-                      theta_L, l_ind, DL_L_hyper);
+                      theta_L, l_ind, DL_L_hyper, 1.);
       } catch (...) {
         ::Rf_error("Couldn't sample V_i_L (DL prior)  in run %i", rep);
 
@@ -530,7 +539,7 @@ List bvar_cpp(const arma::mat Y,
     }else if(priorL == "R2D2"){
 
       sample_V_i_R2D2(V_i_L, l, api_L, api_vec_L, zeta_L_r2d2, psi_L_r2d2,
-                      theta_L_r2d2, xi_L, b_L_r2d2, b_vec_L_r2d2, l_ind, R2D2_L_hyper );
+                      theta_L_r2d2, xi_L, b_L_r2d2, b_vec_L_r2d2, l_ind, R2D2_L_hyper, 1., "laplace" );
 
     }else if(priorL == "SSVS"){
 
@@ -576,19 +585,20 @@ List bvar_cpp(const arma::mat Y,
       L_draws.row(rep-burnin) = L;
       sv_latent_draws.row(rep-burnin) = h;
       sv_para_draws.row((rep-burnin)) = sv_para;
+      V_prior_draws.row(rep-burnin) = V_i_long;
 
       if(priorPHI == "DL" ){
 
         phi_hyperparameter_draws(rep-burnin, span(0,(n_groups-1))) = zeta;
-        phi_hyperparameter_draws(rep-burnin, span(n_groups,(n_groups+n-1))) = trans(psi.as_col());
-        phi_hyperparameter_draws(rep-burnin, span((n_groups+n),(n_groups+2*n-1)));
+        phi_hyperparameter_draws(rep-burnin, span(n_groups,(n_groups+n-1))) = psi.as_row();
+        phi_hyperparameter_draws(rep-burnin, span((n_groups+n),(n_groups+2*n-1))) = theta.as_row();
         phi_hyperparameter_draws(rep-burnin, span((n_groups+2*n),phi_hyperparameter_size-1.)) = DL_a;
 
       }else if(priorPHI == "R2D2"){
 
         phi_hyperparameter_draws(rep-burnin, span(0,(n_groups-1))) = zeta_r2d2 ;
         phi_hyperparameter_draws(rep-burnin, span(n_groups,(n_groups+n-1))) = trans(psi_r2d2.as_col());
-        phi_hyperparameter_draws(rep-burnin, span((n_groups+n),(n_groups+2*n-1))) = trans(theta_r2d2.as_col());
+        phi_hyperparameter_draws(rep-burnin, span((n_groups+n),(n_groups+2*n-1))) = theta_r2d2.as_row();
         phi_hyperparameter_draws(rep-burnin, span((n_groups+2*n),phi_hyperparameter_size-1.-2*n_groups)) = xi ;
         phi_hyperparameter_draws(rep-burnin, span((2*n_groups+2*n ),phi_hyperparameter_size -1.-n_groups)) = b_r2d2;
         phi_hyperparameter_draws(rep-burnin, span((3*n_groups+2*n ),phi_hyperparameter_size-1.)) = api;
@@ -619,15 +629,15 @@ List bvar_cpp(const arma::mat Y,
       if(priorL == "DL"){
 
         l_hyperparameter_draws(rep-burnin, 0) = zeta_L;
-        l_hyperparameter_draws(rep-burnin, span(1,n_L)) = trans(psi_L.as_col());
-        l_hyperparameter_draws(rep-burnin, span(n_L+1.,2*n_L)) = trans(theta_L.as_col());
+        l_hyperparameter_draws(rep-burnin, span(1,n_L)) = psi_L.as_row();
+        l_hyperparameter_draws(rep-burnin, span(n_L+1.,2*n_L)) = theta_L.as_row();
         l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-1.) = DL_b;
 
       }else if(priorL == "R2D2"){
 
         l_hyperparameter_draws(rep-burnin, 0) = zeta_L_r2d2 ;
-        l_hyperparameter_draws(rep-burnin, span(1,(n_L))) = trans(psi_L_r2d2.as_col());
-        l_hyperparameter_draws(rep-burnin, span(n_L+1.,(2*n_L))) = trans(theta_L_r2d2.as_col());
+        l_hyperparameter_draws(rep-burnin, span(1,(n_L))) = psi_L_r2d2.as_row();
+        l_hyperparameter_draws(rep-burnin, span(n_L+1.,(2*n_L))) = theta_L_r2d2.as_row();
         l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-3.) = xi_L ;
         l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-2.) = b_L_r2d2;
         l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-1.) = api_L;
@@ -663,7 +673,7 @@ List bvar_cpp(const arma::mat Y,
     Named("phi_hyperparameter") = phi_hyperparameter_draws,
     Named("l_hyperparameter") = l_hyperparameter_draws,
     Named("bench") = time,
-    Named("V_i_long") = V_i_long,
+    Named("V_prior") = V_prior_draws,
     Named("V_i") = V_i
   );
 
