@@ -138,13 +138,37 @@ arma::mat draw_PHI(arma::mat& PHI, arma::mat& PHI_prior, arma::mat& Y, arma::mat
   return(PHI);
 }
 
+void draw_post(arma::vec& coef_draw,
+               const arma::mat omega_post,
+               const arma::vec coef_post_prep,
+               const bool typeL){
+  // this function generates one sample from posterior
+  // without inverting the whole precision matrix
+  const int K = coef_post_prep.size();
+  mat omega_post_chol =  chol(omega_post, "upper");
+  mat omega_post_chol_inv = arma::inv(trimatu(omega_post_chol));
+  vec coef_post = omega_post_chol_inv * omega_post_chol_inv.t() * coef_post_prep;
+  arma::colvec rnormvec(K);
+  rnormvec = Rcpp::rnorm(K);
+
+  arma::vec coef_draw_tmp = coef_post + omega_post_chol_inv*rnormvec;
+
+  if(typeL){
+    //pad draw with zeros (and one 1 for the diagonal element)
+    coef_draw.zeros();
+    coef_draw.subvec(0,K-1) = coef_draw_tmp;
+    coef_draw(K) = 1.;
+  }else{
+    coef_draw = coef_draw_tmp;
+  }
+}
 
 // draw_PHI samples VAR coefficients using the corrected triangular
 // algorithm as in Carrier, Chan, Clark & Marcellino (2021)
 // for use within smapler written in Rcpp
-void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
-                const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,
-                const arma::mat& V_prior, const int& K, const int& M, bool subs) {
+void sample_PHI(arma::mat& PHI, const arma::mat PHI_prior, const arma::mat Y,
+                const arma::mat X, const arma::mat L, const arma::mat d_sqrt,
+                const arma::mat V_prior, const int M, bool subs) {
 
   for(int i = 0; i < M; i++){
 
@@ -158,21 +182,22 @@ void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
     arma::mat X_new = X_new_tmp.each_col() / normalizer;
 
     // 'subs' avoids the direct computation of the inverse needed for V_post
-    // maybe in very large dimensions a little bit more efficient
-    // not thoroughly tested, hence not used in the sampler
-    arma::mat V_post_inv_chol = chol(V_prior_inv + X_new.t()*X_new, "upper");
+
     if(subs){
-      arma::vec phi_post_prep = V_prior_inv*PHI_prior.col(i) + X_new.t()*Y_new;
-      arma::colvec phi_post_tmp = arma::solve(trimatl(V_post_inv_chol.t()), phi_post_prep);
-      arma::colvec phi_post = arma::solve(trimatu(V_post_inv_chol), phi_post_tmp);
-
-      arma::colvec rnormvec(K);
-      for(int j = 0; j < K; ++j){
-        rnormvec(j) = R::rnorm(0,1);
-      }
-      PHI.col(i) = phi_post + solve(trimatu(V_post_inv_chol), rnormvec);
+     // PHI.col(i) = draw_post(V_prior_inv,Y_new, X_new, PHI_prior.col(i));
+     // prepare posterior precision
+     arma::mat Omega_post = X_new.t()*X_new;
+      // add prior precision
+      Omega_post.diag() += 1./V_prior.col(i);
+      // prepare posterior mean
+      arma::vec phi_post_prep = (PHI_prior.col(i)/V_prior.col(i)) + X_new.t()*Y_new;
+      arma::vec PHI_j = PHI.unsafe_col(i);
+      // generate posterior draw
+      draw_post(PHI_j, Omega_post, phi_post_prep, false);
     }else{
-
+      arma::mat Omega_post = X_new.t()*X_new;
+      Omega_post.diag() += 1./V_prior.col(i);
+      arma::mat V_post_inv_chol = chol(Omega_post, "upper");
       //arma::mat V_post = ( V_prior_inv + X_new.t()*X_new ).i(); //unstable
       // compute inverse via the QR decomposition (similar to chol2inv in R)
       //arma::mat V_post_tmp = chol(V_prior_inv + X_new.t()*X_new, "upper");
@@ -180,9 +205,9 @@ void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
       mat R;
       qr(Q, R, V_post_inv_chol);
       mat S = inv(trimatu(R));
-      mat V_post= S * S.t();
+      mat V_post= S * S.t();///
 
-      arma::colvec phi_post = V_post * (V_prior_inv*PHI_prior.col(i) + X_new.t()*Y_new);
+      arma::colvec phi_post = V_post * ((PHI_prior.col(i)/V_prior.col(i)) + X_new.t()*Y_new);
 
       PHI.col(i) = mvrnorm1(phi_post, V_post, 1e-06);
     }
@@ -242,24 +267,37 @@ void sample_L(arma::mat& L, arma::mat& Ytilde, const arma::vec& V_i, const arma:
   for(int i = 1; i < M; i++){
 
     vec normalizer = vectorise( d_sqrt.col(i) );
+    // create matrix with covariables (residuals of preceeding equations)
     mat Z = -1 * (Ytilde.cols(0, i-1).each_col() / normalizer);
+    // create 'dependent' variable
     vec c = vectorise(Ytilde.col(i)) / normalizer;
+    // prepare posterior precision
+    arma::mat Omegal_post = Z.t()*Z;
+    // add prior precision
+    Omegal_post.diag() += 1./V_i.subvec(ind, ind+i-1);
+    // prepare posterior mean
+    arma::vec l_post_prep = Z.t()*c;
+    // generate one posterior draw
+    arma::vec L_j = L.unsafe_col(i);
+    draw_post(L_j, Omegal_post, l_post_prep, true);
+///    arma::vec l_tmp(size(l_post_prep));
+///    draw_post(l_tmp, Omegal_post, l_post_prep, false);
+///   L(span(0,i-1), span(i,i)) = l_tmp ;//mvrnorm1(l_post, V_post);
 
-    mat V_p_inv = diagmat(1/V_i.subvec(ind, ind+i-1));
-
-    // Compute V_post
-    // mat V_post = (V_p_inv + Z.t()*Z).i(); // unstable
-    // compute inverse via the QR decomposition (similar to chol2inv in R)
-    arma::mat V_post_tmp = chol(V_p_inv + Z.t()*Z, "upper"); //V_p_inv
-    mat Q;
-    mat R;
-    qr(Q, R, V_post_tmp);
-    mat S = inv(trimatu(R));
-    mat V_post= S * S.t();
-
-    colvec l_post = V_post * (Z.t()*c);
-
-    L(span(0,i-1), span(i,i)) = mvrnorm1(l_post, V_post);
+/// old...
+//    mat V_p_inv = diagmat(1/V_i.subvec(ind, ind+i-1));
+//    // cholesky factor of posterior precision
+//    arma::mat V_post_tmp = chol(V_p_inv + Z.t()*Z, "upper"); //V_p_inv
+//    // Compute V_post
+//    // mat V_post = (V_p_inv + Z.t()*Z).i(); // unstable
+//    // compute inverse via the QR decomposition (similar to chol2inv in R)
+//    mat Q;
+//    mat R;
+//    qr(Q, R, V_post_tmp);
+//    mat S = inv(trimatu(R));
+//    mat V_post= S * S.t();
+//    colvec l_post = V_post * (Z.t()*c);
+//    L(span(0,i-1), span(i,i)) = mvrnorm1(l_post, V_post);
 
     ind = ind+i;
 
@@ -267,10 +305,45 @@ void sample_L(arma::mat& L, arma::mat& Ytilde, const arma::vec& V_i, const arma:
 
 }
 
+void sample_V_i_GT(arma::vec& V_i, const arma::vec coefs, arma::vec& psi,
+                   arma::vec& lambda, double& xi, double& a, double& b,
+                   const double c, arma::uvec ind, const double tol,
+                   const std::string priorkernel,
+                   const double vs){
+
+  const int n = ind.size();
+  const arma::vec coefs_squared = arma::square(coefs);
+  arma::uvec::iterator it;
+  for(it = ind.begin(); it != ind.end(); ++it){
+    // sample auxiliary scaling parameters
+    if(priorkernel == "exponential"){
+      psi(*it) = 1./do_rgig2(-0.5, 1, coefs_squared(*it)/(lambda(*it)*vs)); //For R2d2exp vs must be 1/2
+    }
+    // sample local scales
+    lambda(*it) = do_rgig2(a - 0.5, coefs_squared(*it)/(psi(*it)*vs), 2*xi); // For R2d2exp vs must be 1/2, for NG psi must be 1
+  }
+  double zeta = arma::accu(lambda(ind));
+  if(tol>0){
+    arma::vec theta = lambda(ind)/zeta;
+    arma::uvec theta_ind = find( theta < tol);
+    theta(theta_ind) = arma::vec(theta_ind.size(), fill::value(tol));
+    lambda(ind) = theta * zeta;
+  }
+  //sample global scale
+  xi = R::rgamma(b+n*a, 1./(2*c/a + zeta));
+
+  if(priorkernel == "exponential"){
+    V_i(ind) = psi(ind)%lambda(ind)*vs;
+  }else if(priorkernel == "normal"){
+    V_i(ind) = lambda(ind)*vs;
+  }
+//to do hyperpriors
+}
+
 void sample_V_i_NG(arma::vec& V_i, const arma::vec coefs, arma::vec& theta_tilde,
                    double& zeta, double& a , const arma::vec a_vec,
                    const double varrho0, const double varrho1, arma::uvec ind,
-                   const bool hyper){
+                   const bool hyper, const double tol){
 
   const int n = ind.size();
   int gridlength = a_vec.size();
@@ -288,6 +361,14 @@ void sample_V_i_NG(arma::vec& V_i, const arma::vec coefs, arma::vec& theta_tilde
       }
       }
   }
+  if(tol>0){
+    double th_sum = accu(theta_tilde);
+    arma::vec theta = theta_tilde/th_sum;
+    arma::uvec th_uvec= find(theta<tol);
+    theta(th_uvec) = vec(th_uvec.size(), fill::value(tol));
+    theta_tilde = theta * th_sum;
+  }
+
   zeta = 1./R::rgamma(varrho0 + a*n, 1./(varrho1 + 0.5*a*arma::accu(theta_tilde(ind))));
 
   if(hyper){
@@ -328,6 +409,56 @@ void sample_V_i_HS(arma::vec& V_i, const arma::vec coefs, arma::vec& theta,
 
 }
 
+void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
+                   const double b, const double c,
+                   const arma::vec a_vec, const arma::vec a_weight,
+                   arma::vec& psi, arma::vec& lambda, double& xi, arma::uvec ind,
+                   const bool hyper,const arma::vec norm_consts,
+                   const double tol, const bool DL_plus){ //, bool hyper
+
+  const int n = ind.size();
+  arma::vec coefs_abs = arma::abs(coefs);
+  int gridlength = a_vec.size();
+  arma::vec logprobs(gridlength);
+
+  arma::uvec::iterator it;
+  for(it = ind.begin(); it != ind.end(); ++it){
+    psi(*it) = 1./do_rgig2(-0.5, 1, (coefs(*it)*coefs(*it)) /
+      (lambda(*it)*lambda(*it)) );
+    lambda(*it) = do_rgig2(a-1., 2*coefs_abs(*it), 2*xi);
+    if(hyper){
+      for(int j=0; j<gridlength; j++){
+        logprobs(j) += log(a_weight(j)) + norm_consts(j) +
+          (a_vec(j)-1)*log(lambda(*it)) - xi*lambda(*it);
+          //R::dgamma(lambda(*it), a_vec(j), 1./xi, true); // R::dgamma uses scale
+      }
+    }
+  }
+  double zeta = arma::accu(lambda(ind));
+  if(DL_plus){
+    xi = R::rgamma(b+n*a, 1./(2*c/a + zeta));
+  }
+
+  if(tol>0){
+    arma::vec theta = lambda(ind) / zeta;
+    uvec th_f = find(theta<tol);
+    theta(th_f) = vec(th_f.size(), fill::value(tol));
+    lambda(ind) = theta * zeta;
+    }
+
+  V_i(ind) = psi(ind) % square(lambda(ind));
+
+  if(hyper){
+    arma::vec w = exp(logprobs - logprobs.max());
+    arma::vec weights = w/sum(w);
+    arma::ivec iv(gridlength);
+    R::rmultinom(1, weights.begin(), gridlength, iv.begin());
+    arma::uvec i = arma::find(iv == 1.0,1); // reports only the first value that meets the condition (by construction there is only one 1)
+    a = a_vec(i(0));
+  }
+
+}
+
 arma::colvec ddir_prep(const arma::colvec& x, const arma::vec& prep1, const arma::rowvec& prep2){
 
   //arma::rowvec logd = sum(prep1.each_col() % log(x), 0) + prep2;
@@ -340,38 +471,42 @@ arma::colvec ddir_prep(const arma::colvec& x, const arma::vec& prep1, const arma
   return(logd.t());
 }
 
-void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
+void sample_V_i_DL_deprecated(arma::vec& V_i, const arma::vec coefs, double& a ,
                    const arma::vec a_vec, const arma::vec prep1,
                    const arma::vec prep2, double& zeta, arma::vec& psi,
                    arma::vec& theta, arma::uvec ind, const bool hyper,
-                   const int method){ //, bool hyper
+                   const int method, const double tol){ //, bool hyper
 
-  const int n = coefs.size();
+  const int n = ind.size();
+  arma::vec lambda(n);
   arma::vec coefs_abs = arma::abs(coefs);
   double zeta2 = zeta*zeta;
-  arma::vec theta_prep(n);
+  arma::vec lambda0(theta.size());
   arma::uvec::iterator it;
-  double j = 0;
     for(it = ind.begin(); it != ind.end(); ++it){ //int j = 0; j < n; j++
-      psi(*it) = 1./do_rgig2(-0.5, 1, (coefs_abs(j) * coefs_abs(j)) /
+      psi(*it) = 1./do_rgig2(-0.5, 1, (coefs_abs(*it) * coefs_abs(*it)) /
         ( zeta2 * theta(*it) * theta(*it)));
-      theta_prep(j) = do_rgig2(a-1., 2*coefs_abs(j), 1);
-      j += 1;
+      lambda0(*it) = do_rgig2(a-1., 2*coefs_abs(*it), 1);
     }
-  //
-  //arma::vec lambda = theta_prep;
-  //zeta = arma::accu(lambda);
-  //theta(ind) = lambda / zeta;
-  //
+
+  theta(ind) = lambda0(ind) / arma::accu(lambda0(ind));
+    if(tol>0){
+      uvec th_f = find(theta<tol);
+      theta(th_f) = vec(th_f.size(), fill::value(tol));
+    }
   if(method == 1.){
-    double tmp4samplingzeta = arma::accu(coefs_abs / theta(ind));
+    double tmp4samplingzeta = arma::accu(coefs_abs(ind) / theta(ind));
     zeta = do_rgig2(n*(a-1.), 2*tmp4samplingzeta,1);
+    lambda = theta(ind) * zeta;
   }else if(method == 2.){
-    zeta = arma::accu(theta_prep);
+    zeta = arma::accu(lambda0(ind));
+    lambda = lambda0(ind);
+    if(tol>0){
+      lambda = theta(ind) * zeta;
+    }
   }
 
-  theta(ind) = theta_prep / arma::accu(theta_prep);
-  V_i(ind) = psi(ind) % theta(ind)%theta(ind) * zeta*zeta;
+  V_i(ind) = psi(ind) % square(lambda);//theta(ind)%theta(ind) * zeta*zeta
 
   if(hyper){
     int gridlength = a_vec.size();
@@ -407,10 +542,6 @@ void sample_V_i_R2D2(arma::vec& V_i, const arma::vec coefs, double& api,
 
   double n = coefs.size();
   arma::vec theta_prep(n);
-
-  //if(kernel=="normal"){
-  //  psi.fill(1.0);
-  //}
 
   arma::uvec::iterator it;
   double j = 0;

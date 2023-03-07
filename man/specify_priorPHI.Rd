@@ -8,6 +8,7 @@ specify_priorPHI(
   prior,
   DL_a = "1/K",
   R2D2_b = 0.5,
+  R2D2_api = "default",
   NG_a = 0.1,
   NG_varrho0 = 1,
   NG_varrho1 = 1,

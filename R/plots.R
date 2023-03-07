@@ -20,11 +20,13 @@
 #'
 #' @export
 #'
-plot.PHI <- function(object, summary = "median", ylabels = NULL, xlabels = NULL,
-                 add_numbers = TRUE, zlim = NULL,...){
+plot.PHI <- function(object, summary = "median", colorbar = TRUE, ylabels = NULL, xlabels = NULL,
+                     add_numbers = FALSE, zlim = NULL,main="",...){
+
+  optionals <- list(...)
 
   PHI <- apply(object, 2:3, function(x) do.call(what = summary,
-                                                 args = list(x)))
+                                                args = list(x)))
   PHI_star <- t(apply(PHI, 1, rev)) # image orders differently
 
   if(add_numbers){
@@ -34,12 +36,13 @@ plot.PHI <- function(object, summary = "median", ylabels = NULL, xlabels = NULL,
   }
 
   if(summary %in% c("median", "mean")){
-    colspace <- colorspace::diverge_hcl(1000, alpha = alpha, palette = "Blue-Red")
+    colspace <- colorspace::diverge_hcl(1001, alpha = alpha, palette = "Blue-Red")
     if(is.null(zlim)){
       zlim <- c(-max(abs(PHI)),max(abs(PHI)))
     }
+    colbreaks <- seq(zlim[1]*1.001, zlim[2]*1.001, len=1002)#[-1]
   }else if(summary %in% c("sd", "var", "IQR")){
-    colspace <- colorspace::sequential_hcl(1000, alpha = alpha, rev = TRUE,
+    colspace <- colorspace::sequential_hcl(1001, alpha = alpha, rev = TRUE,
                                            palette = "Reds 2")#colorspace::sequential_hcl(1000, alpha = alpha, rev = TRUE)#colorspace::sequential_hcl(5, h = 0, c = c(100, 0), l = 65, rev = TRUE, power = 1, alpha = alpha) #colorspace::sequential_hcl(1000, alpha = alpha, rev = TRUE)
     if(is.null(zlim)){
       zlim <- c(0,max(abs(PHI)))
@@ -49,8 +52,25 @@ plot.PHI <- function(object, summary = "median", ylabels = NULL, xlabels = NULL,
   M <- ncol(PHI)
   Kp <- nrow(PHI)
   p <- floor(Kp/M)
+  if(colorbar){
+
+    if(!is.null(optionals$layoutmat)){
+      if(optionals$layoutmat){
+        oldpar <- par(no.readonly = TRUE)
+        on.exit(par(oldpar), add = TRUE)
+        mat <- matrix(c(rep(1,9),2),nrow = 10)
+        layout(mat)
+      }
+    }else{
+      oldpar <- par(no.readonly = TRUE)
+      on.exit(par(oldpar), add = TRUE)
+      mat <- matrix(c(rep(1,9),2),nrow = 10)
+      layout(mat)
+    }
+    par(mar=c(0,4,4,2)+.1)
+  }
   image((PHI_star), zlim = zlim ,xaxt = "n", yaxt="n", col = colspace,
-        bty="n")
+        bty="n", main = main)
   if((Kp-1)>M){
     abline(v = seq(M,Kp-1, M)/(Kp-1) - 0.5/(Kp-1), xpd = FALSE)
   }
@@ -70,6 +90,41 @@ plot.PHI <- function(object, summary = "median", ylabels = NULL, xlabels = NULL,
     text(rep(seq(0,1, length.out=Kp),M),
          sort(rep(seq(1,0, length.out=M),Kp), decreasing = TRUE),
          round(as.vector(PHI),3), cex=.75)
+  }
+
+  if(colorbar){
+    par(mar=c(2,4,0,2)+.1)
+    plot.new()
+    if(summary %in% c("median", "mean")){
+
+      colbarlim <- length(which(colbreaks<min(PHI_star)))
+      #colbarlim <- ceiling((min(PHI_star) - zlim[1]*1.001)/(diff(zlim)+2*zlim[2]/1000)*1001)
+      adjustedcolspace <- colspace[-c(1:(colbarlim-1))]
+
+      if(sign(min(PHI_star))!=sign(max(PHI_star))){
+        llabels <- round(c(colbreaks[colbarlim],0,tail(colbreaks,1)),2)
+        #llabels <- round(sort(c(range(PHI_star),0)),2)
+        #
+        at <- sort(c(0,1,(0-colbreaks[colbarlim])/(tail(colbreaks,1)-colbreaks[colbarlim])))
+      }else{
+        llabels <- round(range(PHI_star),2)
+        at <- c(0,1)
+      }
+    }else if(summary %in% c("sd", "var", "IQR")){
+
+      adjustedcolspace <- colspace
+      llabels <- round(zlim,2)
+      at <- c(0,1)
+
+    }
+
+    len <- length(adjustedcolspace)
+    xxx <- seq(0,1,length=len+1)
+    rect(xxx[1:len], rep(0, len), xxx[-1],
+         rep(1, len), col = adjustedcolspace, border = adjustedcolspace)
+
+    axis(1, labels = llabels, at = at,
+         tick = FALSE, las=1, cex.axis=.9, line=-1.2)
   }
 
 }
@@ -94,7 +149,7 @@ plot.PHI <- function(object, summary = "median", ylabels = NULL, xlabels = NULL,
 #' @export
 #'
 plot.L <- function(object, summary = "median", ylabels = NULL, xlabels = NULL,
-                     add_numbers = TRUE, zlim = NULL, ...){
+                     add_numbers = TRUE, zlim = NULL, main="", ...){
 
   L <- apply(object, 2:3, function(x) do.call(what = summary,
                                                 args = list(x)))
@@ -123,7 +178,7 @@ plot.L <- function(object, summary = "median", ylabels = NULL, xlabels = NULL,
     }
   }
 
-  image((L_star), zlim= zlim ,xaxt = "n", yaxt="n", col = colspace, bty="n")
+  image((L_star), zlim= zlim ,xaxt = "n", yaxt="n", col = colspace, bty="n", main=main)
   if(is.null(xlabels)){
     axis(3, labels = rownames(L), at = seq(0,1, length.out=M),
          tick = FALSE, las=2, cex.axis=.75)

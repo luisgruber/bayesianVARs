@@ -55,12 +55,16 @@
 #' @param ... Do not use!
 #'
 #' @export
-specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5, R2D2_api ="default",
-                             NG_a = 0.1, NG_varrho0 = 1, NG_varrho1 = 1,
+specify_priorPHI <- function(prior,
+                             DL_a = "1/K", DL_tol = 0,
+                             R2D2_a =0.1, R2D2_b = 0.5, R2D2_tol = 0,
+                             NG_a = 0.1, NG_b = 1, NG_c = 1, NG_tol = 0,
                              SSVS_c0 = 0.01, SSVS_c1 = 100,
                              SSVS_semiautomatic = TRUE, SSVS_p=0.5,
                              HMP_lambda1 = c(0.01,0.01), HMP_lambda2 = c(0.01,0.01),
-                             V_i = 10, global_grouping="global",...){
+                             V_i = 10,
+                             global_grouping="global",
+                             ...){
   if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "SL", "HS", "NG"))){
     stop("Argument 'prior' must be one of 'DL', 'HS', 'NG', 'SSVS', 'HMP' or 'normal'. \n")
   }
@@ -85,7 +89,8 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5, R2D2_api ="defau
            'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
       }
     }
-    out <- list(prior = prior, DL_a = DL_a, global_grouping = global_grouping,...)
+    out <- list(prior = prior, a = DL_a, global_grouping = global_grouping,
+                GL_tol = DL_tol, ...)
 
   }else if(prior == "R2D2"){
     if(is.character(global_grouping)){
@@ -95,7 +100,9 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5, R2D2_api ="defau
       }
     }
 
-    out <- list(prior = prior, R2D2_b = R2D2_b, R2D2_api = R2D2_api, global_grouping = global_grouping,...)
+    out <- list(prior = "GT", b = R2D2_b, a = R2D2_a,
+                global_grouping = global_grouping, c = 0.5*R2D2_a, GT_vs = 1/2,
+                GT_priorkernel = "exponential", GL_tol = R2D2_tol,...)
 
   }else if(prior == "SSVS"){
     if(!(all(SSVS_c0>0) & all(SSVS_c1>0))){
@@ -142,8 +149,9 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5, R2D2_api ="defau
            'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
       }
     }
-    out <- list(prior = prior, NG_a = NG_a, NG_varrho0 = NG_varrho0,
-                NG_varrho1 = NG_varrho1, global_grouping = global_grouping)
+    out <- list(prior = "GT", a = NG_a, b = NG_b, c = NG_c, GT_vs = 1,
+                GT_priorkernel = "normal",
+                GL_tol = NG_tol, global_grouping = global_grouping)
   }
   out
 }
@@ -188,29 +196,31 @@ specify_priorPHI <- function(prior, DL_a = "1/K", R2D2_b = 0.5, R2D2_api ="defau
 #' @param ... Do not use!
 #'
 #' @export
-specify_priorL <- function(prior, DL_b = "1/n", R2D2_b = 0.5,
-                             SSVS_c0 = 0.001, SSVS_c1 = 1, SSVS_p = 0.5,
+specify_priorL <- function(prior, DL_a = "1/n", DL_tol=0,
+                           R2D2_a =0.4, R2D2_b = 0.5, R2D2_tol=0,
+                           NG_a = .5, NG_b = .5, NG_c = .5, NG_tol = 0,
+                           SSVS_c0 = 0.001, SSVS_c1 = 1, SSVS_p = 0.5,
                            HMP_lambda3 = c(0.01,0.01),
-                             V_i = 10,
+                           V_i = 10,
                            ...){
-  if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "SL"))){
+  if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "NG", "HS"))){
     stop("Argument 'prior' must be one of 'DL', 'SSVS', 'HMP' or 'normal'. \n")
   }
 
   if(prior == "DL"){
-    text <- c("Argument 'DL_b' must be either a single positive numeric or one of 'hyperprior',
+    text <- c("Argument 'DL_a' must be either a single positive numeric or one of 'hyperprior',
            or '1/n'. \n ")
-    if(is.numeric(DL_b) & DL_b <= 0) stop(text)
-    if(length(DL_b)>1) stop(text)
-    if(is.character(DL_b) & !(DL_b %in% c("hyperprior", "1/n"))){
+    if(is.numeric(DL_a) & any(DL_a<=0)) stop(text)
+    if(is.character(DL_a) & !(DL_a %in% c("hyperprior", "1/n"))){
       stop(text)
     }
 
-    out <- list(prior = prior, DL_b = DL_b)
+    out <- list(prior = prior, a = DL_a, GL_tol = DL_tol, ...)
 
   }else if(prior == "R2D2"){
 
-    out <- list(prior = prior, R2D2_b = R2D2_b)
+    out <- list(prior = "GT", b = R2D2_b, a = R2D2_a, c = 0.5*R2D2_a, GT_vs = 1/2,
+                GT_priorkernel = "exponential", GL_tol = R2D2_tol,...)
 
   }else if(prior == "SSVS"){
     if(!(SSVS_c0>0 & SSVS_c1>0)){
@@ -238,8 +248,12 @@ specify_priorL <- function(prior, DL_b = "1/n", R2D2_b = 0.5,
     out <- list(prior=prior, V_i=V_i)
   }else if(prior == "HMP"){
     out <- list(prior = prior, lambda_3 = HMP_lambda3)
-  }else if(prior == "SL"){
-    out <- list(prior = "SL", ...)
+  }else if(prior == "HS"){
+    out <- list(prior = prior)
+  }else if(prior == "NG"){
+
+    out <- list(prior = "GT", a = NG_a, b = NG_b, c = NG_c, GT_vs = 1,
+                GT_priorkernel = "normal", GL_tol = NG_tol)
   }
   out
 }

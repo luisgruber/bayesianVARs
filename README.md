@@ -4,10 +4,10 @@ Luis Gruber
 16 5 2022
 
 Estimation of Bayesian vectorautoregressions. Implements several modern
-hierarchical shrinkage priors, amongst them
-![R^2](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;R%5E2 "R^2")-induced-Dirichlet-decomposition
-(R2D2) prior, Dirichlet-Laplace (DL) prior, Stochastic Search Variable
-Selection (SSVS) and the Hierarchical Minnesota prior.
+hierarchical shrinkage priors, amongst them Dirichlet-Laplace prior,
+Hierarchical Minnesota, Horseshoe prior, Normal-Gamma prior,
+$R^2$-induced-Dirichlet-decomposition prior and Stochastic Search
+Variable Selection prior.
 
 # Installation
 
@@ -36,15 +36,15 @@ data <- dat_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 Y_est <- data[1:100,]
 
 # Specify prior for reduced-form VAR coefficients (with default settings)
-prior <- "R2D2" # or "DL", "SSVS", "HMP", "normal"
+prior <- "HS" # or "DL", "R2D2", "NG", "SSVS", "HMP", "normal"
 priorPHI <- specify_priorPHI(prior = prior)
 
 # Specify prior for L (Decomposition of variance-covariance matrix in the form of t(L^(-1))%*%D_t%*%L^(-1), where L is upper triangular)
-priorL <- specify_priorL(prior = "DL")
+priorL <- specify_priorL(prior = "HS")
 
 # Estimate VAR(2) with stochastic volatility
 mod <- bvar(Yraw = Y_est, p = 2, draws = 5000, burnin = 1000,
-            priorPHI = priorPHI, priorL = priorL, SV = TRUE, progressbar = TRUE)
+            priorPHI = priorPHI, priorL = priorL, SV = TRUE, progressbar = FALSE)
 
 # Posterior summary of PHI
 summary(mod)
@@ -52,53 +52,62 @@ summary(mod)
 
     ## 
     ## Posterior median of reduced-form coefficients:
-    ##                  GDPC1   CPIAUCSL   FEDFUNDS
-    ## GDPC1.l1     2.094e-22  7.707e-11  4.846e-13
-    ## CPIAUCSL.l1 -3.852e-15  7.225e-01  1.866e-01
-    ## FEDFUNDS.l1 -1.512e-29  5.100e-13  1.243e+00
-    ## GDPC1.l2     5.937e-11 -4.496e-41  2.829e-10
-    ## CPIAUCSL.l2 -7.088e-14  1.494e-01  2.200e-22
-    ## FEDFUNDS.l2 -9.720e-02 -2.660e-19 -3.101e-01
-    ## intercept    1.633e-02  8.755e-04  1.882e-03
+    ##                GDPC1   CPIAUCSL   FEDFUNDS
+    ## GDPC1.l1     0.02668  0.0323357  0.1026262
+    ## CPIAUCSL.l1 -0.08011  0.5717350  0.2475045
+    ## FEDFUNDS.l1 -0.01399  0.1548698  1.2163109
+    ## GDPC1.l2     0.03448 -0.0313394  0.0478089
+    ## CPIAUCSL.l2 -0.02636  0.2720078  0.0300708
+    ## FEDFUNDS.l2 -0.06199 -0.1357813 -0.2922431
+    ## intercept    0.01587  0.0006769  0.0004525
     ## 
     ## Posterior interquartile range of of reduced-form coefficients:
-    ##                 GDPC1  CPIAUCSL  FEDFUNDS
-    ## GDPC1.l1    3.710e-06 1.095e-03 2.826e-02
-    ## CPIAUCSL.l1 1.061e-02 2.273e-01 4.008e-01
-    ## FEDFUNDS.l1 1.562e-10 1.503e-02 2.171e-01
-    ## GDPC1.l2    4.977e-04 1.534e-13 5.196e-04
-    ## CPIAUCSL.l2 8.598e-04 2.861e-01 2.091e-06
-    ## FEDFUNDS.l2 1.189e-01 1.523e-05 2.029e-01
-    ## intercept   3.153e-03 1.148e-03 2.313e-03
+    ##                GDPC1 CPIAUCSL FEDFUNDS
+    ## GDPC1.l1    0.089685 0.055069 0.071980
+    ## CPIAUCSL.l1 0.202458 0.164284 0.226991
+    ## FEDFUNDS.l1 0.064626 0.063592 0.154383
+    ## GDPC1.l2    0.097866 0.057406 0.075514
+    ## CPIAUCSL.l2 0.138444 0.177491 0.131037
+    ## FEDFUNDS.l2 0.089130 0.071832 0.156396
+    ## intercept   0.003513 0.001784 0.002273
     ## 
     ## Posterior median of contemporaneous coefficients:
     ##          GDPC1   CPIAUCSL   FEDFUNDS
-    ## GDPC1        -  1.194e-08 -7.906e-02
-    ## CPIAUCSL     -          - -1.919e-01
+    ## GDPC1        -  0.0006288 -0.1068319
+    ## CPIAUCSL     -          - -0.1777961
     ## FEDFUNDS     -          -          -
     ## 
     ## Posterior interquartile range of contemporaneous coefficients:
     ##          GDPC1 CPIAUCSL FEDFUNDS
-    ## GDPC1        - 0.004821 0.124796
-    ## CPIAUCSL     -        - 0.372920
+    ## GDPC1        -  0.03299  0.06995
+    ## CPIAUCSL     -        -  0.28053
     ## FEDFUNDS     -        -        -
 
 ``` r
 # Visualize Posterior of PHI
-par(mar=c(4,5,5,1)+.1, mfrow=c(2,1))
-plot(mod$PHI, summary = "median", add_numbers = TRUE)
-plot(mod$PHI, summary = "IQR", add_numbers = TRUE)
+plot(mod$PHI, summary = "median", add_numbers = FALSE, colorbar = TRUE)
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
 
 ``` r
-# Traceplot of global shrinkage parameters
-ts.plot(mod$phi_hyperparameter$zeta1, ylab="")
-ts.plot(mod$l_hyperparameter$zeta, ylab="")
+plot(mod$PHI, summary = "IQR", add_numbers = FALSE, colorbar = TRUE)
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-2-2.png)<!-- -->
+
+``` r
+# Traceplot of global shrinkage parameters
+ts.plot(mod$phi_hyperparameter$zeta1, ylab="")
+```
+
+![](README_files/figure-gfm/unnamed-chunk-2-3.png)<!-- -->
+
+``` r
+ts.plot(mod$l_hyperparameter$zeta, ylab="")
+```
+
+![](README_files/figure-gfm/unnamed-chunk-2-4.png)<!-- -->
 
 ``` r
 # Simulate from predictive density and compare to ex-post realized value by 
@@ -118,7 +127,7 @@ for (i in paste0("t+",1:4)) {
 }
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-2-3.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-2-5.png)<!-- -->
 
 ``` r
 # Summary of predictive evaluation
@@ -128,37 +137,37 @@ summary(pred)
     ## 
     ## LPL:
     ##   t+1   t+2   t+3   t+4 
-    ## 9.740 9.610 9.665 9.220 
+    ## 9.531 9.632 9.778 9.530 
     ## 
     ## Marginal joint LPL of CPIAUCSL & FEDFUNDS:
     ##   t+1   t+2   t+3   t+4 
-    ## 6.125 6.109 6.069 6.005 
+    ## 5.879 6.086 6.153 6.272 
     ## 
     ## Marginal univariate LPLs:
     ##     GDPC1 CPIAUCSL FEDFUNDS
-    ## t+1 3.644    4.430    1.636
-    ## t+2 3.538    4.204    1.837
-    ## t+3 3.573    4.014    1.951
-    ## t+4 3.140    3.721    2.113
+    ## t+1 3.694    4.307    1.508
+    ## t+2 3.585    4.161    1.843
+    ## t+3 3.608    3.971    2.020
+    ## t+4 3.149    3.653    2.258
     ## 
     ## Prediction quantiles:
     ## , , GDPC1
     ## 
-    ##           t+1      t+2       t+3       t+4
-    ## 5%  -0.011644 -0.01249 -0.013444 -0.012918
-    ## 50%  0.005796  0.00506  0.004717  0.005001
-    ## 95%  0.023109  0.02221  0.022000  0.022989
+    ##           t+1       t+2       t+3       t+4
+    ## 5%  -0.011163 -0.012450 -0.012393 -0.012584
+    ## 50%  0.006337  0.005339  0.005079  0.005097
+    ## 95%  0.023225  0.022662  0.021890  0.022750
     ## 
     ## , , CPIAUCSL
     ## 
-    ##          t+1        t+2       t+3      t+4
-    ## 5%  0.001195 -0.0005854 -0.002186 -0.00284
-    ## 50% 0.009673  0.0102744  0.010731  0.01118
-    ## 95% 0.018994  0.0223192  0.024227  0.02604
+    ##          t+1      t+2        t+3       t+4
+    ## 5%  0.002879 0.000969 -0.0009913 -0.003099
+    ## 50% 0.011207 0.011181  0.0114202  0.011445
+    ## 95% 0.020037 0.022426  0.0245315  0.026187
     ## 
     ## , , FEDFUNDS
     ## 
-    ##         t+1     t+2     t+3    t+4
-    ## 5%  0.09272 0.07624 0.06232 0.0476
-    ## 50% 0.11370 0.11090 0.10802 0.1053
-    ## 95% 0.12925 0.13868 0.14524 0.1506
+    ##         t+1     t+2     t+3     t+4
+    ## 5%  0.09541 0.07858 0.06249 0.04869
+    ## 50% 0.11293 0.10920 0.10469 0.10017
+    ## 95% 0.12861 0.13582 0.14174 0.14516

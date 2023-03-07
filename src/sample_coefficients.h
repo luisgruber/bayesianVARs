@@ -8,18 +8,25 @@ using namespace arma;
 
 arma::vec mvrnorm1(arma::vec& mu, arma::mat& Sigma, double tol = 1e-06);
 
-void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
-                const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,
-                const arma::mat& V_prior, const int& K, const int& M, bool subs);
+void sample_PHI(arma::mat& PHI, const arma::mat PHI_prior, const arma::mat Y,
+                const arma::mat X, const arma::mat L, const arma::mat d_sqrt,
+                const arma::mat V_prior, const int M, bool subs);
 
 void sample_L(arma::mat& L, arma::mat& Ytilde, const arma::vec& V_i,
               const arma::mat& d_sqrt);
 
 void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
+                   const double b, const double c,
+                   const arma::vec a_vec, const arma::vec a_weight,
+                   arma::vec& psi, arma::vec& lambda, double& xi, arma::uvec ind,
+                   const bool hyper,const arma::vec norm_consts,
+                   const double tol, const bool DL_plus);
+
+void sample_V_i_DL_deprecated(arma::vec& V_i, const arma::vec coefs, double& a ,
                    const arma::vec a_vec, const arma::vec prep1,
                    const arma::vec prep2, double& zeta, arma::vec& psi,
                    arma::vec& theta, arma::uvec ind, const bool hyper,
-                   const int method);
+                   const int method, const double tol);
 
 double do_rgig1(double lambda, double chi, double psi);
 double do_rgig2(double lambda, double chi, double psi);
@@ -27,10 +34,16 @@ double do_rgig2(double lambda, double chi, double psi);
 void sample_V_i_HS(arma::vec& V_i, const arma::vec coefs, arma::vec& theta,
                    double& zeta, arma::vec& nu, double& varpi ,arma::uvec ind);
 
+void sample_V_i_GT(arma::vec& V_i, const arma::vec coefs, arma::vec& psi,
+                   arma::vec& lambda, double& xi, double& a, double& b,
+                   const double c, arma::uvec ind, const double tol,
+                   const std::string priorkernel,
+                   const double vs);
+
 void sample_V_i_NG(arma::vec& V_i, const arma::vec coefs, arma::vec& theta_tilde,
                    double& zeta, double& a , const arma::vec a_vec,
                    const double varrho0, const double varrho1, arma::uvec ind,
-                   const bool hyper);
+                   const bool hyper, const double tol);
 
 void sample_V_i_SSVS_beta(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
                           const arma::vec coeffs, const arma::vec tau_0,

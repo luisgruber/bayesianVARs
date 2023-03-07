@@ -88,22 +88,24 @@
 #'
 #'@export
 bvar <- function(Yraw,
-                      p,
-                      intercept = 100,
-                      draws=1000,
-                      burnin=1000,
-                      persistence = 0,
-                      priorPHI,
-                      priorL,
-                      SV=TRUE,
-                      sv_spec = list(priormu = c(0,100),
-                                     priorphi = c(20, 1.5),
-                                     priorsigma2 = c(0.5,0.5),
-                                     sv_offset = 0),
-                      priorHomoscedastic = NA,
-                      progressbar=TRUE,
-                      PHI_in=NULL,
-                      L_in=NULL
+                 p,
+                 intercept = 100,
+                 draws=1000,
+                 burnin=1000,
+                 persistence = 0,
+                 priorPHI,
+                 priorL,
+                 SV=TRUE,
+                 sv_spec = list(priormu = c(0,100),
+                                priorphi = c(20, 1.5),
+                                priorsigma2 = c(0.5,0.5),
+                                sv_offset = 0),
+                 priorHomoscedastic = NA,
+                 progressbar=TRUE,
+                 PHI_in=NULL,
+                 L_in=NULL,
+                 PHI_tol = 1e-100,
+                 L_tol = 1e-100
                       ){
 
 # Data preliminaries ------------------------------------------------------
@@ -156,7 +158,7 @@ bvar <- function(Yraw,
 
     if(priorPHI$prior == "DL" | priorPHI$prior == "R2D2" |
        priorPHI$prior == "HS" | priorPHI$prior == "SSVS" |
-       priorPHI$prior == "NG"){
+       priorPHI$prior == "NG" | priorPHI$prior == "GT"){
 
       if(all(is.numeric(priorPHI$global_grouping))){
         i_mat <- priorPHI$global_grouping
@@ -225,7 +227,7 @@ bvar <- function(Yraw,
 
   }
 
-  if(!(priorPHI$prior %in% c("DL", "HS","NG", "HMP", "SSVS", "normal", "R2D2", "SL"))){
+  if(!(priorPHI$prior %in% c("DL", "HS","NG", "HMP", "SSVS", "normal", "R2D2", "GT"))){
     stop("Argument 'priorPHI$prior' must be one of
            'DL', 'R2D2', 'HS', 'NG', 'SSVS', 'HMP' or 'normal'. \n")
   }
@@ -270,28 +272,40 @@ bvar <- function(Yraw,
   #GL priors
   priorPHI_in$n_groups <- 1
   priorPHI_in$groups <- 1
+  priorPHI_in$GL_tol <- double(1L)
+  priorPHI_in$a <- double(1L)
+  priorPHI_in$b <- double(1L)
+  priorPHI_in$c <- double(1L)
+  priorPHI_in$GT_vs <- double(1L)
+  priorPHI_in$GT_priorkernel <- character(1L)
 
   #DL
+##?  priorPHI_in$GL_tol <- double(1)
   priorPHI_in$DL_method <- integer(1)
-  priorPHI_in$DL_a <- double(1)
+##?  priorPHI_in$a <- double(1)
+##?  priorPHI_in$DL_b <- double(1)
+##?  priorPHI_in$DL_c <- double(1)
   priorPHI_in$a_vec <- double(1)
+  priorPHI_in$a_weight <- double(1)
   priorPHI_in$prep1 <- double(1)
+  priorPHI_in$norm_consts <- double(1)
   priorPHI_in$prep2 <- matrix(0)
   priorPHI_in$DL_hyper <- logical(1)
+  priorPHI_in$DL_plus <- logical(1)
   #R2D2
-  priorPHI_in$R2D2_method <- integer(1)
-  priorPHI_in$R2D2_kernel <- character(1L)
-  priorPHI_in$R2D2_hyper <- logical(1)
-  priorPHI_in$R2D2_api <- double(1)
-  priorPHI_in$R2D2_b <- double(1)
-  priorPHI_in$api_vec <- double(1)
-  priorPHI_in$b_vec <- double(1)
+##?  priorPHI_in$R2D2_method <- integer(1)
+##?  priorPHI_in$R2D2_kernel <- character(1L)
+##?  priorPHI_in$R2D2_hyper <- logical(1)
+##?  priorPHI_in$R2D2_api <- double(1)
+##?  priorPHI_in$R2D2_b <- double(1)
+##?  priorPHI_in$api_vec <- double(1)
+##?  priorPHI_in$b_vec <- double(1)
   #NG
-  priorPHI_in$NG_a <- double(1)
-  priorPHI_in$NG_varrho0 <- double(1)
-  priorPHI_in$NG_varrho1 <- double(1)
-  priorPHI_in$NG_hyper <- logical(1)
-  priorPHI_in$NG_a_vec <- double(1)
+##?  priorPHI_in$NG_a <- double(1)
+##?  priorPHI_in$NG_varrho0 <- double(1)
+##?  priorPHI_in$NG_varrho1 <- double(1)
+##?  priorPHI_in$NG_hyper <- logical(1)
+##?  priorPHI_in$NG_a_vec <- double(1)
   #SSVS
   priorPHI_in$SSVS_tau0 <- double(1)
   priorPHI_in$SSVS_tau1 <- double(1)
@@ -308,7 +322,7 @@ bvar <- function(Yraw,
 
   if(priorPHI$prior == "R2D2" | priorPHI$prior == "DL" |
      priorPHI$prior == "DL_h" | priorPHI$prior == "SSVS" |
-     priorPHI$prior == "HS" | priorPHI$prior == "NG"){
+     priorPHI$prior == "HS" | priorPHI$prior == "NG" | priorPHI$prior == "GT"){
 
     groups <- unique(i_vec[i_vec!=0])
     n_groups <- length(groups)
@@ -317,7 +331,16 @@ bvar <- function(Yraw,
 
   }
 
-  if(priorPHI$prior == "R2D2"){
+  if(priorPHI$prior == "GT"){
+
+    priorPHI_in$GT_priorkernel <- priorPHI$GT_priorkernel
+    priorPHI_in$GL_tol <- priorPHI$GL_tol
+    priorPHI_in$GT_vs <- priorPHI$GT_vs
+    priorPHI_in$a <- rep_len(priorPHI$a, n_groups)
+    priorPHI_in$b <- rep_len(priorPHI$b, n_groups)
+    priorPHI_in$c <- rep_len(priorPHI$c, n_groups)
+
+  }else if(priorPHI$prior == "R2D2"){
 
     if(!exists("R2D2_method", priorPHI)){
       priorPHI_in$R2D2_method <- 1L
@@ -380,49 +403,85 @@ bvar <- function(Yraw,
 
   }else if(priorPHI$prior == "DL"){
 
+    priorPHI_in$GL_tol <- priorPHI$GL_tol
     if(!exists("DL_method", priorPHI)){
-      priorPHI_in$DL_method <- 1L
+      priorPHI_in$DL_method <- 2L
     }else{
       priorPHI_in$DL_method <- priorPHI$DL_method
     }
 
-    if(all(is.numeric(priorPHI$DL_a))){
+    if(all(is.numeric(priorPHI$a))&is.null(dim(priorPHI$a))){
       DL_hyper <- FALSE
-    }else if("hyperprior" %in% priorPHI$DL_a & length(priorPHI$DL_a) == 1){
+    }else if(("hyperprior" %in% priorPHI$a & length(priorPHI$a) == 1) ||
+             (is.matrix(priorPHI$a))){
 
       DL_hyper <- TRUE
-    }else if(any(c("1/K", "1/n") %in% priorPHI$DL_a) &
-             length(priorPHI$DL_a) == 1){
+    }else if(any(c("1/K", "1/n") %in% priorPHI$a) &
+             length(priorPHI$a) == 1){
       DL_hyper <- FALSE
-      if(priorPHI$DL_a == "1/K") {
-        DL_a <- rep(1/K, n_groups)
-      }else if(priorPHI$DL_a == "1/n") {
-        DL_a <- rep(1/n, n_groups)
+      if(priorPHI$a == "1/K") {
+        priorPHI_in$a <- rep(1/K, n_groups)
+      }else if(priorPHI$a == "1/n") {
+        priorPHI_in$a <- rep(1/n, n_groups)
       }
     }else{
       stop("Something went wrong specifying DL_a!")
     }
     priorPHI_in$DL_hyper <- DL_hyper
-    if(DL_hyper){#priorPHI$
-      grid <- 1000
-      priorPHI_in$a_vec <- seq(1/(n),1/2,length.out = grid)
-      # prep1 &prep2: some preparations for the evaluation of the
-      # Dirichlet-density
-      priorPHI_in$prep1 <- priorPHI_in$a_vec-1
-      prep2 <- matrix(NA, n_groups, grid)
-      ii <- 1
-      for(j in groups){
-        n_tmp <- length(which(i_vec == j))
-        # normalizing constant of symmetric Dirichlet density in logs
-        prep2[ii,] <- lgamma(n_tmp*priorPHI_in$a_vec) - n_tmp*lgamma(priorPHI_in$a_vec)
-        ii <- ii + 1
+    if(DL_hyper){
+      if(is.matrix(priorPHI$a)){
+        priorPHI_in$a_vec <- priorPHI$a[,1]
+        priorPHI_in$a_weight <- priorPHI$a[,2]
+        priorPHI_in$norm_consts <- 0.5^priorPHI_in$a_vec -
+          lgamma(priorPHI_in$a_vec)
+        priorPHI_in$a <- rep_len(priorPHI_in$a_vec[1], n_groups) #initial value
+        priorPHI_in$DL_method <- 2L
+      }else{
+        grid <- 1000
+        priorPHI_in$a_vec <- seq(1/(n),1/2,length.out = grid)
+        # prep1 &prep2: some preparations for the evaluation of the
+        # Dirichlet-density
+        priorPHI_in$prep1 <- priorPHI_in$a_vec-1
+        prep2 <- matrix(NA, n_groups, grid)
+        ii <- 1
+        for(j in groups){
+          n_tmp <- length(which(i_vec == j))
+          # normalizing constant of symmetric Dirichlet density in logs
+          prep2[ii,] <- lgamma(n_tmp*priorPHI_in$a_vec) - n_tmp*lgamma(priorPHI_in$a_vec)
+          ii <- ii + 1
+        }
+        priorPHI_in$prep2 <- prep2
+        priorPHI_in$a <- rep_len(1/2, n_groups) #initial value
+        if(priorPHI_in$DL_method==2L){
+          priorPHI_in$a_weight <- rep(1,grid)
+          priorPHI_in$norm_consts <- 0.5^priorPHI_in$a_vec -
+            lgamma(priorPHI_in$a_vec)
+        }
       }
-      priorPHI_in$prep2 <- prep2
-      priorPHI_in$DL_a <- rep_len(1/2, n_groups) #initial value
+
     }else if(!DL_hyper){
-      if(all(is.numeric(priorPHI$DL_a))){
-        priorPHI_in$DL_a <- rep_len(priorPHI$DL_a, n_groups)
+      if(all(is.numeric(priorPHI$a))){
+        priorPHI_in$a <- rep_len(priorPHI$a, n_groups)
       }
+    }
+
+    if(!exists("DL_plus", priorPHI) || base::isFALSE(priorPHI$DL_plus)){
+      priorPHI_in$DL_plus <- FALSE
+    }else if(priorPHI$DL_plus){
+      priorPHI_in$DL_plus <- TRUE
+      if(!exists("DL_b", priorPHI)){
+        priorPHI_in$b <- rep_len(0.5, n_groups)
+      }else{
+        priorPHI_in$b <- rep_len(priorPHI$DL_b, n_groups)
+      }
+      if(!exists("DL_c", priorPHI)){
+        priorPHI_in$c <- 0.5*priorPHI_in$a
+      }else{
+        priorPHI_in$c <- rep_len(priorPHI$DL_c, n_groups)
+      }
+      priorPHI_in$DL_method <- 2L
+    }else{
+      stop("Never heard of DL_plus?")
     }
 
   }else if(priorPHI$prior == "NG"){
@@ -487,46 +546,99 @@ bvar <- function(Yraw,
   priorL_in <- list()
   priorL_in$prior <- priorL$prior
 
+  ## GL priors
+  priorL_in$GL_tol <- double(1L)
+  priorL_in$a <- double(1L)
+  priorL_in$b <- double(1L)
+  priorL_in$c <- double(1L)
+  priorL_in$GT_vs <- double(1L)
+  priorL_in$GT_priorkernel <- character(1L)
   #DL
-  priorL_in$DL_b <- double(1)
-  priorL_in$b_vec <- double(1)
-  priorL_in$prep1 <- double(1)
-  priorL_in$prep2 <- double(1)
-  priorL_in$DL_hyper <- logical(1)
+  priorL_in$a_vec <- double(1L)
+  priorL_in$a_weight <- double(1L)
+  priorL_in$DL_hyper <- logical(1L)
+  priorL_in$norm_consts <- double(1L)
+  priorL_in$DL_plus <- logical(1L)
   #R2D2
-  priorL_in$R2D2_hyper <- logical(1)
-  priorL_in$R2D2_api <- double(1)
-  priorL_in$R2D2_b <- double(1)
-  priorL_in$api_vec <- double(1)
-  priorL_in$b_vec <- double(1)
+  priorL_in$R2D2_hyper <- logical(1L)
+  priorL_in$R2D2_api <- double(1L)
+  priorL_in$R2D2_b <- double(1L)
+  priorL_in$api_vec <- double(1L)
+  priorL_in$b_vec <- double(1L)
   #SSVS
-  priorL_in$SSVS_tau0 <- double(1)
-  priorL_in$SSVS_tau1 <- double(1)
-  priorL_in$SSVS_s_a <- double(1)
-  priorL_in$SSVS_s_b <- double(1)
-  priorL_in$SSVS_hyper <- logical(1)
+  priorL_in$SSVS_tau0 <- double(1L)
+  priorL_in$SSVS_tau1 <- double(1L)
+  priorL_in$SSVS_s_a <- double(1L)
+  priorL_in$SSVS_s_b <- double(1L)
+  priorL_in$SSVS_hyper <- logical(1L)
   priorL_in$SSVS_p <- double(1L)
   #HM
-  priorL_in$lambda_3 <- double(1)
+  priorL_in$lambda_3 <- double(1L)
 
   # prior specification for L
 
-  if(priorL$prior == "DL"){
-    if(is.numeric(priorL$DL_b)){
+  if(priorL$prior == "GT"){
+
+    priorL_in$GT_priorkernel <- priorL$GT_priorkernel
+    priorL_in$GL_tol <- priorL$GL_tol
+    priorL_in$GT_vs <- priorL$GT_vs
+    priorL_in$a <- priorL$a
+    priorL_in$b <- priorL$b
+    priorL_in$c <- priorL$c
+
+  }else if(priorL$prior == "DL"){
+    if(is.numeric(priorL$a) & length(priorL$a) == 1L){
       priorL_in$DL_hyper <- FALSE
-      priorL_in$DL_b <- priorL$DL_b
-    }else if(priorL$DL_b == "1/n") {
-      priorL_in$DL_b <- 1/n_L
+      priorL_in$a <- priorL$a
+    }else if(priorL$a == "1/n") {
+      priorL_in$a <- 1/n_L
       priorL_in$DL_hyper <- FALSE
-    }else if(priorL$DL_b == "hyperprior"){
+    }else if(priorL$a == "hyperprior"){
 
       priorL_in$DL_hyper <- TRUE
 
       grid_L <- 1000
-      priorL_in$b_vec <- seq(1/(n_L),1/2,length.out = grid_L)
-      priorL_in$prep1 <- priorL_in$b_vec - 1
-      priorL_in$prep2 <- lgamma(n_L*priorL_in$b_vec) - n_L*lgamma(priorL_in$b_vec)
-      priorL_in$DL_b <- 1/2
+      priorL_in$a_vec <- seq(1/(n_L),1/2,length.out = grid_L)
+      #priorL_in$prep1 <- priorL_in$b_vec - 1
+      #priorL_in$prep2 <- lgamma(n_L*priorL_in$b_vec) - n_L*lgamma(priorL_in$b_vec)
+      priorL_in$norm_consts <- 0.5^priorL_in$a_vec -
+        lgamma(priorL_in$a_vec)
+      priorL_in$a_weight <- rep(1,grid_L)
+      priorL_in$a <- 1/2 # initial value
+    }else if(is.matrix(priorL$a)){
+
+      if(ncol(priorL$a)!=2){
+        stop("If you specify 'DL_a' as a matrix, the first column represents
+             the support points and the second column the weights of a discrete
+             hyperprior on 'DL_a' !")
+      }
+
+      priorL_in$DL_hyper <- TRUE
+      priorL_in$a_vec <- priorL$a[,1]
+      priorL_in$a_weight <- priorL$a[,2]
+      # precompute log normalizing constants of hyperprior
+      priorL_in$norm_consts <- 0.5^priorL_in$a_vec -
+        lgamma(priorL_in$a_vec)
+      priorL_in$a <- priorL_in$a_vec[1] #initial value
+
+    }
+
+    if(!exists("DL_plus", priorL) || base::isFALSE(priorL$DL_plus)){
+      priorL_in$DL_plus <- FALSE
+    }else if(priorL$DL_plus){
+      priorL_in$DL_plus <- TRUE
+      if(!exists("DL_b", priorL)){
+        priorL_in$b <- 0.5
+      }else{
+        priorL_in$b <- priorL$DL_b
+      }
+      if(!exists("DL_c", priorL)){
+        priorL_in$c <- 0.5*priorL_in$a
+      }else{
+        priorL_in$c <- priorL$DL_c
+      }
+    }else{
+      stop("Never heard of DL_plus?")
     }
 
   }else if(priorL$prior == "SSVS"){
@@ -667,7 +779,9 @@ bvar <- function(Yraw,
                   sv_para_init,
                   i_mat,
                   i_vec,
-                  progressbar
+                  progressbar,
+                  PHI_tol,
+                  L_tol
                   )
 
   #Rcpp timer is in nanoseconds
@@ -679,7 +793,15 @@ bvar <- function(Yraw,
   dimnames(res$L)[2] <- dimnames(res$L)[3] <- list(colnames(Y))
   phinames <- as.vector((vapply(seq_len(M), function(i) paste0(colnames(Y)[i], "~", colnames(X[,1:(ncol(X)-intercept)])), character(K))))
   if(priorPHI$prior %in% c("DL","DL_h")){
-    colnames(res$phi_hyperparameter) <- c(paste0("zeta",1:priorPHI_in$n_groups), paste0("psi: ", phinames), paste0("theta: ", phinames), paste0("a",1:priorPHI_in$n_groups))#
+    if(priorPHI_in$DL_method==1L){
+      colnames(res$phi_hyperparameter) <- c(paste0("a",1:priorPHI_in$n_groups), paste0("psi: ", phinames), paste0("theta: ", phinames), paste0("zeta",1:priorPHI_in$n_groups))#
+    }else if(priorPHI_in$DL_method==2L){
+      colnames(res$phi_hyperparameter) <- c(paste0("a",1:priorPHI_in$n_groups), paste0("psi: ", phinames), paste0("lambda: ", phinames), paste0("xi",1:priorPHI_in$n_groups))
+    }
+
+  }else if(priorPHI$prior == "GT"){
+
+    colnames(res$phi_hyperparameter) <- c(paste0("xi",1:priorPHI_in$n_groups), paste0("psi: ", phinames), paste0("lambda: ", phinames))
 
   }else if(priorPHI$prior == "R2D2"){
     colnames(res$phi_hyperparameter) <- c(paste0("zeta",1:priorPHI_in$n_groups),
@@ -710,7 +832,16 @@ bvar <- function(Yraw,
     lnames <- c(lnames, paste0(colnames(Y)[j],"~", colnames(Y)[1:(j-1)]))
   }
   if(priorL$prior %in% c("DL","DL_h")){
-    colnames(res$l_hyperparameter) <- c("zeta", paste0("psi: ", lnames), paste0("theta: ", lnames), "b")
+    colnames(res$l_hyperparameter) <- c("a", paste0("psi: ", lnames), paste0("lambda: ", lnames), "xi")
+  }else if(priorL$prior == "GT"){
+
+    colnames(res$l_hyperparameter) <- c("xi", paste0("psi: ", lnames), paste0("lambda: ", lnames))
+
+  }else if(priorL$prior == "HS"){
+    colnames(res$l_hyperparameter) <- c("zeta",
+                                        "varpi",
+                                        paste0("theta: ", lnames),
+                                        paste0("nu: ", lnames))
   }else if(priorL$prior == "R2D2"){
     colnames(res$l_hyperparameter) <- c("zeta", paste0("psi: ", lnames), paste0("theta: ", lnames), "xi", "b", "api")#
 
