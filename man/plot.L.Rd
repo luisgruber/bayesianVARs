@@ -11,6 +11,7 @@
   xlabels = NULL,
   add_numbers = TRUE,
   zlim = NULL,
+  main = "",
   ...
 )
 }

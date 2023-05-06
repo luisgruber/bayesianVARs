@@ -166,9 +166,10 @@ get_companion <- function(PHI, p, intercept=TRUE){
 }
 
 
-# Density of multivariate Normal (Cholesky) -------------------------------
+# Density of multivariate Normal  -------------------------------
 
 mydmvnorm <- function (x, mean , cholsigma, log = FALSE) {
+  #cholsigma is upper cholesky factor of variance-covariance matrix
   p <- ncol(cholsigma)
   #x <- matrix(x, ncol = p)
   mean <- as.vector(mean)
@@ -184,3 +185,21 @@ mydmvnorm <- function (x, mean , cholsigma, log = FALSE) {
   else exp(logretval)
 }
 
+mydmvnormU <- function (x, mean , U, log = FALSE) {
+  # U is upper triangular matrix, s.t. UU' is precision matrix
+  # this is not the cholesky factorization!!!
+  # rather stems from inverting cholesky factors of covariance matrix
+  p <- ncol(U)
+  #x <- matrix(x, ncol = p)
+  mean <- as.vector(mean)
+  x <- as.vector(x)
+
+  tmp <- (x-mean)%*%U
+  rss <- sum(tmp^2)
+  logretval <- sum(log(diag(U))) - 0.5 * p * log(2 *pi) - 0.5 * rss
+
+  names(logretval) <- rownames(x)
+  if (log)
+    logretval
+  else exp(logretval)
+}

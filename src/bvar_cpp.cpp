@@ -82,6 +82,12 @@ List bvar_cpp(const arma::mat Y,
   arma::vec c = priorPHI_in["c"];
   const double GL_tol = priorPHI_in["GL_tol"];
 
+  const arma::vec a_vec = priorPHI_in["a_vec"];
+  const arma::vec a_weight = priorPHI_in["a_weight"];
+  const arma::vec norm_consts = priorPHI_in["norm_consts"];
+  const arma::vec c_vec = priorPHI_in["c_vec"];
+  const bool c_rel_a = priorPHI_in["c_rel_a"];
+
   ///////////
 
   //---- DL prior on PHI
@@ -92,11 +98,9 @@ List bvar_cpp(const arma::mat Y,
 //?  arma::vec DL_b = priorPHI_in["DL_b"];
 //?  arma::vec DL_c = priorPHI_in["DL_c"];
   const bool DL_plus = priorPHI_in["DL_plus"];
-  const arma::vec a_vec = priorPHI_in["a_vec"];
-  const arma::vec a_weight = priorPHI_in["a_weight"];
   const arma::mat prep2 = priorPHI_in["prep2"]; // DL_deprecated
   const arma::vec prep1 = priorPHI_in["prep1"]; // DL_deprecated
-  const arma::vec norm_consts = priorPHI_in["norm_consts"];
+
 
   // initialization of scaling, global, and local parameters
 //?  arma::vec psi(n);psi.fill(1.0);
@@ -108,6 +112,7 @@ List bvar_cpp(const arma::mat Y,
   }
 
   //----GT on PHI (GT refers to gamma type priors a la normal gamma or r2d2)
+  const bool GT_hyper = priorPHI_in["GT_hyper"];
   const double GT_vs = priorPHI_in["GT_vs"];
   const std::string GT_priorkernel = priorPHI_in["GT_priorkernel"];
   if(priorPHI == "GT"){
@@ -223,6 +228,8 @@ List bvar_cpp(const arma::mat Y,
   double b_L = priorL_in["b"];
   double c_L = priorL_in["c"];
   const double GL_tol_L = priorL_in["GL_tol"];
+  const arma::vec c_vec_L = priorL_in["c_vec"];
+  const bool c_rel_a_L = priorL_in["c_rel_a"];
   ///
 
   //---- DL prior on L
@@ -245,6 +252,7 @@ List bvar_cpp(const arma::mat Y,
 
   //----GT on L (GT refers to gamma type priors a la normal gamma or r2d2)
   const double GT_vs_L = priorL_in["GT_vs"];
+  const double GT_hyper_L = priorL_in["GT_hyper"];
   const std::string GT_priorkernel_L = priorL_in["GT_priorkernel"];
   if(priorL == "GT"){
     if(GT_priorkernel_L == "exponential"){
@@ -348,7 +356,7 @@ List bvar_cpp(const arma::mat Y,
   if(priorPHI == "DL" ){
     phi_hyperparameter_size += 2*n_groups + 2*n; // a + xi + n(lambda + psi)
   }else if(priorPHI == "GT"){
-    phi_hyperparameter_size += n_groups + 2*n; // xi + n(lambda + psi)
+    phi_hyperparameter_size += 2*n_groups + 2*n; // a+xi + n(lambda + psi)
   }else if(priorPHI == "R2D2"){
     phi_hyperparameter_size += 4*n_groups + 2*n; // (b+)xi + zeta + n(theta + psi)
   }else if(priorPHI == "HS"){
@@ -366,7 +374,7 @@ List bvar_cpp(const arma::mat Y,
   if(priorL == "DL" ){
     l_hyperparameter_size += 2. + 2*n_L;
   }else if(priorL == "GT"){
-    l_hyperparameter_size += 1. + 2*n_L; // xi + n(lambda + psi)
+    l_hyperparameter_size += 2. + 2*n_L; // a+xi + n(lambda + psi)
   }else if(priorL == "R2D2"){
     l_hyperparameter_size += 4. + 2*n_L; // b + api +xi + zeta + n(theta + psi)
   }else if(priorL == "SSVS"){
@@ -446,7 +454,8 @@ List bvar_cpp(const arma::mat Y,
         if(priorPHI=="DL"){
           if(DL_method==2.){
             sample_V_i_DL(V_i, PHI_diff(i_ocl), a(j),b(j),c(j), a_vec, a_weight, psi,
-                          lambda, xi(j), ind, DL_hyper, norm_consts, GL_tol, DL_plus);
+                          lambda, xi(j), ind, DL_hyper, norm_consts, GL_tol, DL_plus,
+                          c_vec, c_rel_a);
           }else if(DL_method==1.){
             sample_V_i_DL_deprecated(V_i, PHI_diff(i_ocl), a(j) , a_vec,
                                      prep1, prep2, zeta(j), psi, lambda, ind,
@@ -455,7 +464,8 @@ List bvar_cpp(const arma::mat Y,
 
         }else if(priorPHI == "GT"){
           sample_V_i_GT(V_i, PHI_diff(i_ocl), psi, lambda, xi(j), a(j), b(j), c(j),
-                        ind, GL_tol, GT_priorkernel, GT_vs);
+                        ind, GL_tol, GT_priorkernel, GT_vs, norm_consts,
+                        a_vec, a_weight, c_vec, GT_hyper, c_rel_a);
         }else if(priorPHI == "SSVS"){
 
           if(rep > 0.1*burnin || SSVS_hyper){
@@ -543,7 +553,7 @@ List bvar_cpp(const arma::mat Y,
 //?                      theta_L, ind_L, DL_hyper_L, 1.,0);
           sample_V_i_DL(V_i_L, l, a_L, b_L, c_L, a_vec_L, a_weight_L,
                         psi_L, lambda_L, xi_L, ind_L, DL_hyper_L, norm_consts_L,
-                        GL_tol_L, DL_plus_L);
+                        GL_tol_L, DL_plus_L, c_vec_L, c_rel_a_L);
       } catch (...) {
         ::Rf_error("Couldn't sample V_i_L (DL prior)  in run %i", rep);
 
@@ -552,7 +562,8 @@ List bvar_cpp(const arma::mat Y,
     }else if (priorL == "GT"){
 
       sample_V_i_GT(V_i_L, l, psi_L, lambda_L, xi_L, a_L, b_L, c_L, ind_L,
-                    GL_tol_L, GT_priorkernel_L, GT_vs_L);
+                    GL_tol_L, GT_priorkernel_L, GT_vs_L, norm_consts_L,
+                    a_vec_L, a_weight_L, c_vec_L, GT_hyper_L, c_rel_a_L);
 
     }else if(priorL == "SSVS"){
 
@@ -628,9 +639,10 @@ List bvar_cpp(const arma::mat Y,
 
       }if(priorPHI == "GT" ){
 
-        phi_hyperparameter_draws(rep-burnin, span(0,(n_groups-1))) = xi;
-        phi_hyperparameter_draws(rep-burnin, span(n_groups,(n_groups+n-1))) = psi.as_row();
-        phi_hyperparameter_draws(rep-burnin, span((n_groups+n),(phi_hyperparameter_size-1))) = lambda.as_row();
+        phi_hyperparameter_draws(rep-burnin, span(0,(n_groups-1))) = a;
+        phi_hyperparameter_draws(rep-burnin, span(n_groups,(2*n_groups-1))) = xi;
+        phi_hyperparameter_draws(rep-burnin, span(2*n_groups,(2*n_groups+n-1))) = psi.as_row();
+        phi_hyperparameter_draws(rep-burnin, span((2*n_groups+n),(phi_hyperparameter_size-1))) = lambda.as_row();
 
       }else if(priorPHI == "HS"){
 
@@ -674,9 +686,10 @@ List bvar_cpp(const arma::mat Y,
 
       }else if(priorL == "GT"){
 
-        l_hyperparameter_draws(rep-burnin, 0) = xi_L;
-        l_hyperparameter_draws(rep-burnin, span(1,n_L)) = psi_L.as_row();
-        l_hyperparameter_draws(rep-burnin, span(n_L+1.,2*n_L)) = lambda_L.as_row();
+        l_hyperparameter_draws(rep-burnin, 0) = a_L;
+        l_hyperparameter_draws(rep-burnin, 1) = xi_L;
+        l_hyperparameter_draws(rep-burnin, span(2,n_L+1)) = psi_L.as_row();
+        l_hyperparameter_draws(rep-burnin, span(n_L+2.,l_hyperparameter_size-1.)) = lambda_L.as_row();
 
       }else if(priorL == "SSVS"){
 
@@ -736,7 +749,9 @@ List bvar_cpp(const arma::mat Y,
     Named("a_L") = a_L,
     Named("b_L") = b_L,
     Named("c_L") = c_L,
-    Named("GT_vs_L") = GT_vs_L
+    Named("GT_vs_L") = GT_vs_L,
+    Named("a_vec")=a_vec,
+    Named("c_vec")=c_vec
   );
 
   return out;

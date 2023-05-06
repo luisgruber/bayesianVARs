@@ -306,12 +306,16 @@ void sample_L(arma::mat& L, arma::mat& Ytilde, const arma::vec& V_i, const arma:
 }
 
 void sample_V_i_GT(arma::vec& V_i, const arma::vec coefs, arma::vec& psi,
-                   arma::vec& lambda, double& xi, double& a, double& b,
-                   const double c, arma::uvec ind, const double tol,
+                   arma::vec& lambda, double& xi, double& a, const double b,
+                   double& c, arma::uvec ind, const double tol,
                    const std::string priorkernel,
-                   const double vs){
+                   const double vs, const arma::vec norm_consts,
+                   const arma::vec a_vec, const arma::vec a_weight,
+                   const arma::vec c_vec, const bool hyper, const bool c_rel_a){
 
   const int n = ind.size();
+  const int gridlength = a_vec.size();
+  arma::vec logprobs(gridlength);
   const arma::vec coefs_squared = arma::square(coefs);
   arma::uvec::iterator it;
   for(it = ind.begin(); it != ind.end(); ++it){
@@ -337,7 +341,25 @@ void sample_V_i_GT(arma::vec& V_i, const arma::vec coefs, arma::vec& psi,
   }else if(priorkernel == "normal"){
     V_i(ind) = lambda(ind)*vs;
   }
-//to do hyperpriors
+
+  if(hyper){
+
+    logprobs = log(a_weight) +  n*(a_vec*log(xi) - norm_consts) +
+      (a_vec-1)*arma::accu(log(lambda(ind))) ;
+    if(!c_rel_a){//if c is a fixed proportion or multiple of a, the following terms cancel:
+      logprobs += (-1)*2*xi*c/a_vec- b*log(a_vec);
+    }
+    ///
+    arma::vec w = exp(logprobs - logprobs.max());
+    arma::vec weights = w/sum(w);
+    arma::ivec iv(gridlength);
+    R::rmultinom(1, weights.begin(), gridlength, iv.begin());
+    arma::uvec i = arma::find(iv == 1.0,1); // reports only the first value that meets the condition (by construction there is only one 1)
+    a = a_vec(i(0));
+    if(c_rel_a){
+      c = c_vec(i(0));
+    }
+  }
 }
 
 void sample_V_i_NG(arma::vec& V_i, const arma::vec coefs, arma::vec& theta_tilde,
@@ -410,11 +432,12 @@ void sample_V_i_HS(arma::vec& V_i, const arma::vec coefs, arma::vec& theta,
 }
 
 void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
-                   const double b, const double c,
+                   const double b, double& c,
                    const arma::vec a_vec, const arma::vec a_weight,
                    arma::vec& psi, arma::vec& lambda, double& xi, arma::uvec ind,
                    const bool hyper,const arma::vec norm_consts,
-                   const double tol, const bool DL_plus){ //, bool hyper
+                   const double tol, const bool DL_plus,
+                   const arma::vec c_vec, const bool c_rel_a){ //, bool hyper
 
   const int n = ind.size();
   arma::vec coefs_abs = arma::abs(coefs);
@@ -423,16 +446,10 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
 
   arma::uvec::iterator it;
   for(it = ind.begin(); it != ind.end(); ++it){
-    psi(*it) = 1./do_rgig2(-0.5, 1, (coefs(*it)*coefs(*it)) /
-      (lambda(*it)*lambda(*it)) );
+    //important: joint update of p(lambda,psi|...): first lambda, than psi!!! (is wrong in Bhattacharya et al 2015!)
     lambda(*it) = do_rgig2(a-1., 2*coefs_abs(*it), 2*xi);
-    if(hyper){
-      for(int j=0; j<gridlength; j++){
-        logprobs(j) += log(a_weight(j)) + norm_consts(j) +
-          (a_vec(j)-1)*log(lambda(*it)) - xi*lambda(*it);
-          //R::dgamma(lambda(*it), a_vec(j), 1./xi, true); // R::dgamma uses scale
-      }
-    }
+    psi(*it) =  do_rgig2(0.5, (coefs(*it)*coefs(*it)) /
+      (lambda(*it)*lambda(*it)), 1 );
   }
   double zeta = arma::accu(lambda(ind));
   if(DL_plus){
@@ -449,12 +466,22 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
   V_i(ind) = psi(ind) % square(lambda(ind));
 
   if(hyper){
+
+    logprobs = log(a_weight) + n*(a_vec*log(xi) - norm_consts) +
+      (a_vec-1)*arma::accu(log(lambda(ind))) ;
+    if(!c_rel_a){
+      logprobs += (-1)*2*xi*c/a_vec- b*log(a_vec);
+    }
+
     arma::vec w = exp(logprobs - logprobs.max());
     arma::vec weights = w/sum(w);
     arma::ivec iv(gridlength);
     R::rmultinom(1, weights.begin(), gridlength, iv.begin());
     arma::uvec i = arma::find(iv == 1.0,1); // reports only the first value that meets the condition (by construction there is only one 1)
     a = a_vec(i(0));
+    if(c_rel_a){
+      c = c_vec(i(0));
+    }
   }
 
 }

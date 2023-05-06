@@ -67,7 +67,10 @@ plot.PHI <- function(object, summary = "median", colorbar = TRUE, ylabels = NULL
       mat <- matrix(c(rep(1,9),2),nrow = 10)
       layout(mat)
     }
-    par(mar=c(0,4,4,2)+.1)
+    mymar <- oldpar$mar
+    mymar[1] <- 0.1
+    par(mar=mymar)
+    #par(mar=c(0,4,4,2)+.1)
   }
   image((PHI_star), zlim = zlim ,xaxt = "n", yaxt="n", col = colspace,
         bty="n", main = main)
@@ -93,7 +96,10 @@ plot.PHI <- function(object, summary = "median", colorbar = TRUE, ylabels = NULL
   }
 
   if(colorbar){
-    par(mar=c(2,4,0,2)+.1)
+    mymar2 <- oldpar$mar
+    mymar2[3] <- .1
+    par(mar=mymar2)
+    #par(mar=c(2,4,0,2)+.1)
     plot.new()
     if(summary %in% c("median", "mean")){
 

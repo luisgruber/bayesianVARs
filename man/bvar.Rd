@@ -19,7 +19,9 @@ bvar(
   priorHomoscedastic = NA,
   progressbar = TRUE,
   PHI_in = NULL,
-  L_in = NULL
+  L_in = NULL,
+  PHI_tol = 1e-100,
+  L_tol = 1e-100
 )
 }
 \arguments{

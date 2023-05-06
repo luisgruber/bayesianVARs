@@ -16,11 +16,12 @@ void sample_L(arma::mat& L, arma::mat& Ytilde, const arma::vec& V_i,
               const arma::mat& d_sqrt);
 
 void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
-                   const double b, const double c,
+                   const double b, double& c,
                    const arma::vec a_vec, const arma::vec a_weight,
                    arma::vec& psi, arma::vec& lambda, double& xi, arma::uvec ind,
                    const bool hyper,const arma::vec norm_consts,
-                   const double tol, const bool DL_plus);
+                   const double tol, const bool DL_plus,
+                   const arma::vec c_vec, const bool c_rel_a);
 
 void sample_V_i_DL_deprecated(arma::vec& V_i, const arma::vec coefs, double& a ,
                    const arma::vec a_vec, const arma::vec prep1,
@@ -35,10 +36,12 @@ void sample_V_i_HS(arma::vec& V_i, const arma::vec coefs, arma::vec& theta,
                    double& zeta, arma::vec& nu, double& varpi ,arma::uvec ind);
 
 void sample_V_i_GT(arma::vec& V_i, const arma::vec coefs, arma::vec& psi,
-                   arma::vec& lambda, double& xi, double& a, double& b,
-                   const double c, arma::uvec ind, const double tol,
+                   arma::vec& lambda, double& xi, double& a, const double b,
+                   double& c, arma::uvec ind, const double tol,
                    const std::string priorkernel,
-                   const double vs);
+                   const double vs, const arma::vec norm_consts,
+                   const arma::vec a_vec, const arma::vec a_weight,
+                   const arma::vec c_vec, const bool hyper, const bool c_rel_a);
 
 void sample_V_i_NG(arma::vec& V_i, const arma::vec coefs, arma::vec& theta_tilde,
                    double& zeta, double& a , const arma::vec a_vec,

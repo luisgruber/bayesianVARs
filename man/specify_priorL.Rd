@@ -6,8 +6,15 @@
 \usage{
 specify_priorL(
   prior,
-  DL_b = "1/n",
+  DL_a = "1/n",
+  DL_tol = 0,
+  R2D2_a = 0.4,
   R2D2_b = 0.5,
+  R2D2_tol = 0,
+  NG_a = 0.5,
+  NG_b = 0.5,
+  NG_c = 0.5,
+  NG_tol = 0,
   SSVS_c0 = 0.001,
   SSVS_c1 = 1,
   SSVS_p = 0.5,
@@ -19,13 +26,6 @@ specify_priorL(
 \arguments{
 \item{prior}{character, one of \code{"R2D2"}, \code{"DL"}, \code{"SSVS"},
 \code{"HMP"} or \code{"normal"}.}
-
-\item{DL_b}{either single positive number -- where smaller values indicate
-heavier regularization --, or one of \code{DL_b="1/n"} or
-\code{DL_b="hyperprior"}. n is the number of free off-diagonal elements in
-L.  In case of \code{DL_b="hyperprior"} a discrete uniform hyperprior is
-placed on the parameter. \code{DL_b} has only to be specified if
-\code{prior="DL"}.}
 
 \item{R2D2_b}{either single positive number -- where greater values indicate
 heavier regularization --, or \code{R2D2_b="hyperprior"}. In case of the
@@ -51,6 +51,13 @@ will be recycled accordingly! Must be positive. \code{V_i} has only to be
 specified if \code{prior="HMP"}.}
 
 \item{...}{Do not use!}
+
+\item{DL_b}{either single positive number -- where smaller values indicate
+heavier regularization --, or one of \code{DL_b="1/n"} or
+\code{DL_b="hyperprior"}. n is the number of free off-diagonal elements in
+L.  In case of \code{DL_b="hyperprior"} a discrete uniform hyperprior is
+placed on the parameter. \code{DL_b} has only to be specified if
+\code{prior="DL"}.}
 
 \item{SSVS_sa}{positive number in the range \eqn{(0,1)} indicating the first
 shape parameter of the Beta hyperprior on the prior-inclusion

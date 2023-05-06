@@ -7,10 +7,12 @@
 \method{plot}{PHI}(
   object,
   summary = "median",
+  colorbar = TRUE,
   ylabels = NULL,
   xlabels = NULL,
-  add_numbers = TRUE,
+  add_numbers = FALSE,
   zlim = NULL,
+  main = "",
   ...
 )
 }

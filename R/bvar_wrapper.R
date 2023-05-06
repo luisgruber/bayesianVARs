@@ -265,6 +265,8 @@ bvar <- function(Yraw,
 
   h_init <- matrix(rep(-10, T*M), T,M)
 
+# Hyperparameter settings w.r.t PHI ---------------------------------------
+
   # creating placeholders (for cpp, maybe move to cpp code)
   priorPHI_in <- list()
   priorPHI_in$prior <- priorPHI$prior
@@ -278,6 +280,11 @@ bvar <- function(Yraw,
   priorPHI_in$c <- double(1L)
   priorPHI_in$GT_vs <- double(1L)
   priorPHI_in$GT_priorkernel <- character(1L)
+  priorPHI_in$a_vec <- double(1)
+  priorPHI_in$a_weight <- double(1)
+  priorPHI_in$norm_consts <- double(1)
+  priorPHI_in$c_vec <- double(1)
+  priorPHI_in$c_rel_a <- logical(1L)
 
   #DL
 ##?  priorPHI_in$GL_tol <- double(1)
@@ -285,13 +292,12 @@ bvar <- function(Yraw,
 ##?  priorPHI_in$a <- double(1)
 ##?  priorPHI_in$DL_b <- double(1)
 ##?  priorPHI_in$DL_c <- double(1)
-  priorPHI_in$a_vec <- double(1)
-  priorPHI_in$a_weight <- double(1)
-  priorPHI_in$prep1 <- double(1)
-  priorPHI_in$norm_consts <- double(1)
   priorPHI_in$prep2 <- matrix(0)
+  priorPHI_in$prep1 <- double(1)
   priorPHI_in$DL_hyper <- logical(1)
   priorPHI_in$DL_plus <- logical(1)
+  #GT (Normal Gamma and R2D2 belong to GT)
+  priorPHI_in$GT_hyper <- logical(1)
   #R2D2
 ##?  priorPHI_in$R2D2_method <- integer(1)
 ##?  priorPHI_in$R2D2_kernel <- character(1L)
@@ -336,9 +342,40 @@ bvar <- function(Yraw,
     priorPHI_in$GT_priorkernel <- priorPHI$GT_priorkernel
     priorPHI_in$GL_tol <- priorPHI$GL_tol
     priorPHI_in$GT_vs <- priorPHI$GT_vs
-    priorPHI_in$a <- rep_len(priorPHI$a, n_groups)
     priorPHI_in$b <- rep_len(priorPHI$b, n_groups)
-    priorPHI_in$c <- rep_len(priorPHI$c, n_groups)
+
+    if(is.matrix(priorPHI$a)){
+      if(ncol(priorPHI$a)==2){
+        priorPHI_in$GT_hyper <- TRUE
+        priorPHI_in$a_vec <- priorPHI$a[,1]
+        priorPHI_in$a_weight <- priorPHI$a[,2]
+        priorPHI_in$norm_consts <- lgamma(priorPHI_in$a_vec)
+        priorPHI_in$a <- sample(priorPHI_in$a_vec, n_groups, replace = TRUE, prob = priorPHI_in$a_weight) # initialize a
+      }else if(ncol(priorPHI$a)>2){
+        stop("The easiest way to specify 'R2D2_a', 'NG_a' or 'GT_a' is a single postive number!")
+      }else{
+        priorPHI$a <- as.vector(priorPHI$a)
+      }
+    }
+    if(is.null(dim(priorPHI$a))){
+      priorPHI_in$GT_hyper <- FALSE
+      priorPHI_in$a <- rep_len(priorPHI$a, n_groups)
+    }
+
+    if(is.character(priorPHI$c)){
+      priorPHI_in$c_rel_a <- TRUE # then c is always proportion of a (e.g. for R2D2 c=0.5a)
+      mya <- priorPHI_in$a
+      myc <- gsub("a","mya", priorPHI$c)
+      priorPHI_in$c <- eval(str2lang(myc))
+      if(base::isTRUE(priorPHI_in$GT_hyper)){
+        myc2 <- gsub("a","priorPHI_in$a_vec", priorPHI$c)
+        priorPHI_in$c_vec <- eval(str2lang(myc2))
+      }
+    }else if(is.numeric(priorPHI$c)){
+      priorPHI_in$c_rel_a <- FALSE
+      priorPHI_in$c <- rep_len(priorPHI$c, n_groups)
+    }
+
 
   }else if(priorPHI$prior == "R2D2"){
 
@@ -432,8 +469,7 @@ bvar <- function(Yraw,
       if(is.matrix(priorPHI$a)){
         priorPHI_in$a_vec <- priorPHI$a[,1]
         priorPHI_in$a_weight <- priorPHI$a[,2]
-        priorPHI_in$norm_consts <- 0.5^priorPHI_in$a_vec -
-          lgamma(priorPHI_in$a_vec)
+        priorPHI_in$norm_consts <- lgamma(priorPHI_in$a_vec)
         priorPHI_in$a <- rep_len(priorPHI_in$a_vec[1], n_groups) #initial value
         priorPHI_in$DL_method <- 2L
       }else{
@@ -454,8 +490,7 @@ bvar <- function(Yraw,
         priorPHI_in$a <- rep_len(1/2, n_groups) #initial value
         if(priorPHI_in$DL_method==2L){
           priorPHI_in$a_weight <- rep(1,grid)
-          priorPHI_in$norm_consts <- 0.5^priorPHI_in$a_vec -
-            lgamma(priorPHI_in$a_vec)
+          priorPHI_in$norm_consts <- lgamma(priorPHI_in$a_vec)
         }
       }
 
@@ -476,8 +511,17 @@ bvar <- function(Yraw,
       }
       if(!exists("DL_c", priorPHI)){
         priorPHI_in$c <- 0.5*priorPHI_in$a
+        if(DL_hyper){
+          priorPHI_in$c_vec <- 0.5*priorPHI_in$a_vec
+          priorPHI_in$c_rel_a <- TRUE
+        }
       }else{
+        if(!is.numeric(priorPHI$DL_c)){
+          stop("If you specify DL_c for model DL_plus, then it must be numeric!")
+        }
         priorPHI_in$c <- rep_len(priorPHI$DL_c, n_groups)
+        priorPHI_in$c_rel_a <- FALSE
+
       }
       priorPHI_in$DL_method <- 2L
     }else{
@@ -542,6 +586,8 @@ bvar <- function(Yraw,
     priorPHI_in$V_i_prep <- MP_V_prior_prep(sigma_sq, (K+intercept), M, intercept>0)
   }
 
+# Hyperparameter settings w.r.t L -----------------------------------------
+
   # creating placeholders (for cpp, maybe move to cpp code)
   priorL_in <- list()
   priorL_in$prior <- priorL$prior
@@ -553,11 +599,15 @@ bvar <- function(Yraw,
   priorL_in$c <- double(1L)
   priorL_in$GT_vs <- double(1L)
   priorL_in$GT_priorkernel <- character(1L)
-  #DL
   priorL_in$a_vec <- double(1L)
   priorL_in$a_weight <- double(1L)
-  priorL_in$DL_hyper <- logical(1L)
   priorL_in$norm_consts <- double(1L)
+  priorL_in$c_vec <- double(1)
+  priorL_in$c_rel_a <- logical(1L)
+  priorL_in$GT_hyper <- logical(1)
+
+  #DL
+  priorL_in$DL_hyper <- logical(1L)
   priorL_in$DL_plus <- logical(1L)
   #R2D2
   priorL_in$R2D2_hyper <- logical(1L)
@@ -582,9 +632,40 @@ bvar <- function(Yraw,
     priorL_in$GT_priorkernel <- priorL$GT_priorkernel
     priorL_in$GL_tol <- priorL$GL_tol
     priorL_in$GT_vs <- priorL$GT_vs
-    priorL_in$a <- priorL$a
+   # priorL_in$a <- priorL$a
     priorL_in$b <- priorL$b
-    priorL_in$c <- priorL$c
+
+    if(is.matrix(priorL$a)){
+      if(ncol(priorL$a)==2){
+        priorL_in$GT_hyper <- TRUE
+        priorL_in$a_vec <- priorL$a[,1]
+        priorL_in$a_weight <- priorL$a[,2]
+        priorL_in$norm_consts <- lgamma(priorL_in$a_vec)
+        priorL_in$a <- sample(priorL_in$a_vec, 1, replace = TRUE, prob = priorL_in$a_weight) # initialize a
+      }else if(ncol(priorL$a)>2){
+        stop("The easiest way to specify 'R2D2_a', 'NG_a' or 'GT_a' is a single postive number!")
+      }else{
+        priorL$a <- as.vector(priorL$a)
+      }
+    }
+    if(is.null(dim(priorL$a))){
+      priorL_in$GT_hyper <- FALSE
+      priorL_in$a <- priorL$a
+    }
+
+    if(is.character(priorL$c)){
+      priorL_in$c_rel_a <- TRUE # then c is always proportion of a (e.g. for R2D2 c=0.5a)
+      mya <- priorL_in$a
+      myc <- gsub("a","mya", priorL$c)
+      priorL_in$c <- eval(str2lang(myc))
+      if(base::isTRUE(priorL_in$GT_hyper)){
+        myc2 <- gsub("a","priorL_in$a_vec", priorL$c)
+        priorL_in$c_vec <- eval(str2lang(myc2))
+      }
+    }else if(is.numeric(priorL$c)){
+      priorL_in$c_rel_a <- FALSE
+      priorL_in$c <- priorL$c
+    }
 
   }else if(priorL$prior == "DL"){
     if(is.numeric(priorL$a) & length(priorL$a) == 1L){
@@ -801,7 +882,10 @@ bvar <- function(Yraw,
 
   }else if(priorPHI$prior == "GT"){
 
-    colnames(res$phi_hyperparameter) <- c(paste0("xi",1:priorPHI_in$n_groups), paste0("psi: ", phinames), paste0("lambda: ", phinames))
+    colnames(res$phi_hyperparameter) <- c(paste0("a",1:priorPHI_in$n_groups),
+                                          paste0("xi",1:priorPHI_in$n_groups),
+                                          paste0("psi: ", phinames),
+                                          paste0("lambda: ", phinames))
 
   }else if(priorPHI$prior == "R2D2"){
     colnames(res$phi_hyperparameter) <- c(paste0("zeta",1:priorPHI_in$n_groups),
@@ -835,7 +919,9 @@ bvar <- function(Yraw,
     colnames(res$l_hyperparameter) <- c("a", paste0("psi: ", lnames), paste0("lambda: ", lnames), "xi")
   }else if(priorL$prior == "GT"){
 
-    colnames(res$l_hyperparameter) <- c("xi", paste0("psi: ", lnames), paste0("lambda: ", lnames))
+    colnames(res$l_hyperparameter) <- c("a","xi",
+                                        paste0("psi: ", lnames),
+                                        paste0("lambda: ", lnames))
 
   }else if(priorL$prior == "HS"){
     colnames(res$l_hyperparameter) <- c("zeta",

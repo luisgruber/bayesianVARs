@@ -100,8 +100,12 @@ specify_priorPHI <- function(prior,
       }
     }
 
+    if(any(R2D2_a <= 0)) {
+      stop("R2D2_a must be strictly greater than 0!")
+    }
+
     out <- list(prior = "GT", b = R2D2_b, a = R2D2_a,
-                global_grouping = global_grouping, c = 0.5*R2D2_a, GT_vs = 1/2,
+                global_grouping = global_grouping, c = "0.5*a", GT_vs = 1/2,
                 GT_priorkernel = "exponential", GL_tol = R2D2_tol,...)
 
   }else if(prior == "SSVS"){
@@ -219,7 +223,7 @@ specify_priorL <- function(prior, DL_a = "1/n", DL_tol=0,
 
   }else if(prior == "R2D2"){
 
-    out <- list(prior = "GT", b = R2D2_b, a = R2D2_a, c = 0.5*R2D2_a, GT_vs = 1/2,
+    out <- list(prior = "GT", b = R2D2_b, a = R2D2_a, c = "0.5*a", GT_vs = 1/2,
                 GT_priorkernel = "exponential", GL_tol = R2D2_tol,...)
 
   }else if(prior == "SSVS"){
@@ -380,7 +384,10 @@ predict.bvar <- function(object, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA,.
           LPL_draws[i,k] <- mydmvnorm(Y_obs[k,], mean_fore,Sigma_chol_fore, log = TRUE) #??? mvtnorm::dmvnorm(as.vector(Y_obs[k,]),mean_fore,Sigma_fore, log = TRUE)
           PL_univariate_draws[i, k,] <-  stats::dnorm(as.vector(Y_obs[k, ]), mean_fore, sqrt(diag(Sigma_fore)))
           if(LPL_subset){
-            LPL_sub_draws[i, k] <-  mydmvnorm(Y_obs[k, VoI], mean_fore[VoI], chol(Sigma_fore[VoI,VoI, drop = FALSE]), log = TRUE)#??? mvtnorm::dmvnorm(as.vector(Y_obs[k, VoI]),mean_fore[VoI],Sigma_fore[VoI,VoI, drop = FALSE], log = TRUE)
+
+            LPL_sub_draws[i, k] <-  tryCatch(
+              mydmvnorm(Y_obs[k, VoI], mean_fore[VoI], chol(Sigma_fore[VoI,VoI, drop = FALSE]), log = TRUE),
+              error = function(e) as.numeric(NA))
           }
         }
 
@@ -413,9 +420,19 @@ predict.bvar <- function(object, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA,.
     out$PL_univariate_draws <- PL_univariate_draws
 
     if(LPL_subset){
-      numericalnormalizer2 <- apply(LPL_sub_draws,2,max) - 700
-      LPL_VoI <- log(colMeans(exp( t(t(LPL_sub_draws) - numericalnormalizer2)))) +
-        numericalnormalizer2
+      if(any(is.na(LPL_sub_draws))){
+        nrnas <- apply(LPL_sub_draws,2,function(x) length(which(is.na(x))))
+        warning(paste0(paste0("For t+", 1:nsteps," ", nrnas, " draws had to be discarded for the computation of LPL_Voi due to numerical issues!\n")))
+        LPL_VoI <- rep(NA, nsteps)
+        for(e in seq.int(nsteps)){
+          numericalnormalizer2 <- max(LPL_sub_draws[,e], na.rm = TRUE) - 700
+          LPL_VoI[e] <- log(mean(exp(LPL_sub_draws[,e] - numericalnormalizer2), na.rm=TRUE)) + numericalnormalizer2
+        }
+      }else{
+        numericalnormalizer2 <- apply(LPL_sub_draws,2,max) - 700
+        LPL_VoI <- log(colMeans(exp( t(t(LPL_sub_draws) - numericalnormalizer2)))) +
+          numericalnormalizer2
+      }
       names(LPL_VoI) <- paste0("t+", 1:nsteps)
       out$LPL_VoI <- LPL_VoI
       out$LPL_VoI_draws <- LPL_sub_draws
