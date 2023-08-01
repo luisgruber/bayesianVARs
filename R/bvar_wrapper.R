@@ -668,6 +668,7 @@ bvar <- function(Yraw,
     }
 
   }else if(priorL$prior == "DL"){
+    priorL_in$GL_tol <- priorL$GL_tol
     if(is.numeric(priorL$a) & length(priorL$a) == 1L){
       priorL_in$DL_hyper <- FALSE
       priorL_in$a <- priorL$a
