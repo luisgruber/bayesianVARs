@@ -1,44 +1,43 @@
 #include <RcppArmadillo.h>
-#include <stochvol.h>
+#include <factorstochvol.h>
 #include <progress.hpp>
 #include <Rcpp/Benchmark/Timer.h>
 #include "sample_coefficients.h"
+// <stochvol.h> is already included in <factorstochvol.h>
 
 using namespace Rcpp;
 using namespace arma;
 
 //[[Rcpp::export]]
-List bvar_cpp(const arma::mat Y,
-              const arma::mat X,
-              const int M,
-              const int T,
-              const int K,
-              const int draws,
-              const int burnin,
-              const int intercept,
+List bvar_cpp(const arma::mat& Y,
+              const arma::mat& X,
+              const int& M,
+              const int& T,
+              const int& K,
+              const int& draws,
+              const int& burnin,
+              const int& thin,
+              const std::string& tvp_keep,
+              const int& intercept,
               const arma::vec priorIntercept,
-              arma::mat PHI,
-              arma::mat PHI0, //??? no const
+              arma::mat& PHI0, // prior mean
               const List priorPHI_in,
-              const List priorL_in,
-              arma::mat L,
-              const bool SV,
-              const arma::vec priorHomoscedastic,
-              const List sv_spec,
-              arma::mat h,
-              arma::mat sv_para,
-              const arma::imat i_mat,
-              const arma::ivec i_vec,
-              const bool progressbar,
-              const double PHI_tol,
-              const double L_tol){
+              const List priorSigma_in, // priorSigma_in
+              const List startvals_in,
+              const arma::imat& i_mat,
+              const arma::ivec& i_vec,
+              const bool& progressbar,
+              const double& PHI_tol,
+              const double& L_tol,
+              const bool& huge){
 
 //-------------------------Preliminaries--------------------------------------//
 
   const double n = K*M; // number of VAR coefficients without intercept
-  arma::mat PHI_diff(K+intercept,M); // will hold PHI - PHI0
-  const arma::uvec i_ocl= arma::find(i_vec != 0.); // indicator for all coefficients except intercept
-  const arma::uvec i_i= arma::find(i_vec == 0.); // indicator for intercepts
+  const arma::uvec i_ocl= arma::find(i_vec != 0); // indicator for all coefficients except intercept
+  const arma::uvec i_i= arma::find(i_vec == 0); // indicator for intercepts
+
+  const std::string Sigma_type = priorSigma_in["type"];
 
   //////////////////
   // indicators for coefficients without intercept
@@ -50,10 +49,15 @@ List bvar_cpp(const arma::mat Y,
   const int n_cl = i_cl.size(); // nr. of crosslags
   /////////////////
 
-//--------------------Initialization of hyperparameters-----------------------//
+//--------------------Initialization -----------------------//
 
 //---- PHI
+
+  NumericMatrix PHI_in = startvals_in["PHI"];
+  arma::mat PHI(PHI_in.begin(), PHI_in.nrow(), PHI_in.ncol(), false);
+  arma::mat PHI_diff = PHI - PHI0; // will hold PHI - PHI0
   std::string priorPHI = priorPHI_in["prior"];
+
   // V_i holds prior variances (without intercepts)
   arma::vec V_i(n);
 
@@ -92,7 +96,6 @@ List bvar_cpp(const arma::mat Y,
 
   //---- DL prior on PHI
 //?  const double DL_tol = priorPHI_in["DL_tol"];
-  const int DL_method = priorPHI_in["DL_method"];
   const bool DL_hyper = priorPHI_in["DL_hyper"];
 //?  arma::vec DL_a = priorPHI_in["DL_a"];
 //?  arma::vec DL_b = priorPHI_in["DL_b"];
@@ -204,11 +207,16 @@ List bvar_cpp(const arma::mat Y,
   }
 
   //Fill V_i_long with remaining prior variances
-  V_i_long(i_ocl) = V_i; // ???
-  arma::mat V_prior = arma::reshape(V_i_long, K + intercept, M);
+  V_i_long(i_ocl) = V_i;
+  arma::mat V_prior(V_i_long.begin(), K + intercept, M, false); // pointer, reuses memory, more efficient than reshape!!!
+  //arma::mat V_prior = arma::reshape(V_i_long, K + intercept, M);
 
 //-------------- L
-  std::string priorL = priorL_in["prior"];
+
+  NumericMatrix L_in = startvals_in["L"];
+  arma::mat L(L_in.begin(), L_in.nrow(), L_in.ncol(), false);
+
+  std::string priorL = priorSigma_in["cholesky_priorU"];
 
   uvec L_upper_indices = trimatu_ind( size(L),  1);
   arma::vec l = L(L_upper_indices);
@@ -216,7 +224,7 @@ List bvar_cpp(const arma::mat Y,
   arma::vec V_i_L(n_L);
 
   if(priorL == "normal"){
-    arma::vec V_i_L_in = priorL_in["V_i"];
+    arma::vec V_i_L_in = priorSigma_in["cholesky_V_i"];
     V_i_L = V_i_L_in;
   }
 
@@ -224,36 +232,31 @@ List bvar_cpp(const arma::mat Y,
   arma::vec lambda_L(n_L, fill::value(1/static_cast<double>(n_L)));
   arma::vec psi_L(n_L, fill::ones);
   double xi_L = 0.5;
-  double a_L = priorL_in["a"];
-  double b_L = priorL_in["b"];
-  double c_L = priorL_in["c"];
-  const double GL_tol_L = priorL_in["GL_tol"];
-  const arma::vec c_vec_L = priorL_in["c_vec"];
-  const bool c_rel_a_L = priorL_in["c_rel_a"];
+  double a_L = priorSigma_in["cholesky_a"];
+  double b_L = priorSigma_in["cholesky_b"];
+  double c_L = priorSigma_in["cholesky_c"];
+  const double GL_tol_L = priorSigma_in["cholesky_GL_tol"];
+  const arma::vec c_vec_L = priorSigma_in["cholesky_c_vec"];
+  const bool c_rel_a_L = priorSigma_in["cholesky_c_rel_a"];
   ///
 
   //---- DL prior on L
-//?  arma::vec psi_L(n_L); psi_L.fill(1.0);
-//?  double zeta_L=10;
-//?  arma::vec theta_L(n_L); theta_L.fill(1/static_cast<double>(n_L));
 
-  bool DL_hyper_L = priorL_in["DL_hyper"];
-//?  double DL_b_L = priorL_in["DL_b"];
 
-//?  arma::vec prep2_L = priorL_in["prep2"];;
-//?  arma::vec prep1_L = priorL_in["prep1"];
-  const bool DL_plus_L = priorL_in["DL_plus"];
-  const arma::vec a_vec_L = priorL_in["a_vec"];
-  const arma::vec a_weight_L = priorL_in["a_weight"];
-  const arma::vec norm_consts_L = priorL_in["norm_consts"];
+  bool DL_hyper_L = priorSigma_in["cholesky_DL_hyper"];
+
+  const bool DL_plus_L = priorSigma_in["cholesky_DL_plus"];
+  const arma::vec a_vec_L = priorSigma_in["cholesky_a_vec"];
+  const arma::vec a_weight_L = priorSigma_in["cholesky_a_weight"];
+  const arma::vec norm_consts_L = priorSigma_in["cholesky_norm_consts"];
   if(priorL == "DL"){
     V_i_L= psi_L % lambda_L;
   }
 
   //----GT on L (GT refers to gamma type priors a la normal gamma or r2d2)
-  const double GT_vs_L = priorL_in["GT_vs"];
-  const double GT_hyper_L = priorL_in["GT_hyper"];
-  const std::string GT_priorkernel_L = priorL_in["GT_priorkernel"];
+  const double GT_vs_L = priorSigma_in["cholesky_GT_vs"];
+  const double GT_hyper_L = priorSigma_in["cholesky_GT_hyper"];
+  const std::string GT_priorkernel_L = priorSigma_in["cholesky_GT_priorkernel"];
   if(priorL == "GT"){
     if(GT_priorkernel_L == "exponential"){
       V_i_L = psi_L%lambda_L/2;
@@ -271,29 +274,14 @@ List bvar_cpp(const arma::mat Y,
   if(priorL == "HS"){
     V_i_L = theta_hs_L*zeta_hs_L;
   }
-  //----R2D2 on L
-
-//?  double xi_L = 1;
-//?  arma::vec theta_L_r2d2(n_L); theta_L_r2d2.fill(1/static_cast<double>(n_L));
-//?  double zeta_L_r2d2 = 10;
-//?  arma::vec psi_L_r2d2(n_L); psi_L_r2d2.fill(1/static_cast<double>(n_L));
-
-//?  bool R2D2_L_hyper = priorL_in["R2D2_hyper"];
-//?  arma::vec api_vec_L = priorL_in["api_vec"];
-//?  NumericVector b_vec_L_r2d2 = priorL_in["b_vec"];
-//?  double b_L_r2d2 = priorL_in["R2D2_b"];
-//?  double api_L = priorL_in["R2D2_api"];
-//?  if(priorL == "R2D2"){
-//?    V_i_L = psi_L_r2d2 % theta_L_r2d2 * zeta_L_r2d2 /2.;
-//?  }
 
   //---- SSVS on L
-  bool SSVS_hyper_L = priorL_in["SSVS_hyper"];
-  arma::vec p_i_L = priorL_in["SSVS_p"];
-  arma::vec tau_0_L = priorL_in["SSVS_tau0"];
-  arma::vec tau_1_L = priorL_in["SSVS_tau1"];
-  double SSVS_s_a_L = priorL_in["SSVS_s_a"];
-  double SSVS_s_b_L = priorL_in["SSVS_s_b"];
+  bool SSVS_hyper_L = priorSigma_in["cholesky_SSVS_hyper"];
+  arma::vec p_i_L = priorSigma_in["cholesky_SSVS_p"];
+  arma::vec tau_0_L = priorSigma_in["cholesky_SSVS_tau0"];
+  arma::vec tau_1_L = priorSigma_in["cholesky_SSVS_tau1"];
+  double SSVS_s_a_L = priorSigma_in["cholesky_SSVS_s_a"];
+  double SSVS_s_b_L = priorSigma_in["cholesky_SSVS_s_b"];
   if(priorL == "SSVS"){
     V_i_L = tau_0_L % tau_0_L;
   }
@@ -301,56 +289,183 @@ List bvar_cpp(const arma::mat Y,
 
   //---- HMP on L
   double lambda_3 = 0.001;
-  NumericVector s_r_3 = priorL_in["lambda_3"];
+  NumericVector s_r_3 = priorSigma_in["cholesky_lambda_3"];
   if(priorL == "HMP"){
     arma::vec V_i_L_tmp(n_L); V_i_L_tmp.fill(1.0);
     V_i_L= lambda_3*V_i_L_tmp;
   }
+  //-----------------------factorstochvol----------------------//
+  const int factors = priorSigma_in["factor_factors"];
+  if(Sigma_type == "cholesky" && factors != 0){
+    Rcpp::stop("cholesky with factors,...,");
+  }
+
+  // The objects preceded by //!!!/// are needed as inputs for factorstochvol::update_fsv()
+  // initialization of factor loadings, factors, and tau2(shrinkage hyperparameter for factorloadings under ng-prior)
+  List factor_startval = startvals_in["factor_startval"];
+  NumericMatrix facload = factor_startval["facload"];
+  //!!!///
+  arma::mat armafacload(facload.begin(), facload.nrow(), facload.ncol(), false);
+  NumericMatrix fac = factor_startval["fac"];
+  //!!!///
+  arma::mat armafac(fac.begin(), fac.nrow(), fac.ncol(), false);
+
+  NumericMatrix tau2 = factor_startval["tau2"];
+  //!!!///
+  arma::mat armatau2(tau2.begin(), tau2.nrow(), tau2.ncol(), false);
+
+  //----------  prior settings
+  // shrinkage hyperparamters for factor loadings
+  const List factor_shrinkagepriors = priorSigma_in["factor_shrinkagepriors"];
+  //!!!///
+  const NumericVector aShrink = factor_shrinkagepriors["a"]; // a is hyperparameter of local prior
+  //!!!///
+  const NumericVector cShrink = factor_shrinkagepriors["c"]; // c and d are hyperparameters of global prior
+  //!!!///
+  const NumericVector dShrink = factor_shrinkagepriors["d"];
+
+  //!!!///
+  const bool ngprior = priorSigma_in["factor_ngprior"];
+  //!!!///
+  const bool columnwise = priorSigma_in["factor_columnwise"];
+  //!!!//
+  arma::vec armalambda2((ngprior && columnwise) ? factors : ngprior ? M : 0 ); // conditional statement: if ngprior && columnwise, then factors, if ngprior (not columnwise), then M, else 0
+
+  // underbound of absolute value of factorloadings for better preventing numerical issues
+  //!!!///
+  const double factor_facloadtol = priorSigma_in["factor_facloadtol"];
+
+  //!!!///
+  /* Could there be any situation where I need an offset? */
+  const double factor_offset = 0; // unify with cholesky_sv ???
+
+  // restriction on factor loadings
+  IntegerMatrix factor_restriction = priorSigma_in["factor_restrinv"];
+  //!!!///
+  arma::imat factor_armarestr(factor_restriction.begin(), factor_restriction.nrow(), factor_restriction.ncol(), false);
+  //!!!///
+  arma::uvec armafacloadtunrestrictedelements = arma::find(factor_armarestr.t() != 0);
+  //!!!///
+  arma::irowvec nonzerospercol = arma::sum(factor_armarestr, 0);
+  //!!!///
+  arma::icolvec nonzerosperrow = arma::sum(factor_armarestr, 1);
+  for (unsigned int i = 0; i < armafacload.n_rows; i++) {
+    for (unsigned int j = 0; j < armafacload.n_cols; j++) {
+      if (factor_armarestr(i, j) == 0) armafacload(i,j) = 0.;
+    }
+  }
 
   //-----------------------------SV-settings----------------------------------//
-  // Import sv_spec
-  NumericVector sv_priormu = sv_spec["priormu"] ;
-  NumericVector sv_priorphi= sv_spec["priorphi"];
-  NumericVector sv_priorsigma2 = sv_spec["priorsigma2"] ;
-  NumericVector sv_offset = sv_spec["sv_offset"];
+  // vector of length M+factors indicating whether time-varying or constant variance should be estimated
+  //!!!///
+  NumericVector heteroscedastic = priorSigma_in["sv_heteroscedastic"];
 
-  // create prior specification object for the update_*_sv functions
-  using stochvol::PriorSpec;
-  const PriorSpec prior_spec = {
-    PriorSpec::Latent0(),  // stationary prior distribution on h0
-    PriorSpec::Mu(PriorSpec::Normal(sv_priormu[0], sv_priormu[1])),  // N(mu,sd)
-    PriorSpec::Phi(PriorSpec::Beta(sv_priorphi[0], sv_priorphi[1])),  //
-    PriorSpec::Sigma2(PriorSpec::Gamma(sv_priorsigma2[0], sv_priorsigma2[1]))  //
-  };  // stochvol would even offen more :heavy-tailed, leverage, regression
+  // in case of constant idiosyncratic variance, homoscedastic collects shape and scale parameters of inverse-gamma prior of idi variances
+  //!!!///
+  NumericMatrix factor_homoskedastic = priorSigma_in["factor_priorhomoskedastic"]; // unify with cholesky_sv ???
+  //!!!///
+  const int factor_interweaving = priorSigma_in["factor_interweaving"]; // factor
+
+  NumericMatrix logvar_in = startvals_in["sv_logvar"];
+  arma::mat logvar(logvar_in.begin(), logvar_in.nrow(), logvar_in.ncol(), false);
+  NumericMatrix sv_para_in = startvals_in["sv_para"];
+  arma::mat sv_para(sv_para_in.begin(), sv_para_in.nrow(), sv_para_in.ncol(), false);
+  NumericVector logvar0_in = startvals_in["sv_logvar0"];
+  arma::vec logvar0(logvar0_in.begin(), logvar0_in.length(), false);
+
+  NumericMatrix priorHomoscedastic = priorSigma_in["cholesky_priorhomoscedastic"];
+
+  // Import sv_spec
+  NumericVector sv_priormu = priorSigma_in["sv_priormu"];
+  NumericVector sv_priorphi= priorSigma_in["sv_priorphi"];
+  NumericMatrix sv_priorsigma2 = priorSigma_in["sv_priorsigma2"];
+  NumericVector sv_priorh0 = priorSigma_in["sv_priorh0"];
+  /// NumericVector sv_offset = sv_spec["sv_offset"];
+  NumericVector sv_offset = priorSigma_in["cholesky_sv_offset"];
+
+  //!!!///
+  std::vector<stochvol::PriorSpec> prior_specs(M+factors);
+  {
+    //using stochvol::PriorSpec;
+    for (int j = 0; j < M; j++) {
+      if(heteroscedastic(j) == true){
+        prior_specs[j] = {
+          (sv_priorh0(j) <= 0) ? stochvol::PriorSpec::Latent0() : stochvol::PriorSpec::Latent0(stochvol::PriorSpec::Constant(sv_priorh0(j))), // ? : conditional statement, similar to if else
+                          stochvol::PriorSpec::Mu(stochvol::PriorSpec::Normal(sv_priormu[0], sv_priormu[1])),
+                          stochvol::PriorSpec::Phi(stochvol::PriorSpec::Beta(sv_priorphi[0], sv_priorphi[1])),
+                          stochvol::PriorSpec::Sigma2(stochvol::PriorSpec::Gamma(sv_priorsigma2(j,0), sv_priorsigma2(j,1)))//,
+          // stochvol would allow for more:
+          //PriorSpec::Nu(PriorSpec::Infinity()), Nu: conditional t innovations with nu degrees of freedom  (Infinity indicates conditional standard normal innovations, the default)
+          //PriorSpec::Rho(PriorSpec::Constant(0))//, Rho: leverage
+          //PriorSpec::Covariates(PriorSpec::MultivariateNormal{{priorbeta[0]}, {std::pow(priorbeta[1], -2)}}) not needed, stochvol could model a constant mean
+        };
+      }
+    }
+    for (int j = M; j < (M+factors); j++) {
+      if(heteroscedastic(j) == true){
+        prior_specs[j] = {
+          (sv_priorh0(j) <= 0) ? stochvol::PriorSpec::Latent0() : stochvol::PriorSpec::Latent0(stochvol::PriorSpec::Constant(sv_priorh0(j))),
+                          stochvol::PriorSpec::Mu(stochvol::PriorSpec::Constant(0)),
+                          stochvol::PriorSpec::Phi(stochvol::PriorSpec::Beta(sv_priorphi(2), sv_priorphi(3))),
+                          stochvol::PriorSpec::Sigma2(stochvol::PriorSpec::Gamma(sv_priorsigma2(j,0), sv_priorsigma2(j,1)))
+        };
+      }
+    }
+  }
 
   //expert settings: these are the same settings as the default settings for the
   //idiosyncratic variances from package factorstochvol
   //(https://github.com/gregorkastner/factorstochvol, accessed 2021-11-12)
-  using stochvol::ExpertSpec_FastSV;
-  const ExpertSpec_FastSV expert_sv {
+  const double B011inv = 1e-8;
+  const double B022inv = 1e-12;
+  //!!!//
+  const stochvol::ExpertSpec_FastSV expert_sv { // used for cholesky-sv and idiosyncratic variances of fsv
     true,  // interweave
     stochvol::Parameterization::CENTERED,  // centered baseline always
-    1e-8,  // B011inv,
-    1e-12,  //B022inv,
+    B011inv,  // B011inv,
+    B022inv,  //B022inv,
     2,  // MHsteps,
-    ExpertSpec_FastSV::ProposalSigma2::INDEPENDENCE,  // independece proposal for sigma
+    stochvol::ExpertSpec_FastSV::ProposalSigma2::INDEPENDENCE,  // independece proposal for sigma
     -1,  // MHcontrol unused for independence prior for sigma
-    ExpertSpec_FastSV::ProposalPhi::IMMEDIATE_ACCEPT_REJECT_NORMAL  // immediately reject (mu,phi,sigma) if proposed phi is outside (-1, 1)
+    stochvol::ExpertSpec_FastSV::ProposalPhi::IMMEDIATE_ACCEPT_REJECT_NORMAL  // immediately reject (mu,phi,sigma) if proposed phi is outside (-1, 1)
+  };
+  //!!!//
+  const stochvol::ExpertSpec_FastSV expert_fac { // used for factor variances of fsv
+    true,  // interweave
+    stochvol::Parameterization::CENTERED,  // centered baseline always
+    B011inv,  // B011inv,
+    B022inv,  //B022inv,
+    3,  // MHsteps,
+    stochvol::ExpertSpec_FastSV::ProposalSigma2::INDEPENDENCE,  // independece proposal for sigma
+    -1,  // MHcontrol unused for independence prior for sigma
+    stochvol::ExpertSpec_FastSV::ProposalPhi::IMMEDIATE_ACCEPT_REJECT_NORMAL  // immediately reject (mu,phi,sigma) if proposed phi is outside (-1, 1)
   };
 
   // initialize mixing indicators
-  arma::umat mixind(T,M); mixind.fill(5);
+  //!!!// // mixind is also used by cholesky_sv
+  arma::umat mixind(T, (M+factors));
   //initialize d_sqrt
-  arma::mat d_sqrt = arma::exp(h/2);
+  arma::mat d_sqrt = arma::exp(logvar.cols(0,M-1)/2);
 
 
   //------------------------------------STORAGE-------------------------------//
 
-  arma::cube sv_latent_draws(draws, T, M);
-  arma::cube sv_para_draws(draws, 4,M);
-  arma::cube PHI_draws(draws, (K+intercept), M); // ??? K + intercept
-  arma::cube L_draws(draws, M, M);
-  arma::mat V_prior_draws(draws, n+M*intercept);
+  const int nsave = std::floor(draws/thin);
+
+  arma::cube logvar_draws(nsave, tvp_keep == "all" ? logvar.n_rows : 1, logvar.n_cols);
+  arma::cube sv_para_draws(nsave,sv_para_in.nrow(), sv_para_in.ncol());
+  arma::cube PHI_draws(nsave, PHI.n_rows, PHI.n_cols); // ??? K + intercept
+  arma::cube V_prior_draws(nsave, V_prior.n_rows, V_prior.n_cols);
+
+  arma::cube L_draws(Sigma_type=="cholesky" ? nsave : 0, Sigma_type=="cholesky" ? L.n_rows : 0, Sigma_type=="cholesky" ? L.n_cols : 0);
+
+  arma::cube facload_draws(Sigma_type=="factor" ? nsave : 0, Sigma_type=="factor" ? facload.nrow() : 0, Sigma_type=="factor" ? facload.ncol() : 0);
+  arma::cube fac_draws(Sigma_type=="factor" ? nsave : 0, Sigma_type=="factor" ? fac.nrow() : 0, Sigma_type=="factor" ? (tvp_keep == "all" ? fac.ncol() : 1) : 0);
+
+  int tvp_keep_start = 0;
+  if(tvp_keep == "last") tvp_keep_start += (logvar.n_rows - 1);
+
+  // maybe storage for tau2 and lambda2, shrinkage hyperparameters of ngpior for factorloadings
 
   int phi_hyperparameter_size(0);
   if(priorPHI == "DL" ){
@@ -368,23 +483,25 @@ List bvar_cpp(const arma::mat Y,
   }else if(priorPHI == "HMP"){
     phi_hyperparameter_size += 2; // lambda_1 + lambda_2
   }
-  arma::mat phi_hyperparameter_draws(draws, phi_hyperparameter_size);
+  arma::mat phi_hyperparameter_draws(nsave, phi_hyperparameter_size);
 
   int l_hyperparameter_size(0);
-  if(priorL == "DL" ){
-    l_hyperparameter_size += 2. + 2*n_L;
-  }else if(priorL == "GT"){
-    l_hyperparameter_size += 2. + 2*n_L; // a+xi + n(lambda + psi)
-  }else if(priorL == "R2D2"){
-    l_hyperparameter_size += 4. + 2*n_L; // b + api +xi + zeta + n(theta + psi)
-  }else if(priorL == "SSVS"){
-    l_hyperparameter_size += 2*n_L;
-  }else if(priorL == "HMP"){
-    l_hyperparameter_size += 1;
-  }else if(priorL == "HS"){
-    l_hyperparameter_size += 2.+2*n_L;
+  if(Sigma_type == "cholesky"){
+    if(priorL == "DL" ){
+      l_hyperparameter_size += 2 + 2*n_L;
+    }else if(priorL == "GT"){
+      l_hyperparameter_size += 2 + 2*n_L; // a+xi + n(lambda + psi)
+    }else if(priorL == "R2D2"){
+      l_hyperparameter_size += 4 + 2*n_L; // b + api +xi + zeta + n(theta + psi)
+    }else if(priorL == "SSVS"){
+      l_hyperparameter_size += 2*n_L;
+    }else if(priorL == "HMP"){
+      l_hyperparameter_size += 1;
+    }else if(priorL == "HS"){
+      l_hyperparameter_size += 2+2*n_L;
+    }
   }
-  arma::mat l_hyperparameter_draws(draws, l_hyperparameter_size);
+  arma::mat l_hyperparameter_draws(Sigma_type=="cholesky" ? nsave : 0, Sigma_type=="cholesky" ? l_hyperparameter_size : 0);
 
   //indicator vector needed for DL and R2D2 on L
   arma::uvec ind_L(n_L);
@@ -401,12 +518,18 @@ List bvar_cpp(const arma::mat Y,
   for(int rep = 0; rep < tot; rep++){
 
     //----1) Draw PHI (reduced form VAR coefficients)
-    arma::mat PHI_old = PHI;
-    try{
-      sample_PHI(PHI, PHI0, Y, X, L, d_sqrt, V_prior, M, true);
-    } catch(...){
-      ::Rf_error("Couldn't sample PHI in rep %i.", rep);
+    if(Sigma_type == "cholesky"){
+      //arma::mat PHI_old = PHI; // zombie???
+      try{
+        sample_PHI(PHI, PHI0, Y, X, L, d_sqrt, V_prior, M, true);
+      } catch(...){
+        ::Rf_error("Couldn't sample PHI in rep %i.", rep);
+      }
+    }else if(Sigma_type == "factor"){
+      sample_PHI_factor(PHI, PHI0, Y, X, logvar.cols(0,M-1), V_prior,
+                        armafacload, armafac, huge);
     }
+
 
     if(!PHI.is_finite()){
       ::Rf_error("non-finite PHI in rep %i.", rep);
@@ -452,17 +575,12 @@ List bvar_cpp(const arma::mat Y,
         arma::uvec indplus = arma::find(i_vec == *g);
 
         if(priorPHI=="DL"){
-          if(DL_method==2.){
+
             sample_V_i_DL(V_i, PHI_diff(i_ocl), a(j),b(j),c(j), a_vec, a_weight, psi,
                           lambda, xi(j), ind, DL_hyper, norm_consts, GL_tol, DL_plus,
                           c_vec, c_rel_a);
-          }else if(DL_method==1.){
-            sample_V_i_DL_deprecated(V_i, PHI_diff(i_ocl), a(j) , a_vec,
-                                     prep1, prep2, zeta(j), psi, lambda, ind,
-                                     DL_hyper,1., GL_tol);
-          }
 
-        }else if(priorPHI == "GT"){
+        }else if(priorPHI == "GT"){ // R2D2 is GT with exponential kernel, NG is GT with normal kernel
           sample_V_i_GT(V_i, PHI_diff(i_ocl), psi, lambda, xi(j), a(j), b(j), c(j),
                         ind, GL_tol, GT_priorkernel, GT_vs, norm_consts,
                         a_vec, a_weight, c_vec, GT_hyper, c_rel_a);
@@ -480,19 +598,6 @@ List bvar_cpp(const arma::mat Y,
           sample_V_i_HS(V_i, PHI_diff(i_ocl), theta_hs, zeta_hs(j), nu, varpi(j), ind);
 
         }
-//?        else if(priorPHI == "NG"){
-//?
-//?          sample_V_i_NG(V_i, PHI_diff(i_ocl), theta_ng, zeta_ng(j), NG_a(j),
-//?                        a_ng_vec, varrho0, varrho1, ind, NG_hyper,0);
-//?          if(!V_i.is_finite()){
-//?            ::Rf_error("non-finite V_i in rep %i after group %i.", rep, j+1);
-//?          }
-//?
-//?        }else if(priorPHI=="R2D2"){
-//?          sample_V_i_R2D2(V_i, PHI_diff(indplus), api(j), api_vec, zeta_r2d2(j),
-//?                        psi_r2d2, theta_r2d2, xi(j), b_r2d2(j), b_r2d2_vec, ind,
-//?                        R2D2_hyper, R2D2_method, R2D2_kernel);
-//?      }
         j += 1;
       }
 
@@ -507,217 +612,246 @@ List bvar_cpp(const arma::mat Y,
 
     V_i_long(i_ocl) = V_i;
 
-    V_prior = reshape(V_i_long, K+intercept, M);
-
-
-    //----3) Draw Sigma_t = inv(L)'*D_t*inv(L), where L is upper unitriangular
-    //       and D diagonal
-    //----3a) Draw free off-diagonal elements in L
-
     arma::mat resid = Y - X*PHI;
 
-    try{
-      sample_L(L, resid, V_i_L, d_sqrt);
-    }
-    catch(...){
-      ::Rf_error("Couldn't sample L in rep %i.", rep);
-    }
+    //----3) Draw Sigma_t
 
-    if(priorL == "DL" || priorL == "R2D2" || priorL == "GT"){
+    if(Sigma_type == "factor"){
+      factorstochvol::update_fsv(armafacload,
+                                 armafac,
+                                 logvar,
+                                 logvar0,
+                                 sv_para,
+                                 armatau2,
+                                 armalambda2,
+                                 mixind,
+                                 resid.t(),
+                                 factor_facloadtol,
+                                 factor_armarestr,
+                                 armafacloadtunrestrictedelements,
+                                 nonzerospercol,
+                                 nonzerosperrow,
+                                 sv_priorh0,
+                                 ngprior,
+                                 columnwise,
+                                 aShrink,
+                                 cShrink,
+                                 dShrink,
+                                 factor_homoskedastic,
+                                 factor_offset,
+                                 heteroscedastic,
+                                 factor_interweaving,
+                                 expert_sv, // aka expert_idi
+                                 expert_fac,
+                                 prior_specs,
+                                 B011inv,
+                                 true, //const bool& samplefac,
+                                 false,//const bool& signswitch,
+                                 rep);
 
-      for (int jj = 0; jj<M; jj++){
-        for (int ii = 0; ii<jj; ii++) {
-          if(L(ii,jj) == 0) {
-            if(R::rbinom( 1, 0.5 )==0){
-              L(ii,jj) = L_tol;
-            }else{
-              L(ii,jj) = -L_tol;
-            }
-          }else
-            if(L(ii,jj) < L_tol && L(ii,jj) > 0){
-              L(ii,jj) = L_tol;
-            }else if (L(ii,jj) > -L_tol && L(ii,jj) < 0){
-              L(ii,jj) = -L_tol;
-            }
-        }
-      }
-    }
-
-    //----3b) Draw hyperparameters of hierarchical priors
-    l = L(L_upper_indices);
-    if(priorL == "DL" ){
-
+    }else if(Sigma_type == "cholesky"){
 
       try{
-//?        sample_V_i_DL_deprecated(V_i_L, l, DL_b_L , b_vec, prep1_L, prep2_L, zeta_L, psi_L,
-//?                      theta_L, ind_L, DL_hyper_L, 1.,0);
-          sample_V_i_DL(V_i_L, l, a_L, b_L, c_L, a_vec_L, a_weight_L,
+        sample_L(L, resid, V_i_L, d_sqrt);
+      }
+      catch(...){
+        ::Rf_error("Couldn't sample L in rep %i.", rep);
+      }
+
+      if(priorL == "DL" || priorL == "R2D2" || priorL == "GT"){
+
+        for (int jj = 0; jj<M; jj++){
+          for (int ii = 0; ii<jj; ii++) {
+            if(L(ii,jj) == 0) {
+              if(R::rbinom( 1, 0.5 )==0){
+                L(ii,jj) = L_tol;
+              }else{
+                L(ii,jj) = -L_tol;
+              }
+            }else
+              if(L(ii,jj) < L_tol && L(ii,jj) > 0){
+                L(ii,jj) = L_tol;
+              }else if (L(ii,jj) > -L_tol && L(ii,jj) < 0){
+                L(ii,jj) = -L_tol;
+              }
+          }
+        }
+      }
+
+      //----3b) Draw hyperparameters of hierarchical priors
+      l = L(L_upper_indices);
+      if(priorL == "DL" ){
+
+
+        try{
+            sample_V_i_DL(V_i_L, l, a_L, b_L, c_L, a_vec_L, a_weight_L,
                         psi_L, lambda_L, xi_L, ind_L, DL_hyper_L, norm_consts_L,
                         GL_tol_L, DL_plus_L, c_vec_L, c_rel_a_L);
-      } catch (...) {
-        ::Rf_error("Couldn't sample V_i_L (DL prior)  in run %i", rep);
+        } catch (...) {
+          ::Rf_error("Couldn't sample V_i_L (DL prior)  in run %i", rep);
 
-      }
-
-    }else if (priorL == "GT"){
-
-      sample_V_i_GT(V_i_L, l, psi_L, lambda_L, xi_L, a_L, b_L, c_L, ind_L,
-                    GL_tol_L, GT_priorkernel_L, GT_vs_L, norm_consts_L,
-                    a_vec_L, a_weight_L, c_vec_L, GT_hyper_L, c_rel_a_L);
-
-    }else if(priorL == "SSVS"){
-
-      sample_V_i_SSVS_beta(V_i_L, gammas_L, p_i_L, l, tau_0_L, tau_1_L, SSVS_s_a_L,
-                      SSVS_s_b_L, SSVS_hyper_L, ind_L);
-
-    }else if(priorL == "HMP"){
-
-      sample_V_i_L_HMP(lambda_3, V_i_L, s_r_3(0), s_r_3(1), l);
-    }else if(priorL == "HS"){
-
-      sample_V_i_HS(V_i_L, l, theta_hs_L, zeta_hs_L, nu_L, varpi_L, ind_L);
-
-    }
-//?    else if(priorL == "R2D2"){
-//?
-//?      sample_V_i_R2D2(V_i_L, l, api_L, api_vec_L, zeta_L_r2d2, psi_L_r2d2,
-//?                      theta_L_r2d2, xi_L, b_L_r2d2, b_vec_L_r2d2, ind_L, R2D2_L_hyper, 1., "laplace" );
-//?
-//?    }
-
-    //----3c) Draw elements of D_t
-    //        in case of SV use package stochvol
-    arma::mat str_resid = resid*L; // structural (orthogonalized) residuals
-
-    if(SV == false ){
-      for(int i =0; i<M; i++){
-        double s_p = priorHomoscedastic(i,1) + 0.5*accu(square(str_resid.col(i)));
-        double d_i = 1. / R::rgamma(priorHomoscedastic(i,0)+T/2, 1./s_p);
-        d_sqrt.col(i).fill(sqrt(d_i));
-        h.col(i).fill(log(d_i));
-      }
-    }else if(SV == true){
-      //const arma::mat resid_norm = log(square(str_resid) + sv_offset); // + 1e-40offset??
-      for(int j=0; j < M; j++){
-        const arma::mat resid_norm = log(square(str_resid.col(j)) + sv_offset(j));
-        arma::vec h_j  = h.unsafe_col(j);  // unsafe_col reuses memory, h will automatically be overwritten
-        arma::uvec mixind_j = mixind.unsafe_col(j);
-        double mu = sv_para(0,j),
-          phi = sv_para(1,j),
-          sigma = sv_para(2,j),
-          h0_j = sv_para(3,j);
-        stochvol::update_fast_sv(resid_norm, mu, phi, sigma, h0_j, h_j, mixind_j, prior_spec, expert_sv); //resid_norm.col(j)
-        sv_para.col(j) = arma::colvec({mu, phi, sigma, h0_j});
-      }
-      d_sqrt = exp(h/2);
-    }
-
-    //-------Store draws after burnin
-    if(rep >= burnin){
-
-      PHI_draws.row(rep-burnin) = PHI;
-      L_draws.row(rep-burnin) = L;
-      sv_latent_draws.row(rep-burnin) = h;
-      sv_para_draws.row((rep-burnin)) = sv_para;
-      V_prior_draws.row(rep-burnin) = V_i_long;
-
-      if(priorPHI == "DL" ){
-
-        phi_hyperparameter_draws(rep-burnin, span(0,(n_groups-1))) = a;
-        phi_hyperparameter_draws(rep-burnin, span(n_groups,(n_groups+n-1))) = psi.as_row();
-        phi_hyperparameter_draws(rep-burnin, span((n_groups+n),(n_groups+2*n-1))) = lambda.as_row();
-        if(DL_method==2.){
-        phi_hyperparameter_draws(rep-burnin, span((n_groups+2*n),(phi_hyperparameter_size-1.))) = xi;
         }
-        if(DL_method==1.){
-          phi_hyperparameter_draws(rep-burnin, span((n_groups+2*n),phi_hyperparameter_size-1.)) = zeta;
-        }
-        //phi_hyperparameter_draws(rep-burnin, span(0,(n_groups-1))) = zeta;
-        //phi_hyperparameter_draws(rep-burnin, span(n_groups,(n_groups+n-1))) = psi.as_row();
-        //phi_hyperparameter_draws(rep-burnin, span((n_groups+n),(n_groups+2*n-1))) = theta.as_row();
-        //phi_hyperparameter_draws(rep-burnin, span((n_groups+2*n),phi_hyperparameter_size-1.)) = DL_a;
 
-      }if(priorPHI == "GT" ){
+      }else if (priorL == "GT"){
 
-        phi_hyperparameter_draws(rep-burnin, span(0,(n_groups-1))) = a;
-        phi_hyperparameter_draws(rep-burnin, span(n_groups,(2*n_groups-1))) = xi;
-        phi_hyperparameter_draws(rep-burnin, span(2*n_groups,(2*n_groups+n-1))) = psi.as_row();
-        phi_hyperparameter_draws(rep-burnin, span((2*n_groups+n),(phi_hyperparameter_size-1))) = lambda.as_row();
-
-      }else if(priorPHI == "HS"){
-
-        phi_hyperparameter_draws(rep-burnin, span(0, (n_groups -1))) = zeta_hs ;
-        phi_hyperparameter_draws(rep-burnin, span(n_groups, (n_groups+n-1))) = theta_hs;
-        phi_hyperparameter_draws(rep-burnin, span((n_groups+n), (n_groups+n+n_groups-1))) = varpi;
-        phi_hyperparameter_draws(rep-burnin, span((n_groups+n+n_groups),phi_hyperparameter_size-1))= nu;
-
-      }else if(priorPHI == "SSVS"){
-
-        phi_hyperparameter_draws(rep-burnin, span(0, (n-1.))) = gammas;
-        phi_hyperparameter_draws(rep-burnin, span(n, (phi_hyperparameter_size-1.))) = p_i;
-
-      }else if(priorPHI == "HMP"){
-        phi_hyperparameter_draws(rep-burnin, 0) = lambda_1;
-        phi_hyperparameter_draws(rep-burnin, 1) = lambda_2;
-      }
-//?      else if(priorPHI == "R2D2"){
-//?
-//?        phi_hyperparameter_draws(rep-burnin, span(0,(n_groups-1))) = zeta_r2d2 ;
-//?        phi_hyperparameter_draws(rep-burnin, span(n_groups,(n_groups+n-1))) = trans(psi_r2d2.as_col());
-//?        phi_hyperparameter_draws(rep-burnin, span((n_groups+n),(n_groups+2*n-1))) = theta_r2d2.as_row();
-//?        phi_hyperparameter_draws(rep-burnin, span((n_groups+2*n),phi_hyperparameter_size-1.-2*n_groups)) = xi ;
-//?        phi_hyperparameter_draws(rep-burnin, span((2*n_groups+2*n ),phi_hyperparameter_size -1.-n_groups)) = b_r2d2;
-//?        phi_hyperparameter_draws(rep-burnin, span((3*n_groups+2*n ),phi_hyperparameter_size-1.)) = api;
-//?
-//?      }else if(priorPHI == "NG"){
-//?
-//?        phi_hyperparameter_draws(rep-burnin, span(0, (n_groups -1))) = zeta_ng ;
-//?        phi_hyperparameter_draws(rep-burnin, span(n_groups, (2*n_groups -1))) = NG_a ;
-//?        phi_hyperparameter_draws(rep-burnin, span(2*n_groups, (phi_hyperparameter_size-1.))) = theta_ng;
-//?
-//?      }
-
-      if(priorL == "DL"){
-
-        l_hyperparameter_draws(rep-burnin, 0) = a_L;
-        l_hyperparameter_draws(rep-burnin, span(1,n_L)) = psi_L.as_row();
-        l_hyperparameter_draws(rep-burnin, span(n_L+1.,2*n_L)) = lambda_L.as_row();
-        l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-1.) = xi_L;
-
-      }else if(priorL == "GT"){
-
-        l_hyperparameter_draws(rep-burnin, 0) = a_L;
-        l_hyperparameter_draws(rep-burnin, 1) = xi_L;
-        l_hyperparameter_draws(rep-burnin, span(2,n_L+1)) = psi_L.as_row();
-        l_hyperparameter_draws(rep-burnin, span(n_L+2.,l_hyperparameter_size-1.)) = lambda_L.as_row();
+        sample_V_i_GT(V_i_L, l, psi_L, lambda_L, xi_L, a_L, b_L, c_L, ind_L,
+                      GL_tol_L, GT_priorkernel_L, GT_vs_L, norm_consts_L,
+                      a_vec_L, a_weight_L, c_vec_L, GT_hyper_L, c_rel_a_L);
 
       }else if(priorL == "SSVS"){
 
-        l_hyperparameter_draws(rep-burnin, span(0, (n_L-1.))) = gammas_L;
-        l_hyperparameter_draws(rep-burnin, span(n_L, (l_hyperparameter_size-1.))) = p_i_L;
+        sample_V_i_SSVS_beta(V_i_L, gammas_L, p_i_L, l, tau_0_L, tau_1_L, SSVS_s_a_L,
+                             SSVS_s_b_L, SSVS_hyper_L, ind_L);
 
       }else if(priorL == "HMP"){
 
-        l_hyperparameter_draws(rep-burnin, 0) = lambda_3;
+        sample_V_i_L_HMP(lambda_3, V_i_L, s_r_3(0), s_r_3(1), l);
       }else if(priorL == "HS"){
 
-        l_hyperparameter_draws(rep-burnin, 0) = zeta_hs_L ;
-        l_hyperparameter_draws(rep-burnin, 1) = varpi_L;
-        l_hyperparameter_draws(rep-burnin, span(2, n_L+1)) = theta_hs_L;
-        l_hyperparameter_draws(rep-burnin, span((n_L+2),(l_hyperparameter_size-1)))= nu_L;
+        sample_V_i_HS(V_i_L, l, theta_hs_L, zeta_hs_L, nu_L, varpi_L, ind_L);
 
       }
+      //?    else if(priorL == "R2D2"){
+      //?
+      //?      sample_V_i_R2D2(V_i_L, l, api_L, api_vec_L, zeta_L_r2d2, psi_L_r2d2,
+      //?                      theta_L_r2d2, xi_L, b_L_r2d2, b_vec_L_r2d2, ind_L, R2D2_L_hyper, 1, "laplace" );
+      //?
+      //?    }
 
-//?      else if(priorL == "R2D2"){
-//?
-//?        l_hyperparameter_draws(rep-burnin, 0) = zeta_L_r2d2 ;
-//?        l_hyperparameter_draws(rep-burnin, span(1,(n_L))) = psi_L_r2d2.as_row();
-//?        l_hyperparameter_draws(rep-burnin, span(n_L+1.,(2*n_L))) = theta_L_r2d2.as_row();
-//?        l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-3.) = xi_L ;
-//?        l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-2.) = b_L_r2d2;
-//?        l_hyperparameter_draws(rep-burnin, l_hyperparameter_size-1.) = api_L;
-//?
-//?      }
+      //----3c) Draw elements of D_t
+      //        in case of SV use package stochvol
+      arma::mat str_resid = resid*L; // structural (orthogonalized) residuals
+
+      for(int j =0; j<M; j++){
+        if(heteroscedastic(j) == false){
+          double s_p = priorHomoscedastic(j,1) + 0.5*accu(square(str_resid.col(j)));
+          double d_i = 1. / R::rgamma(priorHomoscedastic(j,0)+T/2, 1./s_p);
+          d_sqrt.col(j).fill(sqrt(d_i));
+          logvar.col(j).fill(log(d_i));
+        }else if(heteroscedastic(j) == true){
+          //const arma::mat resid_norm = log(square(str_resid) + sv_offset); // + 1e-40offset??
+          const arma::mat resid_norm = log(square(str_resid.col(j)) + sv_offset(j));
+          arma::vec h_j  = logvar.unsafe_col(j);  // unsafe_col reuses memory, logvar will automatically be overwritten
+          arma::uvec mixind_j = mixind.unsafe_col(j);
+          double mu = sv_para(0,j),
+            phi = sv_para(1,j),
+            sigma = sv_para(2,j),
+            h0_j = logvar0(j);
+          stochvol::update_fast_sv(resid_norm, mu, phi, sigma, h0_j, h_j, mixind_j, prior_specs[j], expert_sv); //resid_norm.col(j)
+          sv_para.col(j) = arma::colvec({mu, phi, sigma}); //, h0_j
+          logvar0(j) = h0_j;
+          d_sqrt.col(j) = exp(h_j/2);
+        }
+      }
+
+      /*
+      if(cholesky_sv == false ){
+        for(int j =0; j<M; j++){
+          double s_p = priorHomoscedastic(j,1) + 0.5*accu(square(str_resid.col(j)));
+          double d_i = 1. / R::rgamma(priorHomoscedastic(j,0)+T/2, 1./s_p);
+          d_sqrt.col(j).fill(sqrt(d_i));
+          logvar.col(j).fill(log(d_i));
+        }
+      }else if(cholesky_sv == true){
+
+        for(int j=0; j < M; j++){
+          const arma::mat resid_norm = log(square(str_resid.col(j)) + sv_offset(j));
+          arma::vec h_j  = logvar.unsafe_col(j);  // unsafe_col reuses memory, logvar will automatically be overwritten
+          arma::uvec mixind_j = mixind.unsafe_col(j);
+          double mu = sv_para(0,j),
+            phi = sv_para(1,j),
+            sigma = sv_para(2,j),
+            h0_j = logvar0(j);
+          stochvol::update_fast_sv(resid_norm, mu, phi, sigma, h0_j, h_j, mixind_j, prior_specs[j], expert_sv); //resid_norm.col(j)
+          sv_para.col(j) = arma::colvec({mu, phi, sigma}); //, h0_j
+          logvar0(j) = h0_j;
+        }
+        d_sqrt = exp(logvar/2);
+      }
+       */
+    }
+
+    //-------Store draws after burnin
+    if(rep >= burnin && ( (rep+1-burnin) % thin == 0 )){
+
+      PHI_draws.row((rep+1-burnin)/thin - 1) = PHI;
+      logvar_draws.row((rep+1-burnin)/thin - 1) = logvar.rows(tvp_keep_start ,logvar.n_rows-1);
+      sv_para_draws.row(((rep+1-burnin)/thin - 1)) = sv_para;
+      V_prior_draws.row((rep+1-burnin)/thin - 1) = V_prior;
+
+      if(priorPHI == "DL" ){
+
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(0,(n_groups-1))) = a;
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_groups,(n_groups+n-1))) = psi.as_row();
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((n_groups+n),(n_groups+2*n-1))) = lambda.as_row();
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((n_groups+2*n),(phi_hyperparameter_size-1))) = xi;
+        //phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(0,(n_groups-1))) = zeta;
+        //phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_groups,(n_groups+n-1))) = psi.as_row();
+        //phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((n_groups+n),(n_groups+2*n-1))) = theta.as_row();
+        //phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((n_groups+2*n),phi_hyperparameter_size-1)) = DL_a;
+
+      }if(priorPHI == "GT" ){
+
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(0,(n_groups-1))) = a;
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_groups,(2*n_groups-1))) = xi;
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(2*n_groups,(2*n_groups+n-1))) = psi.as_row();
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((2*n_groups+n),(phi_hyperparameter_size-1))) = lambda.as_row();
+
+      }else if(priorPHI == "HS"){
+
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(0, (n_groups -1))) = zeta_hs ;
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_groups, (n_groups+n-1))) = theta_hs;
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((n_groups+n), (n_groups+n+n_groups-1))) = varpi;
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((n_groups+n+n_groups),phi_hyperparameter_size-1))= nu;
+
+      }else if(priorPHI == "SSVS"){
+
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(0, (n-1))) = gammas;
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n, (phi_hyperparameter_size-1))) = p_i;
+
+      }else if(priorPHI == "HMP"){
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, 0) = lambda_1;
+        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, 1) = lambda_2;
+      }
+
+      if(Sigma_type == "cholesky"){
+
+        L_draws.row((rep+1-burnin)/thin - 1) = L;
+
+        if(priorL == "DL"){
+
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, 0) = a_L;
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span(1,n_L)) = psi_L.as_row();
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_L+1,2*n_L)) = lambda_L.as_row();
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, l_hyperparameter_size-1) = xi_L;
+
+        }else if(priorL == "GT"){
+
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, 0) = a_L;
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, 1) = xi_L;
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span(2,n_L+1)) = psi_L.as_row();
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_L+2,l_hyperparameter_size-1)) = lambda_L.as_row();
+
+        }else if(priorL == "SSVS"){
+
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span(0, (n_L-1))) = gammas_L;
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_L, (l_hyperparameter_size-1))) = p_i_L;
+
+        }else if(priorL == "HMP"){
+
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, 0) = lambda_3;
+        }else if(priorL == "HS"){
+
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, 0) = zeta_hs_L ;
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, 1) = varpi_L;
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span(2, n_L+1)) = theta_hs_L;
+          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span((n_L+2),(l_hyperparameter_size-1)))= nu_L;
+
+        }
+      }else if(Sigma_type == "factor"){
+        facload_draws.row((rep+1-burnin)/thin - 1) = armafacload;
+        fac_draws.row((rep+1-burnin)/thin - 1) = armafac.cols(tvp_keep_start ,armafac.n_cols-1);
+      }
     }
 
     //p.increment();
@@ -735,23 +869,25 @@ List bvar_cpp(const arma::mat Y,
   List out = List::create(
     Named("PHI") = PHI_draws,
     Named("L") = L_draws,
-    Named("sv_latent") = sv_latent_draws,
+    Named("logvar") = logvar_draws,
     Named("sv_para") = sv_para_draws,
     Named("phi_hyperparameter") = phi_hyperparameter_draws,
     Named("l_hyperparameter") = l_hyperparameter_draws,
     Named("bench") = time,
     Named("V_prior") = V_prior_draws,
     Named("V_i") = V_i,
-    Named("a") = a,
-    Named("b") = b,
-    Named("c") = c,
-    Named("GT_vs") = GT_vs,
-    Named("a_L") = a_L,
-    Named("b_L") = b_L,
-    Named("c_L") = c_L,
-    Named("GT_vs_L") = GT_vs_L,
-    Named("a_vec")=a_vec,
-    Named("c_vec")=c_vec
+    // Named("a") = a,
+    // Named("b") = b,
+    // Named("c") = c,
+    // Named("GT_vs") = GT_vs,
+    // Named("a_L") = a_L,
+    // Named("b_L") = b_L,
+    // Named("c_L") = c_L,
+    // Named("GT_vs_L") = GT_vs_L,
+    // Named("a_vec")=a_vec,
+    // Named("c_vec")=c_vec,
+    Named("facload") = facload_draws,
+    Named("fac") = fac_draws
   );
 
   return out;

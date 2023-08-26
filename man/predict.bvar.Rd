@@ -2,7 +2,47 @@
 % Please edit documentation in R/utility_functions.R
 \name{predict.bvar}
 \alias{predict.bvar}
-\title{Predict method for Bayesian VARs}
+\title{#' Specify prior on L
+#'
+#' Configures prior on L.
+#'
+#' @param prior character, one of \code{"R2D2"}, \code{"DL"}, \code{"SSVS"},
+#'   \code{"HMP"} or \code{"normal"}.
+#'
+#' @param DL_b either single positive number -- where smaller values indicate
+#'   heavier regularization --, or one of \code{DL_b="1/n"} or
+#'   \code{DL_b="hyperprior"}. n is the number of free off-diagonal elements in
+#'   L.  In case of \code{DL_b="hyperprior"} a discrete uniform hyperprior is
+#'   placed on the parameter. \code{DL_b} has only to be specified if
+#'   \code{prior="DL"}.
+#' @param R2D2_b either single positive number -- where greater values indicate
+#'   heavier regularization --, or \code{R2D2_b="hyperprior"}. In case of the
+#'   latter a discrete uniform hyperprior is placed on the parameter.
+#'   \code{R2D2_b} has only to be specified if \code{prior="R2D2"}.
+#' @param SSVS_c0 single positive number indicating the standard deviation of
+#'   the spike component. \code{SSVS_c0} has only to be specified if
+#'   \code{prior="SSVS"}. It should be that \eqn{SSVS_{c0} \ll SSVS_{c1}}!
+#' @param SSVS_c1 single positive number indicating the standard deviation of
+#'   the slab component. \code{SSVS_c1} has only to be specified if
+#'   \code{prior="SSVS"}. It should be that \eqn{SSVS_{c0} \ll SSVS_{c1}}!
+#' @param SSVS_sa positive number in the range \eqn{(0,1)} indicating the first
+#'   shape parameter of the Beta hyperprior on the prior-inclusion
+#'   probability.\code{SSVS_sa} has only to be specified if \code{prior="SSVS"}.
+#' @param SSVS_sb positive number in the range \eqn{(0,1)} indicating the second
+#'   shape parameter of the Beta hyperprior on the prior-inclusion
+#'   probability.\code{SSVS_sb} has only to be specified if \code{prior="SSVS"}.
+#' @param HMP_lambda3 numeric vector of length 2. Both entries must be positive.
+#'   The first indicates the shape and the second the rate of the Gamma
+#'   hyperprior on the free off-diagonal elements in L. \code{HMP_lambda3} has
+#'   only to be specified if \code{prior="HMP"}.
+#' @param V_i numeric vector of length n, where n is the number of free
+#'   off-diagonal elements in L, indicating the prior variances. A single number
+#'   will be recycled accordingly! Must be positive. \code{V_i} has only to be
+#'   specified if \code{prior="HMP"}.
+#' @param ... Do not use!
+#'
+#' @export
+Predict method for Bayesian VARs}
 \usage{
 \method{predict}{bvar}(object, nsteps, LPL = FALSE, Y_obs = NA, LPL_VoI = NA, ...)
 }

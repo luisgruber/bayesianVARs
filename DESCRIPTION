@@ -20,12 +20,14 @@ Imports:
     Rcpp,
     stats,
     stochvol,
+    factorstochvol,
     colorspace
 LinkingTo: 
     Rcpp,
     GIGrvg,
     RcppArmadillo,
     stochvol,
-    RcppProgress
+    RcppProgress,
+    factorstochvol
 Depends: 
     R (>= 2.10)

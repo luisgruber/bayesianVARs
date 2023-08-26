@@ -8,20 +8,19 @@ bvar(
   Yraw,
   p,
   intercept = 100,
-  draws = 1000,
-  burnin = 1000,
+  draws = 1000L,
+  burnin = 1000L,
+  thin = 1L,
   persistence = 0,
   priorPHI,
-  priorL,
-  SV = TRUE,
-  sv_spec = list(priormu = c(0, 100), priorphi = c(20, 1.5), priorsigma2 = c(0.5, 0.5),
-    sv_offset = 0),
-  priorHomoscedastic = NA,
+  priorSigma,
+  tvp_keep = "last",
   progressbar = TRUE,
   PHI_in = NULL,
   L_in = NULL,
   PHI_tol = 1e-100,
-  L_tol = 1e-100
+  L_tol = 1e-100,
+  expert = list()
 )
 }
 \arguments{
@@ -48,6 +47,19 @@ mean of the first own-lag coefficients (default is 0).}
 settings. Used to select and customize the prior on the reduced-form VAR
 coefficients.}
 
+\item{progressbar}{logical value indicating whether a progressbar should be
+displayed during sampling (default is \code{TRUE}).}
+
+\item{PHI_in}{numeric matrix used as initial draw for the reduced-form VAR
+coefficients. Must be of dimension c(K,M), where K is the number of
+covariables per equation and M the number of endogenous variables. If not
+specified the posterior mean of a flat conjugate prior will be used.}
+
+\item{L_in}{numeric upper unitriangular matrix (with ones on the diagonal) of
+dimension c(M,M). Used as initial draw for covariance paramters. If not
+specified the normalized cholesky factor of the posterior mean of the
+variance-covariance matrix of a flat conjugate prior will be used.}
+
 \item{priorL}{List object from \code{\link{specify_priorL}} with prior
 settings. Used to select and customize the prior on the constant covariance
 (precision) parameters.}
@@ -64,19 +76,6 @@ first column entries indicate the shape and the second column entries
 indicate the scale parameters of the inverse Gamma prior distributions of
 the orthogonalized variances. All entries must be greater than 0. A vector
 of length 2 will be recycled accordingly.}
-
-\item{progressbar}{logical value indicating whether a progressbar should be
-displayed during sampling (default is \code{TRUE}).}
-
-\item{PHI_in}{numeric matrix used as initial draw for the reduced-form VAR
-coefficients. Must be of dimension c(K,M), where K is the number of
-covariables per equation and M the number of endogenous variables. If not
-specified the posterior mean of a flat conjugate prior will be used.}
-
-\item{L_in}{numeric upper unitriangular matrix (with ones on the diagonal) of
-dimension c(M,M). Used as initial draw for covariance paramters. If not
-specified the normalized cholesky factor of the posterior mean of the
-variance-covariance matrix of a flat conjugate prior will be used.}
 }
 \description{
 \code{bvar} simulates from the joint posterior distribution of the parameters
