@@ -1,33 +1,18 @@
 #' Data from the US-economy
 #'
 #' 21 selected quarterly time-series from 1953:Q1 to 2021:Q2. From FRED-QD data
-#' base. Release date 2021-07.
-#'
-#' @format A 'xts' object with 250 rows and 21 variables.
-#'
-#' @source \url{https://research.stlouisfed.org/econ/mccracken/fred-databases/}
-"data_raw"
-
-#' Data from the US-economy
-#'
-#' 21 selected quarterly time-series from 1953:Q1 to 2021:Q2. From FRED-QD data
-#' base. Release date 2021-07. Data is transformed to be interpreted as
+#' base (McCracken and Ng, 2021). Release date 2021-07. Data is transformed to be interpreted as
 #' growth-rates (first log-differences with the exception of interest rates,
 #' which are already growth rates).
 #'
-#' @format A 'xts' object with 247 rows and 21 variables.
+#' @format A matrix with 247 rows and 21 columns.
 #'
-#' @source \url{https://research.stlouisfed.org/econ/mccracken/fred-databases/}
-"dat_growth"
+#' @source Raw (untransformed) data available at
+#'   \url{https://research.stlouisfed.org/econ/mccracken/fred-databases/},
+#'   \url{https://files.stlouisfed.org/files/htdocs/fred-md/quarterly/2021-07.csv}.
+#' @references McCracken, M. W. and Ng, S. (2021). FRED-QD: A Quarterly
+#'   Database for Macroeconomic Research, \emph{Review, Federal Reserve Bank of St.
+#'   Louis}, \bold{103}(1), 1--44, \doi{10.20955/r.103.1-44}.
+"usmacro_growth"
 
-#' Data from the US-economy
-#'
-#' 21 selected quarterly time-series from 1953:Q1 to 2021:Q2. From FRED-QD data
-#' base. Release date 2021-07. Data is transformed to be approximately
-#' stationary (using the transformations proposed in
-#' \url{https://doi.org/10.20955/r.103.1-44}.
-#'
-#' @format A 'xts' object with 247 rows and 21 variables.
-#'
-#' @source \url{https://research.stlouisfed.org/econ/mccracken/fred-databases/}
-"dat"
+
