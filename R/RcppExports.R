@@ -14,7 +14,11 @@ bvar_cpp <- function(Y, X, M, T, K, draws, burnin, thin, tvp_keep, intercept, pr
 #' @param chi vector of shape/scale parameters. Must be nonnegative for positive lambdas and positive else.
 #' @param psi vector of shape/scale parameters. Must be nonnegative for negative lambdas and positive else.
 #'
+#' @return Matrix of dimension `c(n,m)`, where `m` is the maximum length of `lambda`, `psi` and `chi`.
 #' @export
+#'
+#' @examples
+#' gigsamples <- my_gig(2, c(1,1), c(1,1), c(1,1))
 my_gig <- function(n, lambda, chi, psi) {
     .Call(`_bayesianVARs_my_gig`, n, lambda, chi, psi)
 }

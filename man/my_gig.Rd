@@ -15,6 +15,12 @@ my_gig(n, lambda, chi, psi)
 
 \item{psi}{vector of shape/scale parameters. Must be nonnegative for negative lambdas and positive else.}
 }
+\value{
+Matrix of dimension \code{c(n,m)}, where \code{m} is the maximum length of \code{lambda}, \code{psi} and \code{chi}.
+}
 \description{
 Vectorized version of \code{\link[GIGrvg]{rgig}}
+}
+\examples{
+gigsamples <- my_gig(2, c(1,1), c(1,1), c(1,1))
 }

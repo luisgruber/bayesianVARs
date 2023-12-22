@@ -11,7 +11,11 @@ using namespace Rcpp;
 //' @param chi vector of shape/scale parameters. Must be nonnegative for positive lambdas and positive else.
 //' @param psi vector of shape/scale parameters. Must be nonnegative for negative lambdas and positive else.
 //'
+//' @return Matrix of dimension `c(n,m)`, where `m` is the maximum length of `lambda`, `psi` and `chi`.
 //' @export
+//'
+//' @examples
+//' gigsamples <- my_gig(2, c(1,1), c(1,1), c(1,1))
 //[[Rcpp::export]]
 NumericMatrix my_gig(int n, NumericVector lambda, NumericVector chi, NumericVector psi) {
 
