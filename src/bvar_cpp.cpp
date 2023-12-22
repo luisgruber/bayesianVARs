@@ -23,7 +23,7 @@ List bvar_cpp(const arma::mat& Y,
               arma::mat& PHI0, // prior mean
               const List priorPHI_in,
               const List priorSigma_in, // priorSigma_in
-              const List startvals_in,
+              const List Rstartvals_in,
               const arma::imat& i_mat,
               const arma::ivec& i_vec,
               const bool& progressbar,
@@ -31,13 +31,16 @@ List bvar_cpp(const arma::mat& Y,
               const double& L_tol,
               const bool& huge){
 
+  // Rcpp objects reuse memory
+  // arma make copy by default unless deactivated
+
 //-------------------------Preliminaries--------------------------------------//
 
   const double n = K*M; // number of VAR coefficients without intercept
   const arma::uvec i_ocl= arma::find(i_vec != 0); // indicator for all coefficients except intercept
   const arma::uvec i_i= arma::find(i_vec == 0); // indicator for intercepts
 
-  const std::string Sigma_type = priorSigma_in["type"];
+  const std::string sigma_type = priorSigma_in["type"];
 
   //////////////////
   // indicators for coefficients without intercept
@@ -51,6 +54,7 @@ List bvar_cpp(const arma::mat& Y,
 
 //--------------------Initialization -----------------------//
 
+  List startvals_in(clone(Rstartvals_in)); // clone makes copy
 //---- PHI
 
   NumericMatrix PHI_in = startvals_in["PHI"];
@@ -61,57 +65,47 @@ List bvar_cpp(const arma::mat& Y,
   // V_i holds prior variances (without intercepts)
   arma::vec V_i(n);
 
-  arma::vec V_i_long(n+M*intercept); // ??? V_i plus intercept prior variances
+  arma::vec V_i_long(n+M*intercept); //V_i plus intercept prior variances
   V_i_long(i_i) = priorIntercept;
 
   if(priorPHI == "normal"){
-    arma::vec V_i_in = priorPHI_in["V_i"];
+    //arma::vec V_i_in = priorPHI_in["V_i"];
+    NumericVector V_i_in = priorPHI_in["V_i"];
+    arma::vec armaV_i_in(V_i_in.begin(), V_i_in.size(), false);
     //in case of 'normal' V_i is fixed at user specified values
-    V_i = V_i_in;
+    V_i = armaV_i_in;
   }
 
-  //---- GL prior on PHI
+  //  sub-groups for semi-global-local GL priors and SSVS prior
+  const int n_groups = priorPHI_in["n_groups"]; // number of distinct groups
+  IntegerVector groups_in = priorPHI_in["groups"];
+  arma::ivec groups(groups_in.begin(), groups_in.size(),false);
 
-  //  sub-groups for semi-global-local GL priors
-  const int n_groups = priorPHI_in["n_groups"];
-  arma::ivec groups = priorPHI_in["groups"];
-
-  /////////// GL initilization
-
+  // parameters shared by GT (i.e. NG & R2D2) and DL priors
   arma::vec lambda(n, fill::value(1/static_cast<double>(n)));
-  arma::vec psi(n, fill::ones);
+  arma::vec psi(n, fill::ones); // must be 1 for NG prior (GT with normal kernel)
   arma::vec xi(n_groups, fill::value(0.5));
-  arma::vec a = priorPHI_in["a"];
-  arma::vec b = priorPHI_in["b"];
-  arma::vec c = priorPHI_in["c"];
+  arma::vec a = priorPHI_in["a"]; // arma makes copy...is that necessary?
+  arma::vec b = priorPHI_in["b"]; // arma makes copy...is that necessary?
+  arma::vec c = priorPHI_in["c"]; // arma makes copy...is that necessary?
   const double GL_tol = priorPHI_in["GL_tol"];
 
-  const arma::vec a_vec = priorPHI_in["a_vec"];
-  const arma::vec a_weight = priorPHI_in["a_weight"];
-  const arma::vec norm_consts = priorPHI_in["norm_consts"];
-  const arma::vec c_vec = priorPHI_in["c_vec"];
+  NumericVector a_vec_in = priorPHI_in["a_vec"]; //const
+  arma::vec a_vec(a_vec_in.begin(), a_vec_in.size(), false);
+  NumericVector a_weight_in = priorPHI_in["a_weight"]; //const
+  arma::vec a_weight(a_weight_in.begin(), a_weight_in.size(), false);
+  NumericVector norm_consts_in = priorPHI_in["norm_consts"];
+  arma::vec norm_consts(norm_consts_in.begin(), norm_consts_in.size(), false); //const
+  NumericVector c_vec_in = priorPHI_in["c_vec"];
+  arma::vec c_vec(c_vec_in.begin(), c_vec_in.size(), false); // const
   const bool c_rel_a = priorPHI_in["c_rel_a"];
 
-  ///////////
-
-  //---- DL prior on PHI
-//?  const double DL_tol = priorPHI_in["DL_tol"];
+  //---- DL prior specific parameters
   const bool DL_hyper = priorPHI_in["DL_hyper"];
-//?  arma::vec DL_a = priorPHI_in["DL_a"];
-//?  arma::vec DL_b = priorPHI_in["DL_b"];
-//?  arma::vec DL_c = priorPHI_in["DL_c"];
   const bool DL_plus = priorPHI_in["DL_plus"];
-  const arma::mat prep2 = priorPHI_in["prep2"]; // DL_deprecated
-  const arma::vec prep1 = priorPHI_in["prep1"]; // DL_deprecated
-
-
-  // initialization of scaling, global, and local parameters
-//?  arma::vec psi(n);psi.fill(1.0);
-  arma::vec zeta(n_groups); zeta.fill(10);
-//?  arma::vec lambda(n);lambda.fill(1/static_cast<double>(n));
-//?  arma::vec DL_xi(n_groups, fill::value(0.5));
+  //arma::vec zeta(n_groups); zeta.fill(10);
   if(priorPHI == "DL" ){
-    V_i = psi % lambda % lambda * zeta(0) * zeta(0);
+    V_i = psi % lambda % lambda;// * zeta(0) * zeta(0);
   }
 
   //----GT on PHI (GT refers to gamma type priors a la normal gamma or r2d2)
@@ -126,32 +120,6 @@ List bvar_cpp(const arma::mat& Y,
     }
   }
 
-  //----R2D2 on PHI
-  // initialization of scaling, global, and local parameters
-//?  vec xi(n_groups, fill::ones);
-//?  arma::vec theta_r2d2(n); theta_r2d2.fill(1/static_cast<double>(n));
-//?  vec zeta_r2d2(n_groups); zeta_r2d2.fill(10);
-//?  arma::vec psi_r2d2(n); psi_r2d2.fill(1/static_cast<double>(n));
-
-  //  bool R2D2_hyper;
-//?  bool R2D2_hyper = priorPHI_in["R2D2_hyper"];
-//?  arma::vec api = priorPHI_in["R2D2_api"];
-//?  arma::vec b_r2d2 = priorPHI_in["R2D2_b"];
-//?  const arma::vec api_vec = priorPHI_in["api_vec"];
-//?  const arma::vec b_r2d2_vec = priorPHI_in["b_vec"];
-//?  const int R2D2_method = priorPHI_in["R2D2_method"];
-//?  std::string R2D2_kernel = priorPHI_in["R2D2_kernel"];
-//?  if(priorPHI == "R2D2"){
-    // to do: c = 1/2*api, vs
-//?    if(R2D2_kernel=="laplace"){
-//?      V_i = psi_r2d2%theta_r2d2*zeta_r2d2(0)/2;
-//?    }else if(R2D2_kernel == "normal"){
-//?      psi_r2d2.fill(1.0); // needed for sample_V_i_R2D2
-//?      V_i = theta_r2d2*zeta_r2d2(0);
-//?    }
-//?    V_i = psi % lambda;
-//?  }
-
   //---- Horseshoe on PHI
   // initialization of global, local and auxiliary scaling parameters
   arma::vec theta_hs(n); theta_hs.fill(1/static_cast<double>(n));
@@ -159,22 +127,8 @@ List bvar_cpp(const arma::mat& Y,
   arma::vec nu(n); nu.fill(1);
   arma::vec varpi(n_groups); varpi.fill(1);
   if(priorPHI == "HS"){
-    V_i = theta_hs*zeta_hs;
+    V_i = theta_hs*zeta_hs(0);
   }
-
-  //---- NG on PHI
-  //theta_ng, zeta_ng(j), NG_a, varrho0, varrho1
-//?  arma::vec theta_ng(n); theta_ng.fill(0.1);
-//?  arma::vec zeta_ng(n_groups); zeta_ng.fill(10);
-//?  arma::vec NG_a = priorPHI_in["NG_a"];
-//?  const double varrho0 = priorPHI_in["NG_varrho0"];
-//?  const double varrho1 = priorPHI_in["NG_varrho1"];
-//?  const arma::vec a_ng_vec = priorPHI_in["NG_a_vec"];
-//?  const bool NG_hyper = priorPHI_in["NG_hyper"];
-//?  if(priorPHI == "NG"){
-//?    //psi =1;
-//?    V_i = lambda;
-//?  }
 
   //---- SSVS on PHI
   arma::vec tau_0 = priorPHI_in["SSVS_tau0"];
@@ -211,92 +165,93 @@ List bvar_cpp(const arma::mat& Y,
   arma::mat V_prior(V_i_long.begin(), K + intercept, M, false); // pointer, reuses memory, more efficient than reshape!!!
   //arma::mat V_prior = arma::reshape(V_i_long, K + intercept, M);
 
-//-------------- L
+//-------------- U
 
-  NumericMatrix L_in = startvals_in["L"];
-  arma::mat L(L_in.begin(), L_in.nrow(), L_in.ncol(), false);
+  NumericMatrix U_in = startvals_in["U"];
+  arma::mat U(U_in.begin(), U_in.nrow(), U_in.ncol(), false);
 
-  std::string priorL = priorSigma_in["cholesky_priorU"];
+  std::string priorU = priorSigma_in["cholesky_U_prior"];
 
-  uvec L_upper_indices = trimatu_ind( size(L),  1);
-  arma::vec l = L(L_upper_indices);
-  const double n_L = l.size();
-  arma::vec V_i_L(n_L);
+  arma::uvec U_upper_indices(1);
+  if(sigma_type == "cholesky"){
+    U_upper_indices = trimatu_ind( size(U),  1);
+  }
+  arma::vec u = U(U_upper_indices);
+  const double n_U = u.size();
+  arma::vec V_i_U(n_U);
 
-  if(priorL == "normal"){
-    arma::vec V_i_L_in = priorSigma_in["cholesky_V_i"];
-    V_i_L = V_i_L_in;
+  if(priorU == "normal"){
+    arma::vec V_i_U_in = priorSigma_in["cholesky_V_i"];
+    V_i_U = V_i_U_in;
   }
 
   /// Initialize GL parameters
-  arma::vec lambda_L(n_L, fill::value(1/static_cast<double>(n_L)));
-  arma::vec psi_L(n_L, fill::ones);
-  double xi_L = 0.5;
-  double a_L = priorSigma_in["cholesky_a"];
-  double b_L = priorSigma_in["cholesky_b"];
-  double c_L = priorSigma_in["cholesky_c"];
-  const double GL_tol_L = priorSigma_in["cholesky_GL_tol"];
-  const arma::vec c_vec_L = priorSigma_in["cholesky_c_vec"];
-  const bool c_rel_a_L = priorSigma_in["cholesky_c_rel_a"];
+  arma::vec lambda_U(n_U, fill::value(1/static_cast<double>(n_U)));
+  arma::vec psi_U(n_U, fill::ones);
+  double xi_U = 0.5;
+  double a_U = priorSigma_in["cholesky_a"];
+  double b_U = priorSigma_in["cholesky_b"];
+  double c_U = priorSigma_in["cholesky_c"];
+  const double GL_tol_U = priorSigma_in["cholesky_GL_tol"];
+  const arma::vec c_vec_U = priorSigma_in["cholesky_c_vec"];
+  const bool c_rel_a_U = priorSigma_in["cholesky_c_rel_a"];
   ///
 
-  //---- DL prior on L
+  //---- DL prior on U
+  bool DL_hyper_U = priorSigma_in["cholesky_DL_hyper"];
 
-
-  bool DL_hyper_L = priorSigma_in["cholesky_DL_hyper"];
-
-  const bool DL_plus_L = priorSigma_in["cholesky_DL_plus"];
-  const arma::vec a_vec_L = priorSigma_in["cholesky_a_vec"];
-  const arma::vec a_weight_L = priorSigma_in["cholesky_a_weight"];
-  const arma::vec norm_consts_L = priorSigma_in["cholesky_norm_consts"];
-  if(priorL == "DL"){
-    V_i_L= psi_L % lambda_L;
+  const bool DL_plus_U = priorSigma_in["cholesky_DL_plus"];
+  const arma::vec a_vec_U = priorSigma_in["cholesky_a_vec"];
+  const arma::vec a_weight_U = priorSigma_in["cholesky_a_weight"];
+  const arma::vec norm_consts_U = priorSigma_in["cholesky_norm_consts"];
+  if(priorU == "DL"){
+    V_i_U= psi_U % lambda_U;
   }
 
-  //----GT on L (GT refers to gamma type priors a la normal gamma or r2d2)
-  const double GT_vs_L = priorSigma_in["cholesky_GT_vs"];
-  const double GT_hyper_L = priorSigma_in["cholesky_GT_hyper"];
-  const std::string GT_priorkernel_L = priorSigma_in["cholesky_GT_priorkernel"];
-  if(priorL == "GT"){
-    if(GT_priorkernel_L == "exponential"){
-      V_i_L = psi_L%lambda_L/2;
-    }else if(GT_priorkernel_L == "normal"){
-      V_i_L = lambda_L;
+  //----GT on U (GT refers to gamma type priors a la normal gamma or r2d2)
+  const double GT_vs_U = priorSigma_in["cholesky_GT_vs"];
+  const double GT_hyper_U = priorSigma_in["cholesky_GT_hyper"];
+  const std::string GT_priorkernel_U = priorSigma_in["cholesky_GT_priorkernel"];
+  if(priorU == "GT"){
+    if(GT_priorkernel_U == "exponential"){
+      V_i_U = psi_U%lambda_U/2;
+    }else if(GT_priorkernel_U == "normal"){
+      V_i_U = lambda_U;
     }
   }
 
-  //---- Horseshoe on L
+  //---- Horseshoe on U
   // initialization of global, local and auxiliary scaling parameters
-  arma::vec theta_hs_L(n_L); theta_hs_L.fill(1/static_cast<double>(n_L));
-  double zeta_hs_L = 10;
-  arma::vec nu_L(n_L, fill::ones);
-  double varpi_L = 1;
-  if(priorL == "HS"){
-    V_i_L = theta_hs_L*zeta_hs_L;
+  arma::vec theta_hs_U(n_U); theta_hs_U.fill(1/static_cast<double>(n_U));
+  double zeta_hs_U = 10;
+  arma::vec nu_U(n_U, fill::ones);
+  double varpi_U = 1;
+  if(priorU == "HS"){
+    V_i_U = theta_hs_U*zeta_hs_U;
   }
 
-  //---- SSVS on L
-  bool SSVS_hyper_L = priorSigma_in["cholesky_SSVS_hyper"];
-  arma::vec p_i_L = priorSigma_in["cholesky_SSVS_p"];
-  arma::vec tau_0_L = priorSigma_in["cholesky_SSVS_tau0"];
-  arma::vec tau_1_L = priorSigma_in["cholesky_SSVS_tau1"];
-  double SSVS_s_a_L = priorSigma_in["cholesky_SSVS_s_a"];
-  double SSVS_s_b_L = priorSigma_in["cholesky_SSVS_s_b"];
-  if(priorL == "SSVS"){
-    V_i_L = tau_0_L % tau_0_L;
+  //---- SSVS on U
+  bool SSVS_hyper_U = priorSigma_in["cholesky_SSVS_hyper"];
+  arma::vec p_i_U = priorSigma_in["cholesky_SSVS_p"];
+  arma::vec tau_0_U = priorSigma_in["cholesky_SSVS_tau0"];
+  arma::vec tau_1_U = priorSigma_in["cholesky_SSVS_tau1"];
+  double SSVS_s_a_U = priorSigma_in["cholesky_SSVS_s_a"];
+  double SSVS_s_b_U = priorSigma_in["cholesky_SSVS_s_b"];
+  if(priorU == "SSVS"){
+    V_i_U = tau_0_U % tau_0_U;
   }
-  arma::vec gammas_L(n_L, fill::zeros);
+  arma::vec gammas_U(n_U, fill::zeros);
 
-  //---- HMP on L
+  //---- HMP on U
   double lambda_3 = 0.001;
   NumericVector s_r_3 = priorSigma_in["cholesky_lambda_3"];
-  if(priorL == "HMP"){
-    arma::vec V_i_L_tmp(n_L); V_i_L_tmp.fill(1.0);
-    V_i_L= lambda_3*V_i_L_tmp;
+  if(priorU == "HMP"){
+    arma::vec V_i_U_tmp(n_U); V_i_U_tmp.fill(1.0);
+    V_i_U= lambda_3*V_i_U_tmp;
   }
   //-----------------------factorstochvol----------------------//
   const int factors = priorSigma_in["factor_factors"];
-  if(Sigma_type == "cholesky" && factors != 0){
+  if(sigma_type == "cholesky" && factors != 0){
     Rcpp::stop("cholesky with factors,...,");
   }
 
@@ -452,20 +407,21 @@ List bvar_cpp(const arma::mat& Y,
 
   const int nsave = std::floor(draws/thin);
 
-  arma::cube logvar_draws(nsave, tvp_keep == "all" ? logvar.n_rows : 1, logvar.n_cols);
-  arma::cube sv_para_draws(nsave,sv_para_in.nrow(), sv_para_in.ncol());
-  arma::cube PHI_draws(nsave, PHI.n_rows, PHI.n_cols); // ??? K + intercept
-  arma::cube V_prior_draws(nsave, V_prior.n_rows, V_prior.n_cols);
+  arma::cube logvar_draws(tvp_keep == "all" ? logvar.n_rows : 1, logvar.n_cols, nsave);
+  arma::cube sv_para_draws(sv_para_in.nrow(), sv_para_in.ncol(), nsave);
+  arma::cube PHI_draws(PHI.n_rows, PHI.n_cols,nsave);
+  arma::cube V_prior_draws(V_prior.n_rows, V_prior.n_cols, nsave);
 
-  arma::cube L_draws(Sigma_type=="cholesky" ? nsave : 0, Sigma_type=="cholesky" ? L.n_rows : 0, Sigma_type=="cholesky" ? L.n_cols : 0);
+  //arma::cube U_draws(sigma_type=="cholesky" ? nsave : 0, sigma_type=="cholesky" ? U.n_rows : 0, sigma_type=="cholesky" ? U.n_cols : 0);
+  arma::mat U_draws(sigma_type=="cholesky" ? U_upper_indices.n_elem : 0, sigma_type=="cholesky" ? nsave : 0);
 
-  arma::cube facload_draws(Sigma_type=="factor" ? nsave : 0, Sigma_type=="factor" ? facload.nrow() : 0, Sigma_type=="factor" ? facload.ncol() : 0);
-  arma::cube fac_draws(Sigma_type=="factor" ? nsave : 0, Sigma_type=="factor" ? fac.nrow() : 0, Sigma_type=="factor" ? (tvp_keep == "all" ? fac.ncol() : 1) : 0);
+  arma::cube facload_draws(sigma_type=="factor" ? facload.nrow() : 0, sigma_type=="factor" ? facload.ncol() : 0, sigma_type=="factor" ? nsave : 0);
+  arma::cube fac_draws(sigma_type=="factor" ? fac.nrow() : 0, sigma_type=="factor" ? (tvp_keep == "all" ? fac.ncol() : 1) : 0, sigma_type=="factor" ? nsave : 0);
 
   int tvp_keep_start = 0;
   if(tvp_keep == "last") tvp_keep_start += (logvar.n_rows - 1);
 
-  // maybe storage for tau2 and lambda2, shrinkage hyperparameters of ngpior for factorloadings
+  // maybe add storage for tau2 and lambda2, shrinkage hyperparameters of ngpior for factorloadings
 
   int phi_hyperparameter_size(0);
   if(priorPHI == "DL" ){
@@ -483,49 +439,54 @@ List bvar_cpp(const arma::mat& Y,
   }else if(priorPHI == "HMP"){
     phi_hyperparameter_size += 2; // lambda_1 + lambda_2
   }
-  arma::mat phi_hyperparameter_draws(nsave, phi_hyperparameter_size);
+  arma::mat phi_hyperparameter_draws(phi_hyperparameter_size, priorPHI != "normal" ? nsave : 0);
 
-  int l_hyperparameter_size(0);
-  if(Sigma_type == "cholesky"){
-    if(priorL == "DL" ){
-      l_hyperparameter_size += 2 + 2*n_L;
-    }else if(priorL == "GT"){
-      l_hyperparameter_size += 2 + 2*n_L; // a+xi + n(lambda + psi)
-    }else if(priorL == "R2D2"){
-      l_hyperparameter_size += 4 + 2*n_L; // b + api +xi + zeta + n(theta + psi)
-    }else if(priorL == "SSVS"){
-      l_hyperparameter_size += 2*n_L;
-    }else if(priorL == "HMP"){
-      l_hyperparameter_size += 1;
-    }else if(priorL == "HS"){
-      l_hyperparameter_size += 2+2*n_L;
+  int u_hyperparameter_size(0);
+  if(sigma_type == "cholesky"){
+    if(priorU == "DL" ){
+      u_hyperparameter_size += 2 + 2*n_U;
+    }else if(priorU == "GT"){
+      u_hyperparameter_size += 2 + 2*n_U; // a+xi + n(lambda + psi)
+    }else if(priorU == "R2D2"){
+      u_hyperparameter_size += 4 + 2*n_U; // b + api +xi + zeta + n(theta + psi)
+    }else if(priorU == "SSVS"){
+      u_hyperparameter_size += 2*n_U;
+    }else if(priorU == "HMP"){
+      u_hyperparameter_size += 1;
+    }else if(priorU == "HS"){
+      u_hyperparameter_size += 2+2*n_U;
     }
   }
-  arma::mat l_hyperparameter_draws(Sigma_type=="cholesky" ? nsave : 0, Sigma_type=="cholesky" ? l_hyperparameter_size : 0);
+  arma::mat u_hyperparameter_draws(sigma_type=="cholesky" ? u_hyperparameter_size : 0, (sigma_type=="cholesky" && priorU != "normal") ? nsave : 0);
 
-  //indicator vector needed for DL and R2D2 on L
-  arma::uvec ind_L(n_L);
-  for(int i=0; i<n_L; ++i){
-    ind_L(i)=i;
+  //indicator vector needed for DL and R2D2 on U
+  arma::uvec ind_U(n_U);
+  for(int i=0; i<n_U; ++i){
+    ind_U(i)=i;
   }
   //-----------------------------------SAMPLER--------------------------------//
-
   const int tot = draws + burnin;
   // Initialize progressbar
   //Progress p(tot, progressbar);
   Timer timer;
   timer.step("start");
+
   for(int rep = 0; rep < tot; rep++){
 
+    // Check for user interrupts
+    if (rep % 256 == 0) {
+      Rcpp::checkUserInterrupt();
+    }
+
     //----1) Draw PHI (reduced form VAR coefficients)
-    if(Sigma_type == "cholesky"){
+    if(sigma_type == "cholesky"){
       //arma::mat PHI_old = PHI; // zombie???
       try{
-        sample_PHI(PHI, PHI0, Y, X, L, d_sqrt, V_prior, M, true);
+        sample_PHI(PHI, PHI0, Y, X, U, d_sqrt, V_prior, M);
       } catch(...){
         ::Rf_error("Couldn't sample PHI in rep %i.", rep);
       }
-    }else if(Sigma_type == "factor"){
+    }else if(sigma_type == "factor"){
       sample_PHI_factor(PHI, PHI0, Y, X, logvar.cols(0,M-1), V_prior,
                         armafacload, armafac, huge);
     }
@@ -598,7 +559,7 @@ List bvar_cpp(const arma::mat& Y,
           sample_V_i_HS(V_i, PHI_diff(i_ocl), theta_hs, zeta_hs(j), nu, varpi(j), ind);
 
         }
-        j += 1;
+        j++;
       }
 
     }else if(priorPHI == "HMP"){
@@ -616,7 +577,7 @@ List bvar_cpp(const arma::mat& Y,
 
     //----3) Draw Sigma_t
 
-    if(Sigma_type == "factor"){
+    if(sigma_type == "factor"){
       factorstochvol::update_fsv(armafacload,
                                  armafac,
                                  logvar,
@@ -649,78 +610,72 @@ List bvar_cpp(const arma::mat& Y,
                                  false,//const bool& signswitch,
                                  rep);
 
-    }else if(Sigma_type == "cholesky"){
+    }else if(sigma_type == "cholesky"){
 
       try{
-        sample_L(L, resid, V_i_L, d_sqrt);
+        sample_U(U, resid, V_i_U, d_sqrt);
       }
       catch(...){
-        ::Rf_error("Couldn't sample L in rep %i.", rep);
+        ::Rf_error("Couldn't sample U in rep %i.", rep);
       }
 
-      if(priorL == "DL" || priorL == "R2D2" || priorL == "GT"){
+      if(priorU == "DL" || priorU == "R2D2" || priorU == "GT"){
 
         for (int jj = 0; jj<M; jj++){
           for (int ii = 0; ii<jj; ii++) {
-            if(L(ii,jj) == 0) {
+            if(U(ii,jj) == 0) {
               if(R::rbinom( 1, 0.5 )==0){
-                L(ii,jj) = L_tol;
+                U(ii,jj) = L_tol;
               }else{
-                L(ii,jj) = -L_tol;
+                U(ii,jj) = -L_tol;
               }
             }else
-              if(L(ii,jj) < L_tol && L(ii,jj) > 0){
-                L(ii,jj) = L_tol;
-              }else if (L(ii,jj) > -L_tol && L(ii,jj) < 0){
-                L(ii,jj) = -L_tol;
+              if(U(ii,jj) < L_tol && U(ii,jj) > 0){
+                U(ii,jj) = L_tol;
+              }else if (U(ii,jj) > -L_tol && U(ii,jj) < 0){
+                U(ii,jj) = -L_tol;
               }
           }
         }
       }
 
       //----3b) Draw hyperparameters of hierarchical priors
-      l = L(L_upper_indices);
-      if(priorL == "DL" ){
+      u = U(U_upper_indices);
+      if(priorU == "DL" ){
 
 
         try{
-            sample_V_i_DL(V_i_L, l, a_L, b_L, c_L, a_vec_L, a_weight_L,
-                        psi_L, lambda_L, xi_L, ind_L, DL_hyper_L, norm_consts_L,
-                        GL_tol_L, DL_plus_L, c_vec_L, c_rel_a_L);
+            sample_V_i_DL(V_i_U, u, a_U, b_U, c_U, a_vec_U, a_weight_U,
+                        psi_U, lambda_U, xi_U, ind_U, DL_hyper_U, norm_consts_U,
+                        GL_tol_U, DL_plus_U, c_vec_U, c_rel_a_U);
         } catch (...) {
-          ::Rf_error("Couldn't sample V_i_L (DL prior)  in run %i", rep);
+          ::Rf_error("Couldn't sample V_i_U (DL prior)  in run %i", rep);
 
         }
 
-      }else if (priorL == "GT"){
+      }else if (priorU == "GT"){
 
-        sample_V_i_GT(V_i_L, l, psi_L, lambda_L, xi_L, a_L, b_L, c_L, ind_L,
-                      GL_tol_L, GT_priorkernel_L, GT_vs_L, norm_consts_L,
-                      a_vec_L, a_weight_L, c_vec_L, GT_hyper_L, c_rel_a_L);
+        sample_V_i_GT(V_i_U, u, psi_U, lambda_U, xi_U, a_U, b_U, c_U, ind_U,
+                      GL_tol_U, GT_priorkernel_U, GT_vs_U, norm_consts_U,
+                      a_vec_U, a_weight_U, c_vec_U, GT_hyper_U, c_rel_a_U);
 
-      }else if(priorL == "SSVS"){
+      }else if(priorU == "SSVS"){
 
-        sample_V_i_SSVS_beta(V_i_L, gammas_L, p_i_L, l, tau_0_L, tau_1_L, SSVS_s_a_L,
-                             SSVS_s_b_L, SSVS_hyper_L, ind_L);
+        sample_V_i_SSVS_beta(V_i_U, gammas_U, p_i_U, u, tau_0_U, tau_1_U, SSVS_s_a_U,
+                             SSVS_s_b_U, SSVS_hyper_U, ind_U);
 
-      }else if(priorL == "HMP"){
+      }else if(priorU == "HMP"){
 
-        sample_V_i_L_HMP(lambda_3, V_i_L, s_r_3(0), s_r_3(1), l);
-      }else if(priorL == "HS"){
+        sample_V_i_U_HMP(lambda_3, V_i_U, s_r_3(0), s_r_3(1), u);
+      }else if(priorU == "HS"){
 
-        sample_V_i_HS(V_i_L, l, theta_hs_L, zeta_hs_L, nu_L, varpi_L, ind_L);
+        sample_V_i_HS(V_i_U, u, theta_hs_U, zeta_hs_U, nu_U, varpi_U, ind_U);
 
       }
-      //?    else if(priorL == "R2D2"){
-      //?
-      //?      sample_V_i_R2D2(V_i_L, l, api_L, api_vec_L, zeta_L_r2d2, psi_L_r2d2,
-      //?                      theta_L_r2d2, xi_L, b_L_r2d2, b_vec_L_r2d2, ind_L, R2D2_L_hyper, 1, "laplace" );
-      //?
-      //?    }
 
       //----3c) Draw elements of D_t
       //        in case of SV use package stochvol
-      arma::mat str_resid = resid*L; // structural (orthogonalized) residuals
+      arma::mat str_resid = resid*U; // structural (orthogonalized) residuals
 
       for(int j =0; j<M; j++){
         if(heteroscedastic(j) == false){
@@ -743,114 +698,93 @@ List bvar_cpp(const arma::mat& Y,
           d_sqrt.col(j) = exp(h_j/2);
         }
       }
-
-      /*
-      if(cholesky_sv == false ){
-        for(int j =0; j<M; j++){
-          double s_p = priorHomoscedastic(j,1) + 0.5*accu(square(str_resid.col(j)));
-          double d_i = 1. / R::rgamma(priorHomoscedastic(j,0)+T/2, 1./s_p);
-          d_sqrt.col(j).fill(sqrt(d_i));
-          logvar.col(j).fill(log(d_i));
-        }
-      }else if(cholesky_sv == true){
-
-        for(int j=0; j < M; j++){
-          const arma::mat resid_norm = log(square(str_resid.col(j)) + sv_offset(j));
-          arma::vec h_j  = logvar.unsafe_col(j);  // unsafe_col reuses memory, logvar will automatically be overwritten
-          arma::uvec mixind_j = mixind.unsafe_col(j);
-          double mu = sv_para(0,j),
-            phi = sv_para(1,j),
-            sigma = sv_para(2,j),
-            h0_j = logvar0(j);
-          stochvol::update_fast_sv(resid_norm, mu, phi, sigma, h0_j, h_j, mixind_j, prior_specs[j], expert_sv); //resid_norm.col(j)
-          sv_para.col(j) = arma::colvec({mu, phi, sigma}); //, h0_j
-          logvar0(j) = h0_j;
-        }
-        d_sqrt = exp(logvar/2);
-      }
-       */
     }
 
     //-------Store draws after burnin
     if(rep >= burnin && ( (rep+1-burnin) % thin == 0 )){
 
-      PHI_draws.row((rep+1-burnin)/thin - 1) = PHI;
-      logvar_draws.row((rep+1-burnin)/thin - 1) = logvar.rows(tvp_keep_start ,logvar.n_rows-1);
-      sv_para_draws.row(((rep+1-burnin)/thin - 1)) = sv_para;
-      V_prior_draws.row((rep+1-burnin)/thin - 1) = V_prior;
+      PHI_draws.slice((rep+1-burnin)/thin - 1) = PHI;
+      logvar_draws.slice((rep+1-burnin)/thin - 1) = logvar.rows(tvp_keep_start ,logvar.n_rows-1);
+      sv_para_draws.slice(((rep+1-burnin)/thin - 1)) = sv_para;
+      V_prior_draws.slice((rep+1-burnin)/thin - 1) = V_prior;
 
-      if(priorPHI == "DL" ){
+      if(priorPHI == "DL" || priorPHI== "GT"){
 
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(0,(n_groups-1))) = a;
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_groups,(n_groups+n-1))) = psi.as_row();
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((n_groups+n),(n_groups+2*n-1))) = lambda.as_row();
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((n_groups+2*n),(phi_hyperparameter_size-1))) = xi;
-        //phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(0,(n_groups-1))) = zeta;
-        //phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_groups,(n_groups+n-1))) = psi.as_row();
-        //phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((n_groups+n),(n_groups+2*n-1))) = theta.as_row();
-        //phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((n_groups+2*n),phi_hyperparameter_size-1)) = DL_a;
+        phi_hyperparameter_draws(span(0,(n_groups-1)), (rep+1-burnin)/thin - 1) = a;
+        phi_hyperparameter_draws(span(n_groups,(2*n_groups-1)), (rep+1-burnin)/thin - 1) = xi;
+        phi_hyperparameter_draws(span(2*n_groups,(2*n_groups+n-1)), (rep+1-burnin)/thin - 1) = lambda;
+        phi_hyperparameter_draws(span((2*n_groups+n),(phi_hyperparameter_size-1)), (rep+1-burnin)/thin - 1) = psi;
 
-      }if(priorPHI == "GT" ){
-
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(0,(n_groups-1))) = a;
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_groups,(2*n_groups-1))) = xi;
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(2*n_groups,(2*n_groups+n-1))) = psi.as_row();
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((2*n_groups+n),(phi_hyperparameter_size-1))) = lambda.as_row();
+        // if(priorPHI == "GT" ){
+        //
+        //   phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(0,(n_groups-1))) = a;
+        //   phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_groups,(2*n_groups-1))) = xi;
+        //   phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(2*n_groups,(2*n_groups+n-1))) = lambda;
+        //   phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((2*n_groups+n),(phi_hyperparameter_size-1))) = psi;
+        //
+        // }
 
       }else if(priorPHI == "HS"){
 
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(0, (n_groups -1))) = zeta_hs ;
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_groups, (n_groups+n-1))) = theta_hs;
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((n_groups+n), (n_groups+n+n_groups-1))) = varpi;
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((n_groups+n+n_groups),phi_hyperparameter_size-1))= nu;
+        phi_hyperparameter_draws(span(0,(n_groups-1)), (rep+1-burnin)/thin - 1) = zeta_hs;
+        phi_hyperparameter_draws(span(n_groups,(2*n_groups-1)), (rep+1-burnin)/thin - 1) = varpi;
+        phi_hyperparameter_draws(span(2*n_groups,(2*n_groups+n-1)), (rep+1-burnin)/thin - 1) = theta_hs;
+        phi_hyperparameter_draws(span((2*n_groups+n),(phi_hyperparameter_size-1)), (rep+1-burnin)/thin - 1) = nu;
 
       }else if(priorPHI == "SSVS"){
 
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(0, (n-1))) = gammas;
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n, (phi_hyperparameter_size-1))) = p_i;
+        phi_hyperparameter_draws(span(0, (n-1)), (rep+1-burnin)/thin - 1) = gammas;
+        phi_hyperparameter_draws(span(n, (phi_hyperparameter_size-1)), (rep+1-burnin)/thin - 1) = p_i;
 
       }else if(priorPHI == "HMP"){
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, 0) = lambda_1;
-        phi_hyperparameter_draws((rep+1-burnin)/thin - 1, 1) = lambda_2;
+        phi_hyperparameter_draws(0, (rep+1-burnin)/thin - 1) = lambda_1;
+        phi_hyperparameter_draws(1, (rep+1-burnin)/thin - 1) = lambda_2;
       }
 
-      if(Sigma_type == "cholesky"){
+      if(sigma_type == "cholesky"){
 
-        L_draws.row((rep+1-burnin)/thin - 1) = L;
+        U_draws.col((rep+1-burnin)/thin - 1) = u;
 
-        if(priorL == "DL"){
+        if(priorU == "DL" || priorU == "GT"){
 
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, 0) = a_L;
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span(1,n_L)) = psi_L.as_row();
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_L+1,2*n_L)) = lambda_L.as_row();
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, l_hyperparameter_size-1) = xi_L;
+          u_hyperparameter_draws(0, (rep+1-burnin)/thin - 1) = a_U;
+          u_hyperparameter_draws(1, (rep+1-burnin)/thin - 1) = xi_U;
+          u_hyperparameter_draws(span(2,n_U+1), (rep+1-burnin)/thin - 1) = lambda_U;
+          u_hyperparameter_draws(span(n_U+2,u_hyperparameter_size-1), (rep+1-burnin)/thin - 1) = psi_U;
 
-        }else if(priorL == "GT"){
+          // u_hyperparameter_draws((rep+1-burnin)/thin - 1, 0) = a_U;
+          // u_hyperparameter_draws((rep+1-burnin)/thin - 1, span(1,n_U)) = psi_U.as_row();
+          // u_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_U+1,2*n_U)) = lambda_U.as_row();
+          // u_hyperparameter_draws((rep+1-burnin)/thin - 1, u_hyperparameter_size-1) = xi_U;
+          // else if(priorU == "GT"){
+          //
+          //   u_hyperparameter_draws((rep+1-burnin)/thin - 1, 0) = a_U;
+          //   u_hyperparameter_draws((rep+1-burnin)/thin - 1, 1) = xi_U;
+          //   u_hyperparameter_draws((rep+1-burnin)/thin - 1, span(2,n_U+1)) = psi_U;
+          //   u_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_U+2,u_hyperparameter_size-1)) = lambda_U;
+          //
+          // }
 
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, 0) = a_L;
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, 1) = xi_L;
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span(2,n_L+1)) = psi_L.as_row();
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_L+2,l_hyperparameter_size-1)) = lambda_L.as_row();
+        }else if(priorU == "SSVS"){
 
-        }else if(priorL == "SSVS"){
+          u_hyperparameter_draws(span(0, (n_U-1)), (rep+1-burnin)/thin - 1) = gammas_U;
+          u_hyperparameter_draws(span(n_U, (u_hyperparameter_size-1)), (rep+1-burnin)/thin - 1) = p_i_U;
 
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span(0, (n_L-1))) = gammas_L;
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_L, (l_hyperparameter_size-1))) = p_i_L;
+        }else if(priorU == "HMP"){
 
-        }else if(priorL == "HMP"){
+          u_hyperparameter_draws(0, (rep+1-burnin)/thin - 1) = lambda_3;
 
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, 0) = lambda_3;
-        }else if(priorL == "HS"){
+        }else if(priorU == "HS"){
 
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, 0) = zeta_hs_L ;
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, 1) = varpi_L;
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span(2, n_L+1)) = theta_hs_L;
-          l_hyperparameter_draws((rep+1-burnin)/thin - 1, span((n_L+2),(l_hyperparameter_size-1)))= nu_L;
+          u_hyperparameter_draws(0, (rep+1-burnin)/thin - 1) = zeta_hs_U ;
+          u_hyperparameter_draws(1, (rep+1-burnin)/thin - 1) = varpi_U;
+          u_hyperparameter_draws(span(2, n_U+1), (rep+1-burnin)/thin - 1) = theta_hs_U;
+          u_hyperparameter_draws(span((n_U+2),(u_hyperparameter_size-1)), (rep+1-burnin)/thin - 1)= nu_U;
 
         }
-      }else if(Sigma_type == "factor"){
-        facload_draws.row((rep+1-burnin)/thin - 1) = armafacload;
-        fac_draws.row((rep+1-burnin)/thin - 1) = armafac.cols(tvp_keep_start ,armafac.n_cols-1);
+      }else if(sigma_type == "factor"){
+        facload_draws.slice((rep+1-burnin)/thin - 1) = armafacload;
+        fac_draws.slice((rep+1-burnin)/thin - 1) = armafac.cols(tvp_keep_start ,armafac.n_cols-1);
       }
     }
 
@@ -863,29 +797,18 @@ List bvar_cpp(const arma::mat& Y,
     }
 
   }
+
   timer.step("end");
   NumericVector time(timer);
-
   List out = List::create(
     Named("PHI") = PHI_draws,
-    Named("L") = L_draws,
+    Named("U") = U_draws,
     Named("logvar") = logvar_draws,
     Named("sv_para") = sv_para_draws,
     Named("phi_hyperparameter") = phi_hyperparameter_draws,
-    Named("l_hyperparameter") = l_hyperparameter_draws,
+    Named("u_hyperparameter") = u_hyperparameter_draws,
     Named("bench") = time,
     Named("V_prior") = V_prior_draws,
-    Named("V_i") = V_i,
-    // Named("a") = a,
-    // Named("b") = b,
-    // Named("c") = c,
-    // Named("GT_vs") = GT_vs,
-    // Named("a_L") = a_L,
-    // Named("b_L") = b_L,
-    // Named("c_L") = c_L,
-    // Named("GT_vs_L") = GT_vs_L,
-    // Named("a_vec")=a_vec,
-    // Named("c_vec")=c_vec,
     Named("facload") = facload_draws,
     Named("fac") = fac_draws
   );
