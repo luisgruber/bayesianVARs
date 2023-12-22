@@ -1390,7 +1390,7 @@ specify_prior_sigma <- function(data=NULL,
 #'  The first indicates the shape and the second the rate of the Gamma
 #'  hyperprior on cross-lag coefficients. \code{HMP_lambda2} has only to be
 #'  specified if \code{prior="HMP"}.
-#'@param normal_sds numeric vector of length eqn{n}, where eqn{n = lags M^2} is
+#'@param normal_sds numeric vector of length \eqn{n}, where \eqn{n = lags M^2} is
 #'  the number of all VAR coefficients (excluding the intercept), indicating the
 #'  prior variances. A single number will be recycled accordingly! Must be
 #'  positive. \code{normal_sds} has only to be specified if
