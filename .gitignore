@@ -5,7 +5,14 @@
 .Rdata
 .httr-oauth
 .DS_Store
-svoffset
+*.o
+*.so
+*.dll
+test.cpp
 read.Rmd
 README.Rmd
 **/ideas
+inst/doc
+some_vignette
+/doc/
+/Meta/
