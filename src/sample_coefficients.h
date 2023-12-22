@@ -15,10 +15,10 @@ void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
                        const bool& huge);
 
 void sample_PHI(arma::mat& PHI, const arma::mat PHI_prior, const arma::mat Y,
-                const arma::mat X, const arma::mat L, const arma::mat d_sqrt,
-                const arma::mat V_prior, const int M, bool subs);
+                const arma::mat X, const arma::mat U, const arma::mat d_sqrt,
+                const arma::mat V_prior, const int M);
 
-void sample_L(arma::mat& L, const arma::mat& Ytilde, const arma::vec& V_i,
+void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i,
               const arma::mat& d_sqrt);
 
 void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
@@ -36,7 +36,7 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
 //                    const int method, const double tol);
 
 // double do_rgig1(double lambda, double chi, double psi);
-double do_rgig2(double lambda, double chi, double psi);
+double do_rgig(double lambda, double chi, double psi);
 
 void sample_V_i_HS(arma::vec& V_i, const arma::vec coefs, arma::vec& theta,
                    double& zeta, arma::vec& nu, double& varpi ,arma::uvec ind);
@@ -70,8 +70,8 @@ void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const do
                     const int& n_ol, const int& n_cl, const arma::uvec& i_ol,
                     const arma::uvec& i_cl);
 
-void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
-                      const double& r1, const arma::vec& l);
+void sample_V_i_U_HMP(double& lambda_3, arma::vec& V_i_U, const double& s1,
+                      const double& r1, const arma::vec& u);
 
 // void sample_V_i_R2D2(arma::vec& V_i, const arma::vec coefs, double& api,
 //                      const arma::vec api_vec, double& zeta, arma::vec& psi,
@@ -80,11 +80,11 @@ void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
 //                      const int method, const std::string kernel);
 
 // void sample_PHI_SL(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
-//                    const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,
+//                    const arma::mat& X, const arma::mat& U, const arma::mat& d_sqrt,
 //                    arma::mat& Gamma, const int& K, const int& M,
 //                    const double& nu_a, const double& nu_b);
 //
-// void sample_L_SL(arma::mat& L, arma::mat& Ytilde, const arma::mat& d_sqrt,
+// void sample_L_SL(arma::mat& U, arma::mat& Ytilde, const arma::mat& d_sqrt,
 //               vec& omega, const double& nu_a, const double& nu_b);
 
 #endif

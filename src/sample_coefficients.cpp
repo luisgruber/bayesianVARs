@@ -3,6 +3,8 @@
 using namespace Rcpp;
 using namespace arma;
 
+// currently not in use
+/*
 arma::vec mvrnorm1(arma::vec& mu, arma::mat& Sigma, double tol = 1e-06){
 
   int p = mu.size();
@@ -44,125 +46,15 @@ arma::vec mvrnorm1(arma::vec& mu, arma::mat& Sigma, double tol = 1e-06){
 
   return X.t();
 }
+*/
 
-// // Import rgig from R package GIGrvg
-// double do_rgig1(double lambda, double chi, double psi) {
-//
-//   if ( !(R_FINITE(lambda) && R_FINITE(chi) && R_FINITE(psi)) ||
-//        (chi <  0. || psi < 0)      ||
-//        (chi == 0. && lambda <= 0.) ||
-//        (psi == 0. && lambda >= 0.) ) {
-//     Rcpp::stop("invalid parameters for GIG distribution: lambda=%g, chi=%g, psi=%g",
-//                lambda, chi, psi);
-//   }
-//
-//   double res;
-//   // circumvent GIGrvg in these cases
-//   if ((chi < (10 * DBL_EPSILON))) {
-//     /* special cases which are basically Gamma and Inverse Gamma distribution */
-//     if (lambda > 0.0) {
-//       res = R::rgamma(lambda, 2.0/psi);
-//     }
-//   else {
-//     res = 1.0/R::rgamma(-lambda, 2.0/chi); // fixed
-//   }
-// } else if ((psi < (10 * DBL_EPSILON)) ) {
-//   /* special cases which are basically Gamma and Inverse Gamma distribution */
-//   if (lambda > 0.0) {
-//     res = R::rgamma(lambda, 2.0/psi);  // fixed
-//   } else {
-//     res = 1.0/R::rgamma(-lambda, 2.0/chi); // fixed
-//   }
-// } else {
-//     SEXP (*fun)(int, double, double, double) = NULL;
-//     if (!fun) fun = (SEXP(*)(int, double, double, double)) R_GetCCallable("GIGrvg", "do_rgig");
-//
-//     res = as<double>(fun(1, lambda, chi, psi));
-//   }
-//   return res;
-// }
-
-double do_rgig2(double lambda, double chi, double psi) {
+double do_rgig(double lambda, double chi, double psi) {
 
     SEXP (*fun)(int, double, double, double) = NULL;
     if (!fun) fun = (SEXP(*)(int, double, double, double)) R_GetCCallable("GIGrvg", "do_rgig");
 
     return as<double>(fun(1, lambda, chi, psi));
 }
-
-// // draw_PHI samples VAR coefficients using the corrected triangular
-// // algorithm as in Carrier, Chan, Clark & Marcellino (2021)
-// // Rcpp::export --> for use within a sampler written in R
-//
-// // [[Rcpp::export]]
-// arma::mat draw_PHI(arma::mat& PHI, arma::mat& PHI_prior, arma::mat& Y, arma::mat& X,
-//                    arma::mat& L, arma::mat& d, arma::vec& V_i, int& K, int& M) {
-//
-//   arma::mat V_prior = reshape(V_i, K, M);
-//
-//   for(int i = 0; i < M; i++){
-//
-//     arma::mat V_p_inv = diagmat(1/V_prior.col(i));
-//
-//     arma::mat PHI_0 = PHI;
-//     PHI_0.col(i).zeros();
-//     arma::vec normalizer = vectorise( pow(d.cols(i, M-1), 0.5)  );
-//     arma::vec Y_new = vectorise( (Y - X * PHI_0) * L.cols(i, M-1) ) / normalizer;
-//     arma::mat X_new_tmp = arma::kron(L( span(i,i), span(i, M-1)).t(), X);
-//     arma::mat X_new = X_new_tmp.each_col() / normalizer;
-//
-//     // SL
-// //    for(int j = 0; j<K; j++){
-// //      //gammas
-// //      arma::vec Y_new_star = Y_new - X_new * PHI.col(i) + X_new.col(j)*PHI(j,i);
-// //      double V_post = 1./(1/V_prior(j,i) + trans(X_new.col(j))*X_new.col(j));
-// //      double phi_j_post = V_post*(1/V_prior(j,i)*PHI_prior(j,i) + trans(X_new.col(j))*Y_new_star);
-// //      PHI(j,i) = R::rnorm(phi_j_post,V_post);
-// //    }
-//     // Compute V_post
-//     //arma::mat V_post = ( V_p_inv + X_new.t()*X_new ).i(); //unstable
-//     // compute inverse via the QR decomposition (similar to chol2inv in R)
-//     arma::mat V_post_tmp = chol(V_p_inv + X_new.t()*X_new, "upper");
-//     mat Q;
-//     mat R;
-//     qr(Q, R, V_post_tmp);
-//     mat S = inv(trimatu(R));
-//     mat V_post= S * S.t();
-//
-//     arma::colvec phi_post = V_post * (V_p_inv*PHI_prior.col(i) + X_new.t()*Y_new);
-//
-//     PHI.col(i) = mvrnorm1(phi_post, V_post, 1e-06);
-//
-//   }
-//
-//   return(PHI);
-// }
-
-// void draw_post(arma::vec& coef_draw,
-//                const arma::mat omega_post,
-//                const arma::vec coef_post_prep,
-//                const bool typeL){
-//   // this function generates one sample from posterior
-//   // without inverting the whole precision matrix
-//   const int K = coef_post_prep.size();
-//   mat omega_post_chol =  chol(omega_post, "upper");
-//   mat omega_post_chol_inv = arma::inv(trimatu(omega_post_chol));
-//   vec coef_post = omega_post_chol_inv * omega_post_chol_inv.t() * coef_post_prep;
-//   arma::colvec rnormvec(K);
-//   //rnormvec = Rcpp::rnorm(K); !!!inefficient: Rcpp::rnorm creates NumericVector, however rnormvec is arma::colvec. Hence there will be a copy
-//   rnormvec.imbue(R::norm_rand);
-//
-//   arma::vec coef_draw_tmp = coef_post + omega_post_chol_inv*rnormvec;
-//
-//   if(typeL){
-//     //pad draw with zeros (and one 1 for the diagonal element)
-//     coef_draw.zeros();
-//     coef_draw.subvec(0,K-1) = coef_draw_tmp;
-//     coef_draw(K) = 1.;
-//   }else{
-//     coef_draw = coef_draw_tmp;
-//   }
-// }
 
 // univariate_regression_update updates the coefficientes of an univariate
 // linear regression with known variance equaling one, i.e. both the dependent
@@ -172,10 +64,10 @@ void univariate_regression_update(arma::vec& coef_draw,
                     const arma::vec& prior_variance,
                     const arma::vec& y_norm,
                     const arma::mat& X_norm,
-                    const bool& typeL,
+                    const bool& typeU,
                     const bool& huge){
 
-  const int K = prior_variance.size(); // coef_draw.size() will not work if typeL==true
+  const int K = prior_variance.size(); // coef_draw.size() will not work if typeU==true
   const int T = y_norm.size();
 
   arma::vec coef_draw_tmp(K);
@@ -184,7 +76,7 @@ void univariate_regression_update(arma::vec& coef_draw,
 
     arma::vec u(K); u.imbue(R::norm_rand); // .imbue() is similar to .fill() but handles functors or lambda functions. R::norm_rand is the underlying function of wrappers like Rcpp::rnorm and R::rnorm.
     u %= arma::sqrt(prior_variance);
-    if(!typeL){
+    if(!typeU){
       u += prior_mean;
     }
     arma::vec delta(T); delta.imbue(R::norm_rand);
@@ -202,7 +94,7 @@ void univariate_regression_update(arma::vec& coef_draw,
     arma::mat Omega_post_chol_inv = arma::inv(trimatu(Omega_post_chol));
 
     arma::vec coef_post = X_norm.t()*y_norm;
-    if(!typeL) { // L has by construction prior_mean of zero
+    if(!typeU) { // U has by construction prior_mean of zero
       coef_post += prior_mean / prior_variance;
     }
     coef_post = Omega_post_chol_inv * Omega_post_chol_inv.t() * coef_post;
@@ -214,7 +106,7 @@ void univariate_regression_update(arma::vec& coef_draw,
     coef_draw_tmp = coef_post + Omega_post_chol_inv*rnormvec;
   }
 
-  if(typeL){
+  if(typeU){
     //pad draw with zeros (and one 1 for the diagonal element)
     coef_draw.zeros();
     coef_draw.subvec(0,K-1) = coef_draw_tmp;
@@ -251,8 +143,8 @@ void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
 // sample_PHI samples VAR coefficients using the corrected triangular
 // algorithm as in Carrier, Chan, Clark & Marcellino (2021)
 void sample_PHI(arma::mat& PHI, const arma::mat PHI_prior, const arma::mat Y,
-                const arma::mat X, const arma::mat L, const arma::mat d_sqrt,
-                const arma::mat V_prior, const int M, bool subs) {
+                const arma::mat X, const arma::mat U, const arma::mat d_sqrt,
+                const arma::mat V_prior, const int M) {
 
   for(int j = 0; j < M; j++){
 
@@ -260,90 +152,21 @@ void sample_PHI(arma::mat& PHI, const arma::mat PHI_prior, const arma::mat Y,
     PHI_0.col(j).zeros();
     arma::mat normalizer_mat = d_sqrt.cols(j, M-1);
     arma::vec normalizer(normalizer_mat.begin(), normalizer_mat.size(), false);
-    arma::mat Y_new_mat = (Y - X * PHI_0) * L.cols(j, M-1);
+    arma::mat Y_new_mat = (Y - X * PHI_0) * U.cols(j, M-1);
     arma::vec Y_new(Y_new_mat.begin(), Y_new_mat.size(), false);
     Y_new /= normalizer;
-    arma::mat X_new_tmp = arma::kron(L( span(j,j), span(j, M-1)).t(), X);
+    arma::mat X_new_tmp = arma::kron(U( span(j,j), span(j, M-1)).t(), X);
     arma::mat X_new = X_new_tmp.each_col() / normalizer;
 
-    // 'subs' avoids the direct computation of the inverse needed for V_post
+    arma::vec PHI_j = PHI.unsafe_col(j);
+    // generate posterior draw
+    univariate_regression_update(PHI_j, PHI_prior.col(j), V_prior.col(j),
+                                 Y_new, X_new, false, false);
 
-    if(subs){
-      arma::vec PHI_j = PHI.unsafe_col(j);
-      // generate posterior draw
-      univariate_regression_update(PHI_j, PHI_prior.col(j), V_prior.col(j),
-                                   Y_new, X_new, false, false);
-    }else{
-      arma::mat Omega_post = X_new.t()*X_new;
-      Omega_post.diag() += 1./V_prior.col(j);
-      arma::mat V_post_inv_chol = chol(Omega_post, "upper");
-      //arma::mat V_post = ( V_prior_inv + X_new.t()*X_new ).i(); //unstable
-      // compute inverse via the QR decomposition (similar to chol2inv in R)
-      //arma::mat V_post_tmp = chol(V_prior_inv + X_new.t()*X_new, "upper");
-      mat Q;
-      mat R;
-      qr(Q, R, V_post_inv_chol);
-      mat S = inv(trimatu(R));
-      mat V_post= S * S.t();///
-
-      arma::colvec phi_post = V_post * ((PHI_prior.col(j)/V_prior.col(j)) + X_new.t()*Y_new);
-
-      PHI.col(j) = mvrnorm1(phi_post, V_post, 1e-06);
-    }
   }
 }
 
-/*
-void sample_PHI(arma::mat& PHI, const arma::mat PHI_prior, const arma::mat Y,
-                const arma::mat X, const arma::mat L, const arma::mat d_sqrt,
-                const arma::mat V_prior, const int M, bool subs) {
-
-  for(int i = 0; i < M; i++){
-
-    arma::mat V_prior_inv = diagmat(1/V_prior.col(i));
-
-    arma::mat PHI_0 = PHI;
-    PHI_0.col(i).zeros();
-    arma::vec normalizer = vectorise( d_sqrt.cols(i, M-1)  );
-    arma::vec Y_new = vectorise( (Y - X * PHI_0) * L.cols(i, M-1) ) / normalizer;
-    arma::mat X_new_tmp = arma::kron(L( span(i,i), span(i, M-1)).t(), X);
-    arma::mat X_new = X_new_tmp.each_col() / normalizer;
-
-    // 'subs' avoids the direct computation of the inverse needed for V_post
-
-    if(subs){
-     // PHI.col(i) = draw_post(V_prior_inv,Y_new, X_new, PHI_prior.col(i));
-     // prepare posterior precision
-     arma::mat Omega_post = X_new.t()*X_new;
-      // add prior precision
-      Omega_post.diag() += 1./V_prior.col(i);
-      // prepare posterior mean
-      arma::vec phi_post_prep = (PHI_prior.col(i)/V_prior.col(i)) + X_new.t()*Y_new;
-      arma::vec PHI_j = PHI.unsafe_col(i);
-      // generate posterior draw
-      draw_post(PHI_j, Omega_post, phi_post_prep, false);
-    }else{
-      arma::mat Omega_post = X_new.t()*X_new;
-      Omega_post.diag() += 1./V_prior.col(i);
-      arma::mat V_post_inv_chol = chol(Omega_post, "upper");
-      //arma::mat V_post = ( V_prior_inv + X_new.t()*X_new ).i(); //unstable
-      // compute inverse via the QR decomposition (similar to chol2inv in R)
-      //arma::mat V_post_tmp = chol(V_prior_inv + X_new.t()*X_new, "upper");
-      mat Q;
-      mat R;
-      qr(Q, R, V_post_inv_chol);
-      mat S = inv(trimatu(R));
-      mat V_post= S * S.t();///
-
-      arma::colvec phi_post = V_post * ((PHI_prior.col(i)/V_prior.col(i)) + X_new.t()*Y_new);
-
-      PHI.col(i) = mvrnorm1(phi_post, V_post, 1e-06);
-    }
-  }
-}
-*/
-
-void sample_L(arma::mat& L, const arma::mat& Ytilde, const arma::vec& V_i, const arma::mat& d_sqrt) {
+void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const arma::mat& d_sqrt) {
 
   int M = Ytilde.n_cols;
 
@@ -357,8 +180,8 @@ void sample_L(arma::mat& L, const arma::mat& Ytilde, const arma::vec& V_i, const
     // create 'dependent' variable
     arma::vec c = Ytilde.col(i) / d_sqrt.col(i);
     // update free off-diagonal elements in column i
-    arma::vec L_j = L.unsafe_col(i);
-    univariate_regression_update(L_j, prior_mean, V_i.subvec(ind, ind+i-1), c, Z, true, false);
+    arma::vec U_j = U.unsafe_col(i);
+    univariate_regression_update(U_j, prior_mean, V_i.subvec(ind, ind+i-1), c, Z, true, false);
 
     ind = ind+i;
 
@@ -367,10 +190,10 @@ void sample_L(arma::mat& L, const arma::mat& Ytilde, const arma::vec& V_i, const
 }
 
 
-// void sample_L(arma::mat& L, arma::mat& Ytilde, const arma::vec& V_i, const arma::mat& d_sqrt) {
+// void sample_U(arma::mat& U, arma::mat& Ytilde, const arma::vec& V_i, const arma::mat& d_sqrt) {
 //
 //   int M = Ytilde.n_cols;
-//   //mat L(M,M,fill::eye);
+//   //mat U(M,M,fill::eye);
 //
 //   int ind = 0;
 //
@@ -388,11 +211,11 @@ void sample_L(arma::mat& L, const arma::mat& Ytilde, const arma::vec& V_i, const
 //     // prepare posterior mean
 //     arma::vec l_post_prep = Z.t()*c;
 //     // generate one posterior draw
-//     arma::vec L_j = L.unsafe_col(i);
-//     draw_post(L_j, Omegal_post, l_post_prep, true);
+//     arma::vec U_j = U.unsafe_col(i);
+//     draw_post(U_j, Omegal_post, l_post_prep, true);
 // ///    arma::vec l_tmp(size(l_post_prep));
 // ///    draw_post(l_tmp, Omegal_post, l_post_prep, false);
-// ///   L(span(0,i-1), span(i,i)) = l_tmp ;//mvrnorm1(l_post, V_post);
+// ///   U(span(0,i-1), span(i,i)) = l_tmp ;//mvrnorm1(l_post, V_post);
 //
 // /// old...
 // //    mat V_p_inv = diagmat(1/V_i.subvec(ind, ind+i-1));
@@ -407,7 +230,7 @@ void sample_L(arma::mat& L, const arma::mat& Ytilde, const arma::vec& V_i, const
 // //    mat S = inv(trimatu(R));
 // //    mat V_post= S * S.t();
 // //    colvec l_post = V_post * (Z.t()*c);
-// //    L(span(0,i-1), span(i,i)) = mvrnorm1(l_post, V_post);
+// //    U(span(0,i-1), span(i,i)) = mvrnorm1(l_post, V_post);
 //
 //     ind = ind+i;
 //
@@ -431,10 +254,10 @@ void sample_V_i_GT(arma::vec& V_i, const arma::vec coefs, arma::vec& psi,
   for(it = ind.begin(); it != ind.end(); ++it){
     // sample auxiliary scaling parameters
     if(priorkernel == "exponential"){
-      psi(*it) = 1./do_rgig2(-0.5, 1, coefs_squared(*it)/(lambda(*it)*vs)); //For R2d2exp vs must be 1/2
+      psi(*it) = 1./do_rgig(-0.5, 1, coefs_squared(*it)/(lambda(*it)*vs)); //For R2d2exp vs must be 1/2
     }
     // sample local scales
-    lambda(*it) = do_rgig2(a - 0.5, coefs_squared(*it)/(psi(*it)*vs), 2*xi); // For R2d2exp vs must be 1/2, for NG psi must be 1
+    lambda(*it) = do_rgig(a - 0.5, coefs_squared(*it)/(psi(*it)*vs), 2*xi); // For R2d2exp vs must be 1/2, for NG psi must be 1
   }
   double zeta = arma::accu(lambda(ind));
   if(tol>0){
@@ -464,7 +287,7 @@ void sample_V_i_GT(arma::vec& V_i, const arma::vec coefs, arma::vec& psi,
     arma::vec weights = w/sum(w);
     arma::ivec iv(gridlength);
     R::rmultinom(1, weights.begin(), gridlength, iv.begin());
-    arma::uvec i = arma::find(iv == 1.0,1); // reports only the first value that meets the condition (by construction there is only one 1)
+    arma::uvec i = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
     a = a_vec(i(0));
     if(c_rel_a){
       c = c_vec(i(0));
@@ -483,7 +306,7 @@ void sample_V_i_GT(arma::vec& V_i, const arma::vec coefs, arma::vec& psi,
 //
 //   arma::uvec::iterator it;
 //   for(it = ind.begin(); it != ind.end(); ++it){
-//     theta_tilde(*it) = do_rgig2(a-0.5, coefs(*it)*coefs(*it), a/zeta);
+//     theta_tilde(*it) = do_rgig(a-0.5, coefs(*it)*coefs(*it), a/zeta);
 //     if(!theta_tilde.is_finite()){
 //                     ::Rf_error("Non-finite theta_tilde: PHI(*): %e, a(j): %f, z(j): %e, *: %i, giglambda: %f, gigchi:%e, gigpsi:%e", coefs(*it), a, zeta, *it,a-0.5,coefs(*it)*coefs(*it),a/zeta);
 //                   }
@@ -557,8 +380,8 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
   arma::uvec::iterator it;
   for(it = ind.begin(); it != ind.end(); ++it){
     //important: joint update of p(lambda,psi|...): first lambda, than psi!!! (is wrong in Bhattacharya et al 2015!)
-    lambda(*it) = do_rgig2(a-1., 2*coefs_abs(*it), 2*xi);
-    psi(*it) =  do_rgig2(0.5, (coefs(*it)*coefs(*it)) /
+    lambda(*it) = do_rgig(a-1., 2*coefs_abs(*it), 2*xi);
+    psi(*it) =  do_rgig(0.5, (coefs(*it)*coefs(*it)) /
       (lambda(*it)*lambda(*it)), 1 );
   }
   double zeta = arma::accu(lambda(ind));
@@ -587,7 +410,7 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
     arma::vec weights = w/sum(w);
     arma::ivec iv(gridlength);
     R::rmultinom(1, weights.begin(), gridlength, iv.begin());
-    arma::uvec i = arma::find(iv == 1.0,1); // reports only the first value that meets the condition (by construction there is only one 1)
+    arma::uvec i = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
     a = a_vec(i(0));
     if(c_rel_a){
       c = c_vec(i(0));
@@ -621,9 +444,9 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
 //   arma::vec lambda0(theta.size());
 //   arma::uvec::iterator it;
 //     for(it = ind.begin(); it != ind.end(); ++it){ //int j = 0; j < n; j++
-//       psi(*it) = 1./do_rgig2(-0.5, 1, (coefs_abs(*it) * coefs_abs(*it)) /
+//       psi(*it) = 1./do_rgig(-0.5, 1, (coefs_abs(*it) * coefs_abs(*it)) /
 //         ( zeta2 * theta(*it) * theta(*it)));
-//       lambda0(*it) = do_rgig2(a-1., 2*coefs_abs(*it), 1);
+//       lambda0(*it) = do_rgig(a-1., 2*coefs_abs(*it), 1);
 //     }
 //
 //   theta(ind) = lambda0(ind) / arma::accu(lambda0(ind));
@@ -633,7 +456,7 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
 //     }
 //   if(method == 1.){
 //     double tmp4samplingzeta = arma::accu(coefs_abs(ind) / theta(ind));
-//     zeta = do_rgig2(n*(a-1.), 2*tmp4samplingzeta,1);
+//     zeta = do_rgig(n*(a-1.), 2*tmp4samplingzeta,1);
 //     lambda = theta(ind) * zeta;
 //   }else if(method == 2.){
 //     zeta = arma::accu(lambda0(ind));
@@ -684,11 +507,11 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
 //   double j = 0;
 //   for(it = ind.begin(); it != ind.end(); ++it){ //int j = 0; j < n; j++
 //     if(kernel=="laplace"){
-//       psi(*it) = 1./do_rgig2(-0.5, 1, (coefs(j) * coefs(j)) /
+//       psi(*it) = 1./do_rgig(-0.5, 1, (coefs(j) * coefs(j)) /
 //         ( zeta * theta(*it)/2));
-//       theta_prep(j) = do_rgig2(api - .5, 2*coefs(j)*coefs(j)/psi(*it), 2*xi);
+//       theta_prep(j) = do_rgig(api - .5, 2*coefs(j)*coefs(j)/psi(*it), 2*xi);
 //     }else if(kernel == "normal"){
-//       theta_prep(j) = do_rgig2(api - .5, coefs(j)*coefs(j)/psi(*it), 2*xi);
+//       theta_prep(j) = do_rgig(api - .5, coefs(j)*coefs(j)/psi(*it), 2*xi);
 //     }
 //
 //     j += 1;
@@ -696,7 +519,7 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
 //
 //   if(method==1.){
 //     double tmp4samplingzeta = arma::accu(square(coefs) / (theta(ind)%psi(ind)));
-//     zeta = do_rgig2(n*api - n/2, 2*tmp4samplingzeta, 2*xi);
+//     zeta = do_rgig(n*api - n/2, 2*tmp4samplingzeta, 2*xi);
 //   }else if(method==2.){
 //     zeta = arma::accu(theta_prep);
 //   }
@@ -823,32 +646,32 @@ void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const do
                     const int& n_ol, const int& n_cl, const arma::uvec& i_ol,
                     const arma::uvec& i_cl){
 
-  lambda_1 = do_rgig2(s1 - n_ol/2, sum(square(PHI_diff(i_ol))/V_i_prep(i_ol)),
+  lambda_1 = do_rgig(s1 - n_ol/2, sum(square(PHI_diff(i_ol))/V_i_prep(i_ol)),
                      2*r1 );
-  lambda_2 = do_rgig2(s2 - n_cl/2, sum(square(PHI_diff(i_cl))/V_i_prep(i_cl)), 2*r2 );
+  lambda_2 = do_rgig(s2 - n_cl/2, sum(square(PHI_diff(i_cl))/V_i_prep(i_cl)), 2*r2 );
 
   V_i(i_ol) = lambda_1 * V_i_prep(i_ol);
   V_i(i_cl) = lambda_2 * V_i_prep(i_cl);
 
 }
 
-void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
-                    const double& r1, const arma::vec& l){
+void sample_V_i_U_HMP(double& lambda_3, arma::vec& V_i_U, const double& s1,
+                    const double& r1, const arma::vec& u){
 
-  int n = l.size();
-  lambda_3 = do_rgig2(s1 - n/2, sum(square(l)), 2*r1 );
+  int n = u.size();
+  lambda_3 = do_rgig(s1 - n/2, sum(square(u)), 2*r1 );
 
   //for(int j=0; j<n; ++j){
-  //  V_i_L(j) = lambda_3;
+  //  V_i_U(j) = lambda_3;
   //}
-  V_i_L.fill(lambda_3);
+  V_i_U.fill(lambda_3);
 
 }
 
 
 
 // void sample_PHI_SL(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
-//                    const arma::mat& X, const arma::mat& L, const arma::mat& d_sqrt,
+//                    const arma::mat& X, const arma::mat& U, const arma::mat& d_sqrt,
 //                    arma::mat& Gamma, const int& K, const int& M,
 //                    const double& nu_a, const double& nu_b) {
 //
@@ -857,8 +680,8 @@ void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
 //     arma::mat PHI_0 = PHI;
 //     PHI_0.col(i).zeros();
 //     arma::vec normalizer = vectorise( d_sqrt.cols(i, M-1)  );
-//     arma::vec Y_new = vectorise( (Y - X * PHI_0) * L.cols(i, M-1) ) / normalizer;
-//     arma::mat X_new_tmp = arma::kron(L( span(i,i), span(i, M-1)).t(), X);
+//     arma::vec Y_new = vectorise( (Y - X * PHI_0) * U.cols(i, M-1) ) / normalizer;
+//     arma::mat X_new_tmp = arma::kron(U( span(i,i), span(i, M-1)).t(), X);
 //     arma::mat X_new = X_new_tmp.each_col() / normalizer;
 //
 //     for(int j = 0; j<K; j++){
@@ -907,11 +730,11 @@ void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
 //   }
 // }
 //
-// void sample_L_SL(arma::mat& L, arma::mat& Ytilde, const arma::mat& d_sqrt,
+// void sample_U_SL(arma::mat& U, arma::mat& Ytilde, const arma::mat& d_sqrt,
 //               vec& omega, const double& nu_a, const double& nu_b) {
 //
 //   int M = Ytilde.n_cols;
-//   //mat L(M,M,fill::eye);
+//   //mat U(M,M,fill::eye);
 //
 //   int ind = 0;
 //
@@ -925,9 +748,9 @@ void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
 //     for(unsigned int j=0; j<Z.n_cols; j++){
 //
 //       double p_i = R::rbeta(0.5 + omega(ind), 0.5 + 1 - omega(ind));
-//       double v_i = 1./R::rgamma((nu_a + omega(ind))/2, 1./((nu_b + L(j,i)*L(j,i))/2));
+//       double v_i = 1./R::rgamma((nu_a + omega(ind))/2, 1./((nu_b + U(j,i)*U(j,i))/2));
 //
-//       vec c_star = c - Z*L(span(0,i-1), span(i,i)) + Z.col(j)*L(j,i);
+//       vec c_star = c - Z*U(span(0,i-1), span(i,i)) + Z.col(j)*U(j,i);
 //
 //       vec pre1 = (trans(Z.col(j))*Z.col(j)); // pre1 is 1x1 dimensional
 //       double V_post = 1./(1./v_i + pre1(0)); // conversion to double via pre1(0)
@@ -943,9 +766,9 @@ void sample_V_i_L_HMP(double& lambda_3, arma::vec& V_i_L, const double& s1,
 //       omega(ind) = R::rbinom(1,gst);
 //
 //       if(omega(ind)==1){
-//         L(j,i) = R::rnorm(l_j_post, sqrt(V_post));
+//         U(j,i) = R::rnorm(l_j_post, sqrt(V_post));
 //       }else {
-//         L(j,i) = 0;
+//         U(j,i) = 0;
 //       }
 //       ind = ind+1;
 //     }
