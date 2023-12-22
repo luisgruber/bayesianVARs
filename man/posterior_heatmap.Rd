@@ -63,7 +63,7 @@ relative to the current setting of cex.}
 \item{asp}{aspect ratio.}
 }
 \value{
-Returns invisibly.
+Returns \code{x} invisibly.
 }
 \description{
 Posterior heatmaps for VAR coefficients or variance-covariance matrices

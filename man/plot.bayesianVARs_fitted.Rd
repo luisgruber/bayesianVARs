@@ -30,7 +30,7 @@ is visualized.}
 \item{...}{Currently ignored.}
 }
 \value{
-returns invisibly
+returns \code{x} invisibly
 }
 \description{
 Visualization of in-sample fit of an estimated VAR.

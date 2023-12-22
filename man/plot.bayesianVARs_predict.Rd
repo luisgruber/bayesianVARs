@@ -36,7 +36,7 @@ ahead to plot. \code{max(ahead)} must be smaller equal to
 \item{...}{Currently ignored!}
 }
 \value{
-Returns invisibly!
+Returns \code{x} invisibly!
 }
 \description{
 Visualization of (out-of-sample) predictive distribution.

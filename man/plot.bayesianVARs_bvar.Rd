@@ -29,7 +29,7 @@ values is \code{NULL}; in this case, the axis will be labeled with numbers.}
 \item{...}{Currently ignored!}
 }
 \value{
-Returns invisibly.
+Returns \code{x} invisibly.
 }
 \description{
 Visualization of in-sample fit. Can also be used to display prediction

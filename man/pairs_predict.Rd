@@ -22,7 +22,7 @@ ahead to plot. \code{max(ahead)} must be smaller equal to
 \item{...}{Currently ignored!}
 }
 \value{
-Returns invisibly.
+Returns \code{x} invisibly.
 }
 \description{
 Pairwise visualization of out-of-sample posterior predictive

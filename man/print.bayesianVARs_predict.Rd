@@ -13,7 +13,7 @@
 \item{...}{Currently ignored!}
 }
 \value{
-Returns invisibly.
+Returns \code{x} invisibly.
 }
 \description{
 Print method for bayesianVARs_predict objects.
