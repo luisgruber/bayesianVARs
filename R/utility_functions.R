@@ -97,7 +97,7 @@ summary.bayesianVARs_bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.
 #'   [`summary.bayesianVARs_bvar()`].
 #' @param ... Currently ignored!
 #'
-#' @return Returns invisibly!
+#' @return Returns `x` invisibly!
 #' @export
 #'
 #' @examples
@@ -2025,7 +2025,7 @@ predict_old <- function(object, n.ahead, stable = TRUE, LPL = FALSE, Y_obs = NA,
 #'   [`predict.bayesianVARs_bvar()`].
 #' @param ... Currently ignored!
 #'
-#' @return Returns invisibly.
+#' @return Returns `x` invisibly.
 #' @export
 #'
 #' @examples
@@ -2102,7 +2102,7 @@ summary.bayesianVARs_predict <- function(object, ...){
 #' @param x A `summary.bayesianVARs_predict` object obtained via [`summary.bayesianVARs_predict()`].
 #' @param ... Currently ignored.
 #'
-#' @return Returns invisibly.
+#' @return Returns `x` invisibly.
 #' @export
 #'
 #' @examples

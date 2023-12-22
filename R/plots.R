@@ -29,7 +29,7 @@
 #'   relative to the current setting of cex.
 #' @param asp aspect ratio.
 #'
-#' @return Returns invisibly.
+#' @return Returns `x` invisibly.
 #' @seealso Other plotting [`plot.bayesianVARs_bvar()`],
 #' [`plot.bayesianVARs_fitted()`], [`plot.bayesianVARs_predict()`],
 #' [`pairs.bayesianVARs_predict()`].
@@ -286,7 +286,7 @@ plot_predvals <- function(preds, quantiles, observed = NULL, var_names,
 #' @param n_col integer indicating the number of columns to use for plotting.
 #' @param ... Currently ignored.
 #'
-#' @return returns invisibly
+#' @return returns `x` invisibly
 #' @seealso
 #' * fitted method for class 'bayesianVARs_bvar': [fitted.bayesianVARs_bvar()].
 #' * Other plotting [`plot.bayesianVARs_bvar()`],
@@ -354,7 +354,7 @@ plot.bayesianVARs_fitted <- function(x,
 #' @seealso Other plotting [`plot.bayesianVARs_fitted()`],
 #' [`plot.bayesianVARs_predict()`], [`pairs.bayesianVARs_predict()`],
 #' [`posterior_heatmap()`].
-#' @return Returns invisibly.
+#' @return Returns `x` invisibly.
 #' @export
 #'
 #' @examples
@@ -424,7 +424,7 @@ plot.bayesianVARs_bvar <- function(x, predictions = NULL,
 #' @seealso Other plotting [`plot.bayesianVARs_bvar()`],
 #' [`plot.bayesianVARs_fitted()`], [`plot.bayesianVARs_predict()`]
 #' [`posterior_heatmap()`].
-#' @return Returns invisibly.
+#' @return Returns `x` invisibly.
 #' @export
 #'
 #' @examples
@@ -502,7 +502,7 @@ pairs.bayesianVARs_predict <- function(x, vars, ahead, ...){
 #' @param n_col integer indicating the number of columns to use for plotting.
 #' @param ... Currently ignored!
 #'
-#' @return Returns invisibly!
+#' @return Returns `x` invisibly!
 #' @seealso Other plotting [`plot.bayesianVARs_bvar()`],
 #' [`plot.bayesianVARs_fitted()`], [`pairs.bayesianVARs_predict()`]
 #' [`posterior_heatmap()`].
