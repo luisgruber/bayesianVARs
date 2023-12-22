@@ -1,25 +1,25 @@
-
-
-# density of Dirichlet  ---------------------------------------------------
-
-ddir <- function(x, alpha, log = FALSE) {
-  if(!is.matrix(x)) x <- rbind(x)
-  if(!is.matrix(alpha)) {
-    alpha <- matrix(alpha, nrow = nrow(x), ncol = length(alpha), byrow = TRUE)
-  }
-  logd <- as.vector(rowSums((alpha - 1) * log(x)) + lgamma(rowSums(alpha)) - rowSums(lgamma(alpha)))
-  if(log == TRUE) out <- logd else if(log == FALSE) out <- exp(logd)
-  return(out)
-}
-
-ddir2 <- function(x, prep1, prep2, log = FALSE) {
-  # this function is useful when a discrete uniform hyperprior is imposed on the concentration parameter of the DL prior
-  # every draw of theta which depends upon the concentration parameter, has to be evaluated over a fixed grid of possible values in every iteration
-  # pre calucations of prep1 and prep1 are done in the function BVAR before the posterior sampler starts
-  logd <- colSums(t(prep1) * (log(x))) + prep2
-  if(log == TRUE) out <- logd else if(log == FALSE) out <- exp(logd)
-  return(out)
-}
+#
+#
+# # density of Dirichlet  ---------------------------------------------------
+#
+# ddir <- function(x, alpha, log = FALSE) {
+#   if(!is.matrix(x)) x <- rbind(x)
+#   if(!is.matrix(alpha)) {
+#     alpha <- matrix(alpha, nrow = nrow(x), ncol = length(alpha), byrow = TRUE)
+#   }
+#   logd <- as.vector(rowSums((alpha - 1) * log(x)) + lgamma(rowSums(alpha)) - rowSums(lgamma(alpha)))
+#   if(log == TRUE) out <- logd else if(log == FALSE) out <- exp(logd)
+#   return(out)
+# }
+#
+# ddir2 <- function(x, prep1, prep2, log = FALSE) {
+#   # this function is useful when a discrete uniform hyperprior is imposed on the concentration parameter of the DL prior
+#   # every draw of theta which depends upon the concentration parameter, has to be evaluated over a fixed grid of possible values in every iteration
+#   # pre calucations of prep1 and prep1 are done in the function BVAR before the posterior sampler starts
+#   logd <- colSums(t(prep1) * (log(x))) + prep2
+#   if(log == TRUE) out <- logd else if(log == FALSE) out <- exp(logd)
+#   return(out)
+# }
 
 # Data preparation --------------------------------------------------------
 
@@ -141,27 +141,19 @@ get_MP_V_prior <- function(lambda1=0.04, lambda2=0.0016, lambda3=10^3, sigma_sq 
 
 # Companion ---------------------------------------------------------------
 
-get_companion <- function(PHI, p, intercept=TRUE){
+get_companion <- function(PHI){
 
   M <- ncol(PHI)
-  K <- nrow(PHI)
+  p <- floor(nrow(PHI)/M)
+  K <- p*M
 
   companion <- matrix(0, K, K)
-  companion[,1:M] <- PHI
+  companion[,1:M] <- PHI[1:K,] # intercept is irrelevant for companion form
   if(p>1){
     companion[1:((p-1)*M), (M+1):(M+(p-1)*M)] <- diag((p-1)*M)
   }
-  if(intercept){
-    companion[K, K] <- 1
-  }
 
-  #cc <- matrix(0, M*p + intercept,M)
-  #cc[1:M,1:M] <- diag(M)
-
-  return(companion
-    #list(companion = companion,
-          #    cc = cc)
-    )
+  return(companion)
 
 }
 
