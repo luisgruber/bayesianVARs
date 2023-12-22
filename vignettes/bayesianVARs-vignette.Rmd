@@ -1,0 +1,139 @@
+---
+title: "Shrinkage Priors for Bayesian Vectorautoregressions featuring Stochastic Volatility Using the **R** Package **bayesianVARs**"
+abstract: |
+  <p align=justify> Vectorautoregressions (VARs) model the relationship between multiple time-series as they change over time. Their inherent flexibility -- VARs can be used for describing the dynamic behavior of time-series and for forecasting -- makes VARs very popular statistical models, especially in macroeconomics and related fields. It is well known, that VARs are prone to overfitting. Bayesian shrinkage priors alleviate that problem by shrinking coefficients towards zero. The R package **bayesianVARs** implements several state-of-the-art shrinkage priors for VARs, taking into account latest research on structured (semi-global-local) shrinkage priors. The user can choose between two different stochastic volatility specifications for the error term, namely Cholesky stochastic volatility and the order-invariant factor stochastic volatility specification. **bayesianVARs** provides efficient Markov Chain Monte Carlo (MCMC) algorithms for the fully Bayesian estimation of VARs. All computationally intensive tasks are written in C++ and interfaced with R. Last, the package offers functionality to assess out-of-sample predictive performance through log-predictive-likelihoods as well as user-friendly summary and visualization methods. </p>
+vignette: >
+  %\VignetteIndexEntry{Shrinkage Priors for Bayesian Vectorautoregressions featuring Stochastic Volatility Using the **R** Package **bayesianVARs**}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+**WARNING: THIS SITE IS UNDER CONSTRUCTION**
+
+# Econometric framework
+
+$$
+\boldsymbol y_t^\prime = \boldsymbol \iota^\prime + \sum_{k=1}^p \boldsymbol y^\prime_{t-k} \boldsymbol A_k + \boldsymbol\varepsilon_t^\prime, \quad \boldsymbol \varepsilon_t \sim \mathcal N(0,\boldsymbol \Sigma_t)
+$$
+
+$$
+\boldsymbol \Phi = (\boldsymbol A_1, \dots, \boldsymbol A_p)^\prime
+$$
+
+$$
+\boldsymbol \phi = \mathrm{vec}(\boldsymbol \Phi)
+$$
+
+## Factor stochastic volatility
+
+$$
+\boldsymbol \Sigma_t = \boldsymbol \Lambda \boldsymbol V_t\boldsymbol \Lambda^\prime + \boldsymbol Q_t
+$$
+
+## Cholesky stochastic volatility
+
+$$
+\boldsymbol \Sigma_t = \boldsymbol U^{\prime -1} \boldsymbol D_t \boldsymbol U^{-1}
+$$
+
+# Prior distributions
+
+**VAR coefficients**:
+
+-   Litterman Minnesota prior
+
+Denote $\mathbf{\underline{V}}_i$ the block of $\mathbf{\underline{V}}$ that corresponds to the $K$ coefficients in the $i$th equation, and let $\mathbf{\underline{V}}_{i,jj}$ be its diagonal elements: 
+$$
+\mathbf{\underline{V}}_{i,jj}=
+\begin{cases}
+\frac{\lambda_1}{r^2} & \text{for coefficients on own lag }r\text{ for }r=1,\dots,p, \\
+\frac{\lambda_2 \hat{\sigma}^2_{i}}{r^2 \hat{\sigma}^2_{j}} & \text{for coefficients on lag }r\text{ of variable }j \neq i,
+\end{cases}
+$$ 
+where $\lambda_1 > \lambda_2$ have to be chosen, and $\hat{\sigma}^2_{i}$ is the OLS variance of a univariate AR(6) model of the $i$th variable.
+
+-   Semi-global-local priors
+
+**Covariance**:
+
+-   Factor stochastic volatility
+    -   homoscedastically or heteroscedastically
+    -   algorithm and priors like **factorstochvol**
+-   Cholesky stochastic volatiltiy
+    -   shrinkage priors for $\boldsymbol U$ similar to those for the VAR coefficients
+    -   algorithm and priors for latent log variances via **stochvol**
+
+# Bayesian inference
+
+Main ingredients of MCMC sampler.
+
+-   Equation per equation estimation
+-   latent log variances via **stochvol**
+-   all parameters and latent variables of the factor stochastic volatility specification via **factorstochvol**
+
+# Case study
+
+```{r, results='hide'}
+library(bayesianVARs)
+# Load data
+train_data <-100* usmacro_growth[1:237,c("GDPC1", "PCECC96", "GPDIC1", "AWHMAN", "GDPCTPI", "CES2000000008x", "FEDFUNDS", "GS10", "EXUSUKx", "S&P 500")]
+test_data <-100* usmacro_growth[238:241,c("GDPC1", "PCECC96", "GPDIC1", "AWHMAN", "GDPCTPI", "CES2000000008x", "FEDFUNDS", "GS10", "EXUSUKx", "S&P 500")]
+
+# Specify priors
+prior_phi <- specify_prior_phi(data = train_data, lags = 2L, prior = "HS", global_grouping = "olcl-lagwise")
+prior_sigma <- specify_prior_sigma(data = train_data, type = "factor", factor_factors = 4L)
+                                   
+# Estimate model
+mod <- bvar(train_data, lags = 2L, draws = 1000, burnin = 1000, prior_phi = prior_phi, prior_sigma = prior_sigma, sv_keep = "all")
+
+# predict
+pred <- predict(mod, ahead = 1:4, LPL = TRUE, Y_obs = test_data)
+```
+
+```{r}
+plot(mod, predictions = pred, quantiles = c(0.05,0.5,0.95), n_col = 2)
+```
+
+```{r}
+phi <- coef(mod)
+par(mfrow=c(1,2))
+posterior_heatmap(phi,median)
+posterior_heatmap(phi, IQR)
+```
+
+```{r}
+# Extract posterior draws of variance-covariance matrix for all points in time
+mod_vcov <- vcov(mod)
+
+# Compute correlation matrices for 2 selected points in time
+these <- c(194,nrow(mod$Y))
+mod_cors <- array(as.numeric(NA), c(length(these), ncol(mod$Y),ncol(mod$Y),dim(mod_vcov)[4]))
+for(t in seq_along(these)){
+  for(r in seq.int(dim(mod_vcov)[4])){
+    mod_cors[t,,,r] <- cov2cor(mod_vcov[these[t],,,r])
+  }
+}
+dimnames(mod_cors) <- list(rownames(mod$Y)[these], colnames(mod$Y), colnames(mod$Y))
+```
+
+```{r}
+# Visualize
+par(mfrow=c(2,2))
+summaries <- c("median", "IQR")
+for(FUN in summaries){
+  for(tp in seq.int(nrow(mod_cors))){
+  posterior_heatmap(mod_cors[tp,,,], str2lang(FUN), xlabels = "")
+    if(FUN == "median"){
+      mtext(rownames(mod_cors)[tp], side = 3, line=3)
+    }
+}
+}
+
+```
