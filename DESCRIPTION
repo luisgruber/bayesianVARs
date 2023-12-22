@@ -1,33 +1,46 @@
 Package: bayesianVARs
 Title: MCMC estimation of Bayesian Vectorautoregressions
 Version: 0.0.0.9000
-Authors@R: 
-    person(given = "Luis",
-           family = "Gruber",
-           role = c("aut", "cre"),
-           email = "Luis.Gruber@aau.at",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+Authors@R: c(
+    person("Luis", "Gruber", , "Luis.Gruber@aau.at", role = c("cph", "aut", "cre"),
+           comment = c(ORCID = "0000-0002-2399-738X")),
+    person("Gregor", "Kastner", , "gregor.kastner@aau.at", role = "aut",
+           comment = c(ORCID = "0000-0002-8237-8271"))
+  )
+Description: Efficient Markov Chain Monte Carlo (MCMC) algorithms for the
+    fully Bayesian estimation of vector autoregressions (VARs) featuring
+    stochastiv volatility (SV).
 License: GPL (>= 3)
+URL: https://github.com/luisgruber/bayesianVARs
+BugReports: https://github.com/luisgruber/bayesianVARs/issues
+Depends: 
+    R (>= 3.3.0)
+Imports: 
+    colorspace,
+    factorstochvol,
+    GIGrvg,
+    graphics,
+    MASS,
+    mvtnorm,
+    Rcpp,
+    scales,
+    stats,
+    stochvol (>= 3.0.2),
+    utils
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+LinkingTo: 
+    factorstochvol,
+    Rcpp,
+    RcppArmadillo,
+    RcppProgress,
+    stochvol
+VignetteBuilder: 
+    knitr
+Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
-Imports: 
-    GIGrvg,
-    MASS,
-    mvtnorm,
-    Rcpp,
-    stats,
-    stochvol,
-    factorstochvol,
-    colorspace
-LinkingTo: 
-    Rcpp,
-    GIGrvg,
-    RcppArmadillo,
-    stochvol,
-    RcppProgress,
-    factorstochvol
-Depends: 
-    R (>= 2.10)
