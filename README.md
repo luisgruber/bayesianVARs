@@ -3,6 +3,11 @@ bayesianVARs: Hierarchical shrinkage priors
 Luis Gruber
 2023 12 20
 
+<!-- badges: start -->
+
+[![R-CMD-check](https://github.com/luisgruber/bayesianVARs/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/luisgruber/bayesianVARs/actions/workflows/R-CMD-check.yaml)
+<!-- badges: end -->
+
 Estimation of Bayesian vectorautoregressions with/without stochastic
 volatility.
 
