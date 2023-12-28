@@ -12,9 +12,10 @@ Estimation of Bayesian vectorautoregressions with/without stochastic
 volatility.
 
 Implements several modern hierarchical shrinkage priors, amongst them
-Dirichlet-Laplace prior, Hierarchical Minnesota, Horseshoe prior,
-Normal-Gamma prior, $R^2$-induced-Dirichlet-decomposition prior and
-Stochastic Search Variable Selection prior.
+Dirichlet-Laplace prior (DL), hierarchical Minnesota prior (HM),
+Horseshoe prior (HS), normal-gamma prior (NG),
+$R^2$-induced-Dirichlet-decomposition prior (R2D2) and stochastic search
+variable selection prior (SSVS).
 
 Concerning the error-term, the user can either specify an
 order-invariant factor structure or an order-variant cholesky structure.
