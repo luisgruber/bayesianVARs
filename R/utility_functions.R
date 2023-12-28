@@ -16,7 +16,7 @@
 #' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 #'
 #' # Estimate a model
-#' mod <- bvar(data, sv_keep = "all")
+#' mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 #'
 #' # Print model
 #' mod
@@ -57,7 +57,7 @@ print.bayesianVARs_bvar <- function(x, ...) {
 #' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 #'
 #' # Estimate model
-#' mod <- bvar(data)
+#' mod <- bvar(data, quiet = TRUE)
 #'
 #' # Summary
 #' sum <- summary(mod)
@@ -105,7 +105,7 @@ summary.bayesianVARs_bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.
 #' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 #'
 #' # Estimate model
-#' mod <- bvar(data)
+#' mod <- bvar(data, quiet = TRUE)
 #'
 #' # Print summary
 #' summary(mod)
@@ -145,7 +145,7 @@ print.summary.bayesianVARs_bvar <- function(x, ...){
 #' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 #'
 #' # Estimate a model
-#' mod <- bvar(data, sv_keep = "all")
+#' mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 #'
 #' # Extract posterior draws of VAR coefficients
 #' bvar_coefs <- coef(mod)
@@ -177,7 +177,7 @@ coef.bayesianVARs_bvar <- function(object, ...){
 #' # Access a subset of the usmacro_growth dataset
 #' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 #' # Estimate a model
-#' mod <- bvar(data, sv_keep = "all")
+#' mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 #'
 #' # Extract posterior draws of the variance-covariance matrix
 #' bvar_vcov <- vcov(mod)
@@ -233,7 +233,7 @@ vcov.bayesianVARs_bvar <- function(object, ...){
 #' # Access a subset of the usmacro_growth dataset
 #' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 #' # Estimate a model
-#' mod <- bvar(data, sv_keep = "all")
+#' mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 #'
 #' # Extract posterior draws of VAR coefficients
 #' bvar_coefs <- coef(mod)
@@ -284,7 +284,7 @@ summary.bayesianVARs_draws <- function(object, quantiles = c(0.25, 0.5, 0.75),
 #' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 #'
 #' # Estimate a model
-#' mod <- bvar(data, sv_keep = "all")
+#' mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 #'
 #' # Simulate predicted historical values including the error term.
 #' pred <- fitted(mod, error_term = TRUE)
@@ -330,21 +330,21 @@ fitted.bayesianVARs_bvar <- function(object, error_term = TRUE, ...){
 #'\code{bvar} offers two different specifications for the errors: The user can
 #'choose between a factor stochastic volatility structure or a cholesky
 #'stochastic volatility structure. In both cases the disturbances
-#'\eqn{\bold{\epsilon}_t} are assumed to follow a \eqn{M}-dimensional
+#'\eqn{\boldsymbol{\epsilon}_t} are assumed to follow a \eqn{M}-dimensional
 #'multivariate normal distribution with zero mean and variance-covariance matrix
-#'\eqn{\bold{\Sigma}_t}. In case of the cholesky specification
-#'\eqn{\bold{\Sigma}_t = \bold{U}^{\prime -1} \bold{D}_t
-#'\bold{U}^{-1}}, where \eqn{\bold{U}^{-1}} is upper unitriangular (with ones on
-#'the diagonal). The diagonal matrix \eqn{\bold{D}_t} depends upon latent
-#'log-variances, i.e. \eqn{\bold{D}_t=diag(exp(h_{1t}),\dots, exp(h_{Mt})}. The
+#'\eqn{\boldsymbol{\Sigma}_t}. In case of the cholesky specification
+#'\eqn{\boldsymbol{\Sigma}_t = \boldsymbol{U}^{\prime -1} \boldsymbol{D}_t
+#'\boldsymbol{U}^{-1}}, where \eqn{\boldsymbol{U}^{-1}} is upper unitriangular (with ones on
+#'the diagonal). The diagonal matrix \eqn{\boldsymbol{D}_t} depends upon latent
+#'log-variances, i.e. \eqn{\boldsymbol{D}_t=diag(exp(h_{1t}),\dots, exp(h_{Mt})}. The
 #'log-variances follow a priori independent autoregressive processes
 #'\eqn{h_{it}\sim N(\mu_i + \phi_i(h_{i,t-1}-\mu_i),\sigma_i^2)} for
 #'\eqn{i=1,\dots,M}. In case of the factor structure,
-#'\eqn{\bold{\Sigma}_t = \bold{\Lambda} \bold{V}_t \bold{\Lambda}^\prime +
-#'\bold{G}_t}. The diagonal matrices \eqn{\bold{V}_t} and
-#'\eqn{\bold{G}_t} depend upon latent log-variances, i.e.
-#'\eqn{\bold{G}_t=diag(exp(h_{1t}),\dots, exp(h_{Mt})} and
-#'\eqn{\bold{V}_t=diag(exp(h_{M+1,t}),\dots, exp(h_{M+r,t})}. The log-variances
+#'\eqn{\boldsymbol{\Sigma}_t = \boldsymbol{\Lambda} \boldsymbol{V}_t \boldsymbol{\Lambda}^\prime +
+#'\boldsymbol{G}_t}. The diagonal matrices \eqn{\boldsymbol{V}_t} and
+#'\eqn{\boldsymbol{G}_t} depend upon latent log-variances, i.e.
+#'\eqn{\boldsymbol{G}_t=diag(exp(h_{1t}),\dots, exp(h_{Mt})} and
+#'\eqn{\boldsymbol{V}_t=diag(exp(h_{M+1,t}),\dots, exp(h_{M+r,t})}. The log-variances
 #'follow a priori independent autoregressive processes \eqn{h_{it}\sim N(\mu_i +
 #'\phi_i(h_{i,t-1}-\mu_i),\sigma_i^2)} for \eqn{i=1,\dots,M} and
 #'\eqn{h_{M+j,t}\sim N(\phi_ih_{M+j,t-1},\sigma_{M+j}^2)} for \eqn{j=1,\dots,r}.
@@ -607,7 +607,7 @@ fitted.bayesianVARs_bvar <- function(object, error_term = TRUE, ...){
 #'
 #'\dontrun{
 #' # Estimate model with your prior configuration of choice
-#' mod <- bvar(data, prior_sigma = sigma_factor_cng_sv)
+#' mod <- bvar(data, prior_sigma = sigma_factor_cng_sv, quiet = TRUE)
 #'}
 specify_prior_sigma <- function(data=NULL,
                                 M = ncol(data),
@@ -1432,7 +1432,7 @@ specify_prior_sigma <- function(data=NULL,
 #'
 #'\dontrun{
 #' # Estimate model with your prior configuration of choice
-#' mod <- bvar(data, lags = 2L, prior_phi = phi_hs_sg)
+#' mod <- bvar(data, lags = 2L, prior_phi = phi_hs_sg, quiet = TRUE)
 #'}
 specify_prior_phi <- function(data = NULL,
                               M = ncol(data),
@@ -1698,7 +1698,7 @@ specify_prior_phi <- function(data = NULL,
 #' test <- data[-c(1:(nrow(data)-4)),]
 #'
 #' # Estimate model using train data only
-#' mod <- bvar(train)
+#' mod <- bvar(train, quiet = TRUE)
 #'
 #' # Simulate from 1-step to 4-steps ahead posterior predictive and compute
 #' # log-predictive-likelihoods
@@ -2037,7 +2037,7 @@ predict_old <- function(object, n.ahead, stable = TRUE, LPL = FALSE, Y_obs = NA,
 #' test <- data[-c(1:(nrow(data)-4)),]
 #'
 #' # Estimate model using train data only
-#' mod <- bvar(train)
+#' mod <- bvar(train, quiet = TRUE)
 #'
 #' # Simulate from 1-step ahead posterior predictive
 #' predictions <- predict(mod, ahead = 1L)
@@ -2070,7 +2070,7 @@ print.bayesianVARs_predict <- function(x, ...){
 #' test <- data[-c(1:(nrow(data)-4)),]
 #'
 #' # Estimate model using train data only
-#' mod <- bvar(train)
+#' mod <- bvar(train, quiet = TRUE)
 #'
 #' # Simulate from 1-step ahead posterior predictive
 #' predictions <- predict(mod, ahead = 1L)
@@ -2114,7 +2114,7 @@ summary.bayesianVARs_predict <- function(object, ...){
 #' test <- data[-c(1:(nrow(data)-4)),]
 #'
 #' # Estimate model using train data only
-#' mod <- bvar(train)
+#' mod <- bvar(train, quiet = TRUE)
 #'
 #' # Simulate from 1-step ahead posterior predictive
 #' predictions <- predict(mod, ahead = 1L)
