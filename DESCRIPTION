@@ -1,12 +1,9 @@
 Package: bayesianVARs
 Title: MCMC Estimation of Bayesian Vectorautoregressions
 Version: 0.0.0.9000
-Authors@R: c(
+Authors@R: 
     person("Luis", "Gruber", , "Luis.Gruber@aau.at", role = c("cph", "aut", "cre"),
-           comment = c(ORCID = "0000-0002-2399-738X")),
-    person("Gregor", "Kastner", , "gregor.kastner@aau.at", role = "aut",
-           comment = c(ORCID = "0000-0002-8237-8271"))
-  )
+           comment = c(ORCID = "0000-0002-2399-738X"))
 Description: Efficient Markov Chain Monte Carlo (MCMC) algorithms for the
     fully Bayesian estimation of vectorautoregressions (VARs) featuring
     stochastic volatility (SV). Implements state-of-the-art shrinkage
