@@ -40,7 +40,7 @@
 #' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 #'
 #' # Estimate a model
-#' mod <- bvar(100*data, sv_keep = "all")
+#' mod <- bvar(100*data, sv_keep = "all", quiet = TRUE)
 #'
 #' # Extract posterior draws of VAR coefficients
 #' phi_post <- coef(mod)
@@ -239,7 +239,7 @@ plot_predvals <- function(preds, quantiles, observed = NULL, var_names,
     if(nr_insample>0){
       if(nr_intervals>0){
         for(k in seq.int(nr_intervals)){
-          alpha_upper <- 0.5
+          alpha_upper <- 0.4
           alpha_lower <- 0.2
           alphas <- seq(alpha_lower, alpha_upper, length.out = nr_intervals)
           if(nr_intervals==1){
@@ -247,12 +247,12 @@ plot_predvals <- function(preds, quantiles, observed = NULL, var_names,
           }
           polygon(x = c((lags+1):nr_insample, rev((lags+1):nr_insample)),
                   y = c(quant_store[k,1:(nr_insample-lags),i],rev(quant_store[k+1,1:(nr_insample-lags),i])),
-                  col = scales::alpha(2, alphas[k] ),
+                  col = scales::alpha("red", alphas[k] ),
                   border = NA)
           if(length(quantiles)>2){
             polygon(x = c((lags+1):nr_insample, rev((lags+1):nr_insample)),
                     y = c(quant_store[length(quantiles)-k,1:(nr_insample-lags),i],rev(quant_store[length(quantiles)+1-k,1:(nr_insample-lags),i])),
-                    col = scales::alpha(2, alphas[k]),
+                    col = scales::alpha("red", alphas[k]),
                     border = NA)
           }
         }
@@ -260,7 +260,7 @@ plot_predvals <- function(preds, quantiles, observed = NULL, var_names,
           lines(1:nr_insample, observed[,i], col=1, lwd=1, lty = 4)
         }
         if(!even){
-          lines((lags + 1):nr_insample, quant_store[ceiling(length(quantiles)/2),1:(nr_insample-lags),i] , col=2, lwd=2, lty = 1)
+          lines((lags + 1):nr_insample, quant_store[ceiling(length(quantiles)/2),1:(nr_insample-lags),i] , col="red", lwd=2, lty = 1)
         }
       }
     }
@@ -299,7 +299,7 @@ plot_predvals <- function(preds, quantiles, observed = NULL, var_names,
 #' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 #'
 #' # Estimate a model
-#' mod <- bvar(data, sv_keep = "all")
+#' mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 #'
 #' # Simulate predicted historical values including the error term.
 #' pred <- fitted(mod, error_term = TRUE)
@@ -362,7 +362,7 @@ plot.bayesianVARs_fitted <- function(x,
 #' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 #'
 #' # Estimate a model
-#' mod <- bvar(data, sv_keep = "all")
+#' mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 #'
 #' # Simulate from posterior predictive
 #' predictions <- predict(mod, ahead = 1:3)
@@ -432,7 +432,7 @@ plot.bayesianVARs_bvar <- function(x, predictions = NULL,
 #' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 #'
 #' # Estimate a model
-#' mod <- bvar(data, sv_keep = "all")
+#' mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 #'
 #' # Simulate from posterior predictive
 #' predictions <- predict(mod, ahead = 1:3)
@@ -500,6 +500,7 @@ pairs.bayesianVARs_predict <- function(x, vars, ahead, ...){
 #'   `dim(x$predictions)[1]`.
 #' @param quantiles numeric vector indicating which quantiles to plot.
 #' @param n_col integer indicating the number of columns to use for plotting.
+#' @param first_obs integer indicating the first observation to be used for plotting.
 #' @param ... Currently ignored!
 #'
 #' @return Returns `x` invisibly!
@@ -513,7 +514,7 @@ pairs.bayesianVARs_predict <- function(x, vars, ahead, ...){
 #' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 #'
 #' # Estimate a model
-#' mod <- bvar(data, sv_keep = "all")
+#' mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 #'
 #' # Simulate from posterior predictive
 #' predictions <- predict(mod, ahead = 1:3)
@@ -523,6 +524,7 @@ pairs.bayesianVARs_predict <- function(x, vars, ahead, ...){
 plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NULL,
                                       quantiles = c(0.05,0.25,0.5,0.75,0.95),
                                       n_col = 1L,
+                                      first_obs = 1L,
                                       ...){
 
   Tobs <- nrow(x$Yraw)
@@ -549,7 +551,7 @@ plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NUL
   var_names <- colnames(x$Yraw)
 
   if(is.null(dates)){
-    dates <- 1:(nrow(x$Yraw) + n_ahead)
+    dates <- first_obs:(nrow(x$Yraw) + n_ahead)
   }
   dates <- as.character(dates)
 
@@ -566,19 +568,19 @@ plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NUL
   M <- length(vars)
   par(mfrow=c(min(5,ceiling(M/n_col)),n_col), mar = c(2,2,2,1), mgp = c(2,.5,0))
   for(j in seq_along(vars)){
-    plot(1:length(dates), rep(0, length(dates)), type = "n", xlab="", ylab = "",
-         xaxt="n", ylim = range(c(x$Yraw[,vars[j]], pred_quants[,,vars[j]])))
-    lines(1:nrow(x$Yraw), x$Yraw[,vars[j]])
+    plot(first_obs:(nrow(x$Yraw) + n_ahead), rep(0, length(dates)), type = "n", xlab="", ylab = "",
+         xaxt="n", ylim = range(c(x$Yraw[first_obs:Tobs,vars[j]], pred_quants[,,vars[j]])))
+    lines(first_obs:nrow(x$Yraw), x$Yraw[first_obs:Tobs,vars[j]])
 
     myaxis <- axis(side = 1, labels = FALSE, tick = FALSE) + 1
     equidist <- mean(diff(myaxis))
-    myaxis <- seq(equidist/2, length(dates), by = equidist)
-    axis(side=1, at = myaxis, labels = dates[myaxis])
+    myaxis <- seq(floor(equidist/2), length(dates), by = equidist)
+    axis(side=1, at = myaxis + first_obs -1, labels = dates[myaxis])
     mtext(var_names[j], side = 3)
 
     if(nr_intervals>0){
       for(r in seq.int(nr_intervals)){
-        alpha_upper <- 0.5
+        alpha_upper <- 0.4
         alpha_lower <- 0.2
         alphas <- seq(alpha_lower, alpha_upper, length.out = nr_intervals)
         if(nr_intervals==1){
@@ -605,7 +607,7 @@ plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NUL
         lines(nrow(x$Yraw):(nrow(x$Yraw)+n_ahead),
               c(x$Yraw[Tobs,vars[j]],
                 pred_quants[ceiling(length(quantiles)/2),,vars[j]]),
-              col = "red")
+              col = "red", lwd = 2)
       }
     }
   }
