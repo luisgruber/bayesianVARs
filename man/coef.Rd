@@ -27,7 +27,7 @@ model estimated with \code{\link[=bvar]{bvar()}}.
 data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 
 # Estimate a model
-mod <- bvar(data, sv_keep = "all")
+mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 
 # Extract posterior draws of VAR coefficients
 bvar_coefs <- coef(mod)

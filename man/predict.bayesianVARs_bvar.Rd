@@ -87,7 +87,7 @@ train <- data[1:(nrow(data)-4),]
 test <- data[-c(1:(nrow(data)-4)),]
 
 # Estimate model using train data only
-mod <- bvar(train)
+mod <- bvar(train, quiet = TRUE)
 
 # Simulate from 1-step to 4-steps ahead posterior predictive and compute
 # log-predictive-likelihoods

@@ -25,7 +25,7 @@ Simulates the fitted/predicted (in-sample) values for an estimated VAR model.
 data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 
 # Estimate a model
-mod <- bvar(data, sv_keep = "all")
+mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 
 # Simulate predicted historical values including the error term.
 pred <- fitted(mod, error_term = TRUE)

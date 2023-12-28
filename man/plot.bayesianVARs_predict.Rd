@@ -11,6 +11,7 @@
   ahead = NULL,
   quantiles = c(0.05, 0.25, 0.5, 0.75, 0.95),
   n_col = 1L,
+  first_obs = 1L,
   ...
 )
 }
@@ -33,6 +34,8 @@ ahead to plot. \code{max(ahead)} must be smaller equal to
 
 \item{n_col}{integer indicating the number of columns to use for plotting.}
 
+\item{first_obs}{integer indicating the first observation to be used for plotting.}
+
 \item{...}{Currently ignored!}
 }
 \value{
@@ -46,7 +49,7 @@ Visualization of (out-of-sample) predictive distribution.
 data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 
 # Estimate a model
-mod <- bvar(data, sv_keep = "all")
+mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 
 # Simulate from posterior predictive
 predictions <- predict(mod, ahead = 1:3)

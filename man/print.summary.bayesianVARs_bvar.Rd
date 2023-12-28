@@ -23,7 +23,7 @@ Print method for \code{summary.bayesianVARs_bvar} objects.
 data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 
 # Estimate model
-mod <- bvar(data)
+mod <- bvar(data, quiet = TRUE)
 
 # Print summary
 summary(mod)

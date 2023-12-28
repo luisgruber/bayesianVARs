@@ -217,7 +217,7 @@ global_grouping = semi_global_mat)
 
 \dontrun{
 # Estimate model with your prior configuration of choice
-mod <- bvar(data, lags = 2L, prior_phi = phi_hs_sg)
+mod <- bvar(data, lags = 2L, prior_phi = phi_hs_sg, quiet = TRUE)
 }
 }
 \references{

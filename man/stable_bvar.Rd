@@ -25,7 +25,7 @@ companion form matrix lie inside the unit circle.
 data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 
 # Estimate a model
-mod <- bvar(data, sv_keep = "all")
+mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 
 # Discard "unstable" draws
 stable_mod <- stable_bvar(mod)

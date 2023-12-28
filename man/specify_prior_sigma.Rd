@@ -323,21 +323,21 @@ Configures prior on the variance-covariance of the VAR.
 \code{bvar} offers two different specifications for the errors: The user can
 choose between a factor stochastic volatility structure or a cholesky
 stochastic volatility structure. In both cases the disturbances
-\eqn{\bold{\epsilon}_t} are assumed to follow a \eqn{M}-dimensional
+\eqn{\boldsymbol{\epsilon}_t} are assumed to follow a \eqn{M}-dimensional
 multivariate normal distribution with zero mean and variance-covariance matrix
-\eqn{\bold{\Sigma}_t}. In case of the cholesky specification
-\eqn{\bold{\Sigma}_t = \bold{U}^{\prime -1} \bold{D}_t
-\bold{U}^{-1}}, where \eqn{\bold{U}^{-1}} is upper unitriangular (with ones on
-the diagonal). The diagonal matrix \eqn{\bold{D}_t} depends upon latent
-log-variances, i.e. \eqn{\bold{D}_t=diag(exp(h_{1t}),\dots, exp(h_{Mt})}. The
+\eqn{\boldsymbol{\Sigma}_t}. In case of the cholesky specification
+\eqn{\boldsymbol{\Sigma}_t = \boldsymbol{U}^{\prime -1} \boldsymbol{D}_t
+\boldsymbol{U}^{-1}}, where \eqn{\boldsymbol{U}^{-1}} is upper unitriangular (with ones on
+the diagonal). The diagonal matrix \eqn{\boldsymbol{D}_t} depends upon latent
+log-variances, i.e. \eqn{\boldsymbol{D}_t=diag(exp(h_{1t}),\dots, exp(h_{Mt})}. The
 log-variances follow a priori independent autoregressive processes
 \eqn{h_{it}\sim N(\mu_i + \phi_i(h_{i,t-1}-\mu_i),\sigma_i^2)} for
 \eqn{i=1,\dots,M}. In case of the factor structure,
-\eqn{\bold{\Sigma}_t = \bold{\Lambda} \bold{V}_t \bold{\Lambda}^\prime +
-\bold{G}_t}. The diagonal matrices \eqn{\bold{V}_t} and
-\eqn{\bold{G}_t} depend upon latent log-variances, i.e.
-\eqn{\bold{G}_t=diag(exp(h_{1t}),\dots, exp(h_{Mt})} and
-\eqn{\bold{V}_t=diag(exp(h_{M+1,t}),\dots, exp(h_{M+r,t})}. The log-variances
+\eqn{\boldsymbol{\Sigma}_t = \boldsymbol{\Lambda} \boldsymbol{V}_t \boldsymbol{\Lambda}^\prime +
+\boldsymbol{G}_t}. The diagonal matrices \eqn{\boldsymbol{V}_t} and
+\eqn{\boldsymbol{G}_t} depend upon latent log-variances, i.e.
+\eqn{\boldsymbol{G}_t=diag(exp(h_{1t}),\dots, exp(h_{Mt})} and
+\eqn{\boldsymbol{V}_t=diag(exp(h_{M+1,t}),\dots, exp(h_{M+r,t})}. The log-variances
 follow a priori independent autoregressive processes \eqn{h_{it}\sim N(\mu_i +
 \phi_i(h_{i,t-1}-\mu_i),\sigma_i^2)} for \eqn{i=1,\dots,M} and
 \eqn{h_{M+j,t}\sim N(\phi_ih_{M+j,t-1},\sigma_{M+j}^2)} for \eqn{j=1,\dots,r}.
@@ -368,7 +368,7 @@ cholesky_U_prior = "HS", cholesky_heteroscedastic = FALSE)
 
 \dontrun{
 # Estimate model with your prior configuration of choice
-mod <- bvar(data, prior_sigma = sigma_factor_cng_sv)
+mod <- bvar(data, prior_sigma = sigma_factor_cng_sv, quiet = TRUE)
 }
 }
 \references{

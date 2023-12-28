@@ -24,7 +24,7 @@ Summary method for \code{bayesianVARs_bvar} objects.
 data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 
 # Estimate model
-mod <- bvar(data)
+mod <- bvar(data, quiet = TRUE)
 
 # Summary
 sum <- summary(mod)

@@ -28,7 +28,7 @@ variance-covariance matrix for the last observation are returned, only.
 # Access a subset of the usmacro_growth dataset
 data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 # Estimate a model
-mod <- bvar(data, sv_keep = "all")
+mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 
 # Extract posterior draws of the variance-covariance matrix
 bvar_vcov <- vcov(mod)

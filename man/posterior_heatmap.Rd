@@ -73,7 +73,7 @@ Posterior heatmaps for VAR coefficients or variance-covariance matrices
 data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 
 # Estimate a model
-mod <- bvar(100*data, sv_keep = "all")
+mod <- bvar(100*data, sv_keep = "all", quiet = TRUE)
 
 # Extract posterior draws of VAR coefficients
 phi_post <- coef(mod)

@@ -26,7 +26,7 @@ Extract or replace parts of a \code{bayesianVARs_coef} object.
 data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 
 # Estimate a model
-mod <- bvar(data, sv_keep = "all")
+mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 
 # Extract coefficients, which are of class bayesianVARs_coef
 phi <- coef(mod)
