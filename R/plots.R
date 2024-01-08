@@ -27,12 +27,14 @@
 #'   to the current setting of cex.
 #' @param cex.colbar The magnification to be used for colorbar annotation
 #'   relative to the current setting of cex.
+#' @param cex.numbers The magnification to be used for the actual values (if
+#'   `add_numbers=TRUE`) relative to the current setting of cex.
 #' @param asp aspect ratio.
 #'
 #' @return Returns `x` invisibly.
 #' @seealso Other plotting [`plot.bayesianVARs_bvar()`],
-#' [`plot.bayesianVARs_fitted()`], [`plot.bayesianVARs_predict()`],
-#' [`pairs.bayesianVARs_predict()`].
+#'   [`plot.bayesianVARs_fitted()`], [`plot.bayesianVARs_predict()`],
+#'   [`pairs.bayesianVARs_predict()`].
 #' @export
 #'
 #' @examples
@@ -64,6 +66,7 @@ posterior_heatmap <- function(x,
                               main="",
                               cex.axis = 0.75,
                               cex.colbar = 1,
+                              cex.numbers = 1,
                               asp=NULL){
 
 
@@ -156,6 +159,12 @@ posterior_heatmap <- function(x,
        (rep(y_breaks ,M)),
        col = cols_to_plot,
        border = cols_to_plot)
+
+  if(add_numbers){
+    text(x = sort(rep(x_breaks-diff(x_breaks)[1]/2,K), decreasing = FALSE),
+         y = rep(y_breaks + diff(y_breaks)[1]/2,M),
+         labels = round(PHI,2), cex = cex.numbers)
+  }
 
   # seperate lags
   abline_at <- NULL

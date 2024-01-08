@@ -17,6 +17,7 @@ posterior_heatmap(
   main = "",
   cex.axis = 0.75,
   cex.colbar = 1,
+  cex.numbers = 1,
   asp = NULL
 )
 }
@@ -59,6 +60,9 @@ to the current setting of cex.}
 
 \item{cex.colbar}{The magnification to be used for colorbar annotation
 relative to the current setting of cex.}
+
+\item{cex.numbers}{The magnification to be used for the actual values (if
+\code{add_numbers=TRUE}) relative to the current setting of cex.}
 
 \item{asp}{aspect ratio.}
 }
