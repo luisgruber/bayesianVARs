@@ -1,7 +1,10 @@
 ---
 title: "Shrinkage Priors for Bayesian Vectorautoregressions featuring Stochastic Volatility Using the **R** Package **bayesianVARs**"
-abstract: |
-  <p align=justify> Vectorautoregressions (VARs) model the relationship between multiple time-series as they change over time. Their inherent flexibility -- VARs can be used for describing the dynamic behavior of time-series and for forecasting -- makes VARs very popular statistical models, especially in macroeconomics and related fields. It is well known, that VARs are prone to overfitting. Bayesian shrinkage priors alleviate that problem by shrinking coefficients towards zero. The R package **bayesianVARs** implements several state-of-the-art shrinkage priors for VARs, taking into account latest research on structured (semi-global-local) shrinkage priors. The user can choose between two different stochastic volatility specifications for the error term, namely Cholesky stochastic volatility and the order-invariant factor stochastic volatility specification. **bayesianVARs** provides efficient Markov Chain Monte Carlo (MCMC) algorithms for the fully Bayesian estimation of VARs. All computationally intensive tasks are written in C++ and interfaced with R. Last, the package offers functionality to assess out-of-sample predictive performance through log-predictive-likelihoods as well as user-friendly summary and visualization methods. </p>
+output: 
+  pdf_document:
+    extra_dependencies: ["bm", "natbib", "mathtools", "setspace"]
+    citation_package: natbib
+bibliography: ref.bib 
 vignette: >
   %\VignetteIndexEntry{Shrinkage Priors for Bayesian Vectorautoregressions featuring Stochastic Volatility Using the **R** Package **bayesianVARs**}
   %\VignetteEngine{knitr::rmarkdown}
@@ -15,125 +18,168 @@ knitr::opts_chunk$set(
 )
 ```
 
-**WARNING: THIS SITE IS UNDER CONSTRUCTION**
+\begin{center} 
 
-# Econometric framework
+{\Large Luis Gruber} \\
+{University of Klagenfurt}\\
+{\tt \href{mailto:luis.gruber@aau.at}{luis.gruber@aau.at}}
+\end{center}
 
-$$
-\boldsymbol y_t^\prime = \boldsymbol \iota^\prime + \sum_{k=1}^p \boldsymbol y^\prime_{t-k} \boldsymbol A_k + \boldsymbol\varepsilon_t^\prime, \quad \boldsymbol \varepsilon_t \sim \mathcal N(0,\boldsymbol \Sigma_t)
-$$
+\onehalfspacing
+\section{Introduction}
+In multivariate time series analysis, vectorautoregressions (VARs) are widely applied in fields such as brain connectivity modeling \citep[e.g.,][]{brain2003, brain2017, brain2021} and the modeling of macroeconomic and financial time series \citep[e.g.,][]{sims1980, Karlsson_2013, crump2021}. Especially in macroeconomic applications, VARs have probably become the workhorse model for forecasting. The VAR model of order $p$, VAR($p$), can be formulated as follows:\footnote{For simplicity of exposition we omit the intercept in the following (which nonetheless \texttt{bayesianVARs} implements by default).}
+\begin{equation}\label{eq:var}
+\bm y_t^\prime = \sum_{l=1}^p \bm y^\prime_{t-l} \bm A_l + \bm\varepsilon_t^\prime, \quad \bm \varepsilon_t \sim \mathcal N(0,\bm \Sigma_t), \quad t=1\text{,}\dots\text{,}T,   
+\end{equation}
+where $\bm y_t$ is the $M$-dimensional vector of interest, $\bm A_l$, for $l=1$, $\dots$, $p$, an unknown $M \times M$ matrix of regression coefficients, $\bm \varepsilon_t$ an $M$-dimensional vector of errors, and $\bm \Sigma_t$ the corresponding $M \times M$ variance-covariance matrix. For ease of notation, let $\bm \Phi \coloneqq (\bm A_1, \dots, \bm A_p)^\prime$ denote the $(K=pM) \times M$ matrix containing all VAR coefficients and let $\bm \phi \coloneqq \mathrm{vec}(\Phi)$ denote the vectorization thereof with length $n=pM^2$.
 
-$$
-\boldsymbol \Phi = (\boldsymbol A_1, \dots, \boldsymbol A_p)^\prime
-$$
+To facilitate efficient and reliable estimation when $M$ gets large, we consider two different decompositions of the variance-covariance matrix $\bm \Sigma_t$ explained in the following paragraphs.
+\paragraph{VAR with factor stochastic volatility}
+Assuming that the errors feature a factor stochastic volatility structure, following \citet{kastner_sparse_2020}, we decompose the variance-covariance matrix into 
+\begin{equation}
+\bm \Sigma_t = \bm \Lambda \bm V_t\bm \Lambda^\prime + \bm Q_t.   
+\end{equation}
+Both $\bm Q_t = \mathrm{diag} (e^{h_{1t}}, \dots, e^{h_{Mt}})$ and $\bm V_t = \mathrm{diag} (e^{h_{M+1,t}}, \dots, e^{h_{M+r,t}})$ are diagonal matrices of dimension $M$ and $r$, respectively, and $\bm \Lambda$ is the $M \times r$ matrix of factor loadings. This is obviously equivalent to introducing $r$ conditionally independent latent factors $\bm f \sim \mathcal N_r(\bm 0, \bm V_t)$ and rewriting the error term in \eqref{eq:var} as 
+\begin{equation}
+\bm \varepsilon_t^\prime = \bm f^\prime \bm \Lambda^\prime + \bm \eta_t^\prime,    
+\end{equation}
+where $\bm \eta_t \sim \mathcal{N}_M(\bm 0, \bm Q_t)$. The matrix $\bm Q_t$ contains the idiosyncratic, series specific, variances. The matrix $\bm V_t$ contains the factor specific variances governing the contemporaneous dependencies. The logarithms of the elements in $\bm Q_t$ and $\bm V_t$ follow a priori independent autoregressive processes of order one (AR(1)). More specifically, the evolution of the idiosyncratic log-variance $h_{it} \sim \mathcal{N}(\mu_i + \phi_i(h_{i,t-1} - \mu_i), \sigma^2_i)$,  for $i=1,\dots,M$, is described by the parameters $\mu_{i}$, the level, $\phi_i$, the persistence and $\sigma_i^2$, the variance. The factor-specific log-variance $h_{jt} \sim \mathcal{N}(\phi_jh_{j,t-1}, \sigma^2_j)$, for $j=M+1,\dots,M+r$, is assumed to have mean zero to identify the scaling of the elements of $\bm \Lambda$. Without imposing restrictions on the factor loadings, the VAR with factor stochastic volatility is invariant to the way the variables are ordered.
 
-$$
-\boldsymbol \phi = \mathrm{vec}(\boldsymbol \Phi)
-$$
+\paragraph{VAR with Cholesky stochastic volatility}
+Assuming that the errors feature a Cholesky stochastic volatility structure, following \citet{cogley_drifts_2005}, we decompose the variance-covariance matrix into 
+\begin{equation}
+\bm \Sigma_t = \bm U^{\prime -1} \bm D_t \bm U^{-1},    
+\end{equation}
+where $\bm U$ is an $M \times M$ upper triangular matrix with ones on the diagonal. The logarithms of the elements of the $M$-dimensional diagonal matrix $\bm D_t=\mathrm{diag} (e^{h_{1t}}, \dots, e^{h_{Mt}})$ are assumed to follow a priori independent AR(1) processes, i.e.\ $h_{it} \sim \mathcal{N}(\mu_i + \phi_i(h_{i,t-1} - \mu_i), \sigma^2_i)$, for $i=1,\dots,M$. Since $\bm U_t$ is a triangular matrix, the VAR with Cholesky stochastic volatility depends on the way the variables are ordered. 
 
-## Factor stochastic volatility
+\section{Prior Distributions}
+While flexible, VARs are known to be overparameterized: In macroeconomic applications the number of available observations $T$ can be relatively small compared to the number of VAR coefficients $n$, since the data is usually reported on a quarterly or yearly basis. Bayesian shrinkage priors can be used to alleviate this issue. In the following paragraphs, we discuss several prior options for the VAR coefficients before briefly discussing prior choices for the variance-covariance matrix. In general, we assume that the joint prior distribution has a product form $p(\bm \phi, \bm \Sigma_t) = p(\bm \phi) p (\bm \Sigma_t)$, i.e.\ we assume that a priori $\bm \phi$ and $\bm \Sigma_t$ are independent. The generic prior for the VAR coefficients is conditionally normal $\bm \phi | \underline{\bm V} \sim \mathcal{N}_n(\bm 0, \underline{\bm V})$, where $\underline{\bm V}=\mathrm{diag}(v_1,\dots,v_n)$ is an $n$-dimensional diagonal matrix. The priors distinguish themselves in their treatment of $\underline{\bm V}$.
+\paragraph{Hierarchical Minnesota prior}
+The \textit{original} Minnesota prior proposed in \citet{litterman_forecasting_1986} is mainly characterized by two assumptions: First, the own past of a given variable is more important in predicting its current value than the past of other variables. Second, the most recent past is assumed to be more important in predicting current values than the more distant past. Hence, $\underline{\bm{V}}$ is structured in a way, such that the sub-diagonal elements of $\bm{\Phi}$ (the own-lag coefficients) are shrunken less than the off-diagonal elements (the cross-lag coefficients). And, coefficients associated with more recent lags are shrunken less than the ones associated with more distant lags. Denote $\mathbf{\underline{V}}_i$ the block of $\mathbf{\underline{V}}$ that corresponds to the $K$ coefficients in the $i$th equation, and let $\mathbf{\underline{V}}_{i,jj}$ be its diagonal elements. The diagonal elements are set to
+\begin{equation}\label{eq:HMv}
+	\mathbf{\underline{V}}_{i,jj}=
+	\begin{cases}
+		\frac{\lambda_1}{l^2} & \text{for coefficients on own lag $l$ for $l=1, \dots,p$}, \\
+		\frac{\lambda_2 \hat{\sigma}^2_{i}}{l^2 \hat{\sigma}^2_{j}} & \text{for coefficients on lag $l$ of variable $j \neq i$}, %\\
+		%\lambda_3 \hat{\sigma}_{i} & \text{for %coefficients on exogenous variables, e.g.\ the intercept},
+	\end{cases}
+\end{equation}
+where $\hat{\sigma}^2_{i}$ is the OLS variance of a univariate AR(6) model of the $i$th variable. The term $l^2$ in the denominator automatically imposes more shrinkage on the coefficients towards their prior mean as lag length increases. The term $\frac{\hat{\sigma}^2_{i}}{\hat{\sigma}^2_{j}}$ adjusts not only for different scales in the data, it is also intended to account for different scales of the responses of one economic variable to another. To shrink own-lag coefficients less than cross-lag coefficients, one could set $\lambda_1 > \lambda_2$. The hierarchical Minnesota prior, however, treats both shrinkage parameters as unknown. Following \citet{huber_adaptive_2019}, we place independent gamma priors on $\lambda_1$ and $\lambda_2$,
+\begin{equation}
+    \lambda_i \sim \mathcal{G}(c_i, d_i), \quad \text{for }i=1,2.
+\end{equation}
 
-$$
-\boldsymbol \Sigma_t = \boldsymbol \Lambda \boldsymbol V_t\boldsymbol \Lambda^\prime + \boldsymbol Q_t
-$$
+\paragraph{Semi-global local shrinkage}
+Global local shrinkage priors in the fashion of \citet{polson_shrink_2010} are also used in the VAR literature \citep[e.g.,][]{follett_achieving_2019, huber_adaptive_2019,kastner_sparse_2020}. In order to combine the merits of tailor-made priors, such as the Minnesota prior, with the flexibility of off-the-shelf global local shrinkage priors, \citet{gruber2023forecasting} propose the class of semi-global local priors. Other than global local priors, which shrink globally, semi-global local priors shrink semi-globally, meaning that semi-global shrinkage is imposed on $k$ pre-specified subgroups of the parameter space. Let $\mathcal{A}_j$, for $j=1$, $\dots$, $k$, denote the generic index set that labels the coefficients of the $j$th group in $\bm{\phi}$ (e.g., the first group could be the own-lag coefficients associated with the first lag, the second group could be the cross-lag coefficients associated with the first lag, etc.). Then, a semi-global local prior with $k$ groups has the following hierarchical representation:
+\begin{equation}\label{eq:sgl_form}
+\phi_i \sim K(\vartheta_i \zeta_j), \quad
+\vartheta_i \sim f, \quad \zeta_j \sim g, \quad i \in \mathcal{A}_j, \quad j = 1,\dots,k,   
+\end{equation}
+where $K(\delta)$ denotes a symmetric unimodal density with variance $\delta$, $\zeta_j$ represents the semi-global shrinkage, and $\vartheta_{i}$ the local shrinkage.
+The only additional input required is the partitioning of $\bm{\phi}$ into $k$ subgroups. Several options for grouping the coefficients are ready-made in \texttt{bayesianVARs}, though any custom grouping could be specified as well. The \textit{equation-specific} grouping indicates that the covariates of each equation form $M$ separate groups (column-wise shrinkage w.r.t.\ $\bm\Phi$). The \textit{covariate-specific} partitioning implies that the $K$ covariates across all equations form  separate groups (row-wise shrinkage w.r.t.\ $\bm\Phi$). The \textit{own-lag-cross-lag-lagwise} (olcl-lagwise) partitioning mimics some features of the Minnesota prior: In each lag, the diagonal elements (the own-lags) and the off-diagonal elements (the cross-lags) constitute separate groups, which makes $2p$ groups in total. The following list of hierarchical shrinkage priors, which can be cast in the form of semi-global (local) priors, are implemented in \texttt{bayesianVARs} (in alphabetical order): Dirichlet-Laplace (DL) prior \citep{bhattacharya_dirichletlaplace_2015}, Horseshoe prior \citep{carvalho2010}, normal-gamma (NG) prior \citep{griffin2010}, R$^2$-induced Dirichlet decomposition (R2D2) prior \citep{zhang_bayesian_2020} and stochastic-search-variable-selection (SSVS) prior \citep{george_bayesian_2008}. Fore more detailed characteristics and comparisons of those priors we refer to \citet{gruber2023forecasting}.
 
-## Cholesky stochastic volatility
+\paragraph{Priors for the variance-covariance matrix}
+In the case that the variance-covariance is modeled via the factor decomposition, the priors from \citet{kastner2017} and \citet{kastner2019} are used. 
+In the case that the errors are assumed to feature the Cholesky stochastic volatility structure, \texttt{bayesianVARs} implements the DL prior, the HS prior, the NG prior, the R2D2 prior, and the SSVS prior for the free off-diagonal elements in $\bm U$. Concerning the latent variables and their associated parameters in $\bm D_t$, the priors from \citet{kastner_ancillarity-sufficiency_2014} are used.
 
-$$
-\boldsymbol \Sigma_t = \boldsymbol U^{\prime -1} \boldsymbol D_t \boldsymbol U^{-1}
-$$
+\paragraph{Homoscedastic VARs} 
+It should be noted that \texttt{bayesianVARs} also implements homoskedastic VARs where $\bm \Sigma_t = \bm \Sigma$ for all $t$. In case of the VAR with factor structure on the errors it holds that $\bm V_t = \bm V = \bm I_r$ and $\bm Q_t = \bm Q = \mathrm{diag}(q_1, \dots, q_M)$ for all $t$. A priori, the $i$th diagonal element $q_i \sim \mathcal{IG}(a_f,b_f)$ is assumed to follow an inverse gamma distribution for $i=1,\dots,M$, independently. In case of the VAR with Cholesky structure on the errors, it holds that $\bm D_t = \bm D = \mathrm{diag}(d_1, \dots, d_M)$ for all $t$. The prior distribution of the $i$th diagonal element is inverse gamma, i.e.\ $d_i \sim \mathcal{IG}(a_c,b_c)$ for $i=1,\dots,M$, independently.
 
-# Prior distributions
+\section{Algorithm}
+In a nutshell, \texttt{bayesianVARs} implements a Markov chain Monte Carlo (MCMC) algorithm which alternately samples from the full conditional posterior distribution of the VAR coefficients $p(\bm \phi | \bullet)$ and from the full conditional posterior distribution of the paths of the variance-covariance matrix $p(\bm \Sigma_t | \bullet)$ for $t=1$, $\dots$, $T$,  with $\bullet$ indicating that we condition on the remaining parameters and latent quantities of the model. To render computation of the necessary steps required for sampling from $p(\bm \phi | \bullet)$ feasible, \texttt{bayesianVARs} implements the equation-per-equation algorithm proposed in \citet{kastner_sparse_2020} for the VAR with factor stochastic volatility and the correct triangular algorithm from \citet{carriero_corrigendum_2021} for the VAR with Cholesky stochastic volatility. The hyperparameters of the hierarchical shrinkage priors are sampled from the respective full conditional posterior distributions outlined in \citet{gruber2023forecasting}. To sample from $p(\bm \Sigma_t | \bullet)$ for $t=1$, $\dots$, $T$, for the VAR with factor stochastic volatility, \texttt{bayesianVARs} accesses the package \texttt{factorstochvol} \citep{hosszejni_modeling_2021}. For the VAR with Cholesky stochastic volatility, the latent variables and associated parameters in $\bm D_t$ are sampled using the package \texttt{stochvol} \citep{kastner2016}. The free off-diagonal elements in $\bm U$ are sampled equation-per-equation as proposed in \citet{cogley_drifts_2005}. Last but not least, all computationally intensive tasks are written in C++ and interfaced with R via \texttt{Rcpp} \citep{rcpp} and \texttt{RcppArmadillo} \citep{rcpparmadillo} for increased computational efficiency.
 
-**VAR coefficients**:
+\section{Case study}
 
--   Litterman Minnesota prior
-
-Denote $\mathbf{\underline{V}}_i$ the block of $\mathbf{\underline{V}}$ that corresponds to the $K$ coefficients in the $i$th equation, and let $\mathbf{\underline{V}}_{i,jj}$ be its diagonal elements: 
-$$
-\mathbf{\underline{V}}_{i,jj}=
-\begin{cases}
-\frac{\lambda_1}{r^2} & \text{for coefficients on own lag }r\text{ for }r=1,\dots,p, \\
-\frac{\lambda_2 \hat{\sigma}^2_{i}}{r^2 \hat{\sigma}^2_{j}} & \text{for coefficients on lag }r\text{ of variable }j \neq i,
-\end{cases}
-$$ 
-where $\lambda_1 > \lambda_2$ have to be chosen, and $\hat{\sigma}^2_{i}$ is the OLS variance of a univariate AR(6) model of the $i$th variable.
-
--   Semi-global-local priors
-
-**Covariance**:
-
--   Factor stochastic volatility
-    -   homoscedastically or heteroscedastically
-    -   algorithm and priors like **factorstochvol**
--   Cholesky stochastic volatiltiy
-    -   shrinkage priors for $\boldsymbol U$ similar to those for the VAR coefficients
-    -   algorithm and priors for latent log variances via **stochvol**
-
-# Bayesian inference
-
-Main ingredients of MCMC sampler.
-
--   Equation per equation estimation
--   latent log variances via **stochvol**
--   all parameters and latent variables of the factor stochastic volatility specification via **factorstochvol**
-
-# Case study
+We demonstrate the main functionality of \texttt{bayesianVARs} using the
+\texttt{usmacro\_growth} dataset included in the package. The dataset --
+obtained from FRED-QD, a quarterly database for macroeconomic research
+\citep{mccracken_fred-qd_2020} -- contains the time-series of 21
+variables transformed to growth rates through taking log-differences
+(except for interest rates).
 
 ```{r, results='hide'}
 library(bayesianVARs)
-# Load data
-train_data <-100* usmacro_growth[1:237,c("GDPC1", "PCECC96", "GPDIC1", "AWHMAN", "GDPCTPI", "CES2000000008x", "FEDFUNDS", "GS10", "EXUSUKx", "S&P 500")]
-test_data <-100* usmacro_growth[238:241,c("GDPC1", "PCECC96", "GPDIC1", "AWHMAN", "GDPCTPI", "CES2000000008x", "FEDFUNDS", "GS10", "EXUSUKx", "S&P 500")]
+variables <- c("GDPC1", "GDPCTPI",  "FEDFUNDS", "EXUSUKx", "S&P 500")
+train_data <- 100 * usmacro_growth[1:230, variables]
+test_data <- 100 * usmacro_growth[231:234, variables]
+```
 
-# Specify priors
-prior_phi <- specify_prior_phi(data = train_data, lags = 2L, prior = "HS", global_grouping = "olcl-lagwise")
-prior_sigma <- specify_prior_sigma(data = train_data, type = "factor", factor_factors = 4L)
+The workhorse function of \texttt{bayesianVARs} for conducting MCMC
+inference is the function \texttt{bvar}. Though it offers a low barrier
+to entry for users (in case only data is supplied without any further
+sampler and or prior configurations, default values are used), we
+encourage the user to specify the model to be estimated in more detail
+using the helper functions \texttt{specify\_prior\_phi} (prior
+configuration concerning the VAR coefficients) and
+\texttt{specify\_prior\_sigma} (prior configuration concerning the
+variance-covariance of the VAR). In our demonstration, we specify a
+VAR with $p=2$ lags with factor stochastic volatility and \(r=4\) factors and a
+semi-global local HS prior with olcl-lagwise partitioning for the VAR
+coefficients. It is possible to impose standard global local priors by
+specifying \texttt{specify\_prior\_phi}'s argument
+\texttt{global\_grouping = "global"}. An arbitrary grouping for
+semi-global local priors can be achieved by supplying an indicator
+matrix to \texttt{global\_grouping}.
+
+```{r, results='hide'}
+prior_phi <- specify_prior_phi(data = train_data, 
+                               lags = 2L, 
+                               prior = "HS", 
+                               global_grouping = "olcl-lagwise")
+prior_sigma <- specify_prior_sigma(data = train_data, 
+                                   type = "factor", 
+                                   factor_factors = 4L)
                                    
-# Estimate model
-mod <- bvar(train_data, lags = 2L, draws = 1000, burnin = 1000, prior_phi = prior_phi, prior_sigma = prior_sigma, sv_keep = "all")
-
-# predict
-pred <- predict(mod, ahead = 1:4, LPL = TRUE, Y_obs = test_data)
+mod <- bvar(train_data, lags = 2L, draws = 10000, burnin = 2000, 
+            prior_phi = prior_phi, prior_sigma = prior_sigma, 
+            sv_keep = "all")
 ```
 
-```{r}
-plot(mod, predictions = pred, quantiles = c(0.05,0.5,0.95), n_col = 2)
+The plot methods shows the model fit via 90\% in-sample prediction intervals by default, see Figure\nobreakspace{}\ref{fig:unnamed-chunk-4}.
+
+```{r, out.width="80%", fig.align='center', fig.cap="Visualization of estimated in-sample prediction intervals. The red solid line depicts the median, the red shaded region the 90% credible interval and the black dotted line the observed data used for estimation.", fig.pos="t"}
+plot(mod, quantiles = c(0.05,0.5,0.95), dates = rownames(mod$Yraw))
 ```
 
-```{r}
+The object output by \texttt{bvar} contains the posterior draws. The
+extractors \texttt{coef} and \texttt{vcov} come in handy to access the
+posterior draws of $\bm \Phi$ and $\bm \Sigma_t$, respectively. The
+function \texttt{posterior\_heatmap} visualizes posterior summaries,
+such as the posterior median or posterior interquartile-range, as
+heatmaps, see Figure\nobreakspace{}\ref{fig:unnamed-chunk-5}.
+
+```{r, out.width="50%", fig.align='center', fig.cap="Posterior summary of the VAR coefficients. Left: Heatmap of the posterior median. Right: Heatmap of the posterior interquartile range.", fig.pos="t"}
 phi <- coef(mod)
 par(mfrow=c(1,2))
 posterior_heatmap(phi,median)
 posterior_heatmap(phi, IQR)
 ```
 
-```{r}
-# Extract posterior draws of variance-covariance matrix for all points in time
-mod_vcov <- vcov(mod)
+The \texttt{predict} method simulates from the posterior predictive
+distribution. Log-predictive likelihoods will be computed if the ex-post
+observed data is supplied.
 
-# Compute correlation matrices for 2 selected points in time
-these <- c(194,nrow(mod$Y))
-mod_cors <- array(as.numeric(NA), c(length(these), ncol(mod$Y),ncol(mod$Y),dim(mod_vcov)[4]))
-for(t in seq_along(these)){
-  for(r in seq.int(dim(mod_vcov)[4])){
-    mod_cors[t,,,r] <- cov2cor(mod_vcov[these[t],,,r])
-  }
-}
-dimnames(mod_cors) <- list(rownames(mod$Y)[these], colnames(mod$Y), colnames(mod$Y))
+```{r, results='hide'}
+pred <- predict(mod, ahead = 1:4, LPL = TRUE, Y_obs = test_data)
 ```
 
-```{r}
-# Visualize
-par(mfrow=c(2,2))
-summaries <- c("median", "IQR")
-for(FUN in summaries){
-  for(tp in seq.int(nrow(mod_cors))){
-  posterior_heatmap(mod_cors[tp,,,], str2lang(FUN), xlabels = "")
-    if(FUN == "median"){
-      mtext(rownames(mod_cors)[tp], side = 3, line=3)
-    }
-}
-}
+The \texttt{plot} method for draws of the posterior predictive
+distribution defaults to displaying fan-charts by joining line charts
+for the observed data of the estimation sample with credible intervals
+of the posterior predictive distribution, see Figure\nobreakspace{}\ref{fig:unnamed-chunk-7}.
 
+```{r, out.width="80%", fig.align='center', fig.cap="Fan-charts visualizing the last 15 out of 230 observations used for estimation through black solid lines, the median of the $h$-step ahead predictive distribution through red solid lines and the 50%/90% credible intervals of the $h$-step ahead predictive distribution through red shaded regions for $h=1,\\dots,4$.", fig.pos="t"}
+plot(pred, first_obs = 216, 
+     dates = c(rownames(train_data[-c(1:215),]), rownames(test_data)))
 ```
+
+The calculated log-predictive likelihoods could be used to comparing
+forecasting performances of different models.
+```{r}
+pred$LPL
+```
+
+\clearpage
+# References
+
+<div id="refs"></div>
