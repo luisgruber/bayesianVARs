@@ -53,3 +53,9 @@ pred <- predict(mod, n.ahead = 1:4, LPL = TRUE, Y_obs = test_data)
 # Visualize in-sample fit plus out-of-sample prediction intervals
 plot(mod, predictions = pred)
 ```
+
+# Documentation
+
+``` r
+browseVignettes("bayesianVARs")
+```
