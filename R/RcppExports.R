@@ -23,6 +23,10 @@ my_gig <- function(n, lambda, chi, psi) {
     .Call(`_bayesianVARs_my_gig`, n, lambda, chi, psi)
 }
 
+sample_PHI_cholesky <- function(PHI, PHI_prior, Y, X, U, d_sqrt, V_prior) {
+    .Call(`_bayesianVARs_sample_PHI_cholesky`, PHI, PHI_prior, Y, X, U, d_sqrt, V_prior)
+}
+
 dmvnrm_arma_fast <- function(x, mean, sigma, logd = FALSE) {
     .Call(`_bayesianVARs_dmvnrm_arma_fast`, x, mean, sigma, logd)
 }

@@ -166,6 +166,18 @@ void sample_PHI(arma::mat& PHI, const arma::mat PHI_prior, const arma::mat Y,
   }
 }
 
+// [[Rcpp::export]]
+arma::mat sample_PHI_cholesky(const arma::mat PHI, const arma::mat& PHI_prior,
+                              const arma::mat& Y, const arma::mat& X,
+                              const arma::mat& U, const arma::mat& d_sqrt,
+                              const arma::mat& V_prior){
+  const int M = Y.n_cols;
+  arma::mat PHI_ret = PHI;
+  sample_PHI(PHI_ret, PHI_prior, Y, X, U, d_sqrt, V_prior, M);
+  return(PHI_ret);
+}
+
+
 void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const arma::mat& d_sqrt) {
 
   int M = Ytilde.n_cols;

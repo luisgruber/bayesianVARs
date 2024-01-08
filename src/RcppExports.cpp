@@ -56,6 +56,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// sample_PHI_cholesky
+arma::mat sample_PHI_cholesky(const arma::mat PHI, const arma::mat& PHI_prior, const arma::mat& Y, const arma::mat& X, const arma::mat& U, const arma::mat& d_sqrt, const arma::mat& V_prior);
+RcppExport SEXP _bayesianVARs_sample_PHI_cholesky(SEXP PHISEXP, SEXP PHI_priorSEXP, SEXP YSEXP, SEXP XSEXP, SEXP USEXP, SEXP d_sqrtSEXP, SEXP V_priorSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat >::type PHI(PHISEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type PHI_prior(PHI_priorSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type U(USEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type d_sqrt(d_sqrtSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type V_prior(V_priorSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_PHI_cholesky(PHI, PHI_prior, Y, X, U, d_sqrt, V_prior));
+    return rcpp_result_gen;
+END_RCPP
+}
 // dmvnrm_arma_fast
 arma::vec dmvnrm_arma_fast(arma::mat const& x, arma::rowvec const& mean, arma::mat const& sigma, bool const logd);
 RcppExport SEXP _bayesianVARs_dmvnrm_arma_fast(SEXP xSEXP, SEXP meanSEXP, SEXP sigmaSEXP, SEXP logdSEXP) {
@@ -150,6 +167,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 21},
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
+    {"_bayesianVARs_sample_PHI_cholesky", (DL_FUNC) &_bayesianVARs_sample_PHI_cholesky, 7},
     {"_bayesianVARs_dmvnrm_arma_fast", (DL_FUNC) &_bayesianVARs_dmvnrm_arma_fast, 4},
     {"_bayesianVARs_predh", (DL_FUNC) &_bayesianVARs_predh, 6},
     {"_bayesianVARs_out_of_sample", (DL_FUNC) &_bayesianVARs_out_of_sample, 17},
