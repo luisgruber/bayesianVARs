@@ -48,7 +48,7 @@ test_data <-100* usmacro_growth[238:241,c("GDPC1", "PCECC96", "GPDIC1", "AWHMAN"
 mod <- bvar(train_data, lags = 2L, draws = 2000, burnin = 1000, sv_keep = "all")
 
 # Out of sample prediction and log-predictive-likelihood evaluation
-pred <- predict(mod, n.ahead = 1:4, LPL = TRUE, Y_obs = test_data)
+pred <- predict(mod, ahead = 1:4, LPL = TRUE, Y_obs = test_data)
 
 # Visualize in-sample fit plus out-of-sample prediction intervals
 plot(mod, predictions = pred)
