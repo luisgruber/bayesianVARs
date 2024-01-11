@@ -99,9 +99,9 @@ summary(predictions)
 # Visualize via fan-charts
 plot(predictions)
 
-\dontrun{
+\donttest{
 # In order to evaluate the joint predictive density of a subset of the
-# variables, consider specifying 'LPL_VoI':
+# variables (variables of interest), consider specifying 'LPL_VoI':
 predictions <- predict(mod, ahead = 1:4, LPL = TRUE, Y_obs = test, LPL_VoI = c("GDPC1","FEDFUNDS"))
 predictions$LPL_VoI
 }

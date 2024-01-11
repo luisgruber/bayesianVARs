@@ -215,7 +215,7 @@ phi_hs_ew <- specify_prior_phi(data = data, lags = 2L, prior = "HS",
 global_grouping = semi_global_mat)
 # (for equation-wise shrinkage one can also use 'global_grouping = "equation-wise"')
 
-\dontrun{
+\donttest{
 # Estimate model with your prior configuration of choice
 mod <- bvar(data, lags = 2L, prior_phi = phi_hs_sg, quiet = TRUE)
 }

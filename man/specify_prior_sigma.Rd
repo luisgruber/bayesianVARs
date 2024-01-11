@@ -366,7 +366,7 @@ ncol(data), 2))
 sigma_cholesky_dl <- specify_prior_sigma(data = data, type = "cholesky",
 cholesky_U_prior = "HS", cholesky_heteroscedastic = FALSE)
 
-\dontrun{
+\donttest{
 # Estimate model with your prior configuration of choice
 mod <- bvar(data, prior_sigma = sigma_factor_cng_sv, quiet = TRUE)
 }

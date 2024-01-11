@@ -39,13 +39,11 @@ bvar_coefs <- coef(mod)
 # Compute summary statistics
 summary_stats <- summary(bvar_coefs)
 
-\dontrun{
 # Compute summary statistics of VAR coefficients without using coef()
 summary_stats <- summary(mod$PHI)
 
 # Test which list elements of 'mod' are of class 'bayesianVARs_draws'.
 names(mod)[sapply(names(mod), function(x) inherits(mod[[x]], "bayesianVARs_draws"))]
-}
 
 }
 \seealso{

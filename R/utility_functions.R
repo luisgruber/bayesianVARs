@@ -241,13 +241,11 @@ vcov.bayesianVARs_bvar <- function(object, ...){
 #' # Compute summary statistics
 #' summary_stats <- summary(bvar_coefs)
 #'
-#' \dontrun{
 #' # Compute summary statistics of VAR coefficients without using coef()
 #' summary_stats <- summary(mod$PHI)
 #'
 #' # Test which list elements of 'mod' are of class 'bayesianVARs_draws'.
 #' names(mod)[sapply(names(mod), function(x) inherits(mod[[x]], "bayesianVARs_draws"))]
-#' }
 #'
 summary.bayesianVARs_draws <- function(object, quantiles = c(0.25, 0.5, 0.75),
                                        ...){
@@ -605,7 +603,7 @@ fitted.bayesianVARs_bvar <- function(object, error_term = TRUE, ...){
 #' sigma_cholesky_dl <- specify_prior_sigma(data = data, type = "cholesky",
 #' cholesky_U_prior = "HS", cholesky_heteroscedastic = FALSE)
 #'
-#'\dontrun{
+#'\donttest{
 #' # Estimate model with your prior configuration of choice
 #' mod <- bvar(data, prior_sigma = sigma_factor_cng_sv, quiet = TRUE)
 #'}
@@ -1430,7 +1428,7 @@ specify_prior_sigma <- function(data=NULL,
 #' global_grouping = semi_global_mat)
 #' # (for equation-wise shrinkage one can also use 'global_grouping = "equation-wise"')
 #'
-#'\dontrun{
+#'\donttest{
 #' # Estimate model with your prior configuration of choice
 #' mod <- bvar(data, lags = 2L, prior_phi = phi_hs_sg, quiet = TRUE)
 #'}
@@ -1710,9 +1708,9 @@ specify_prior_phi <- function(data = NULL,
 #' # Visualize via fan-charts
 #' plot(predictions)
 #'
-#' \dontrun{
+#' \donttest{
 #' # In order to evaluate the joint predictive density of a subset of the
-#' # variables, consider specifying 'LPL_VoI':
+#' # variables (variables of interest), consider specifying 'LPL_VoI':
 #' predictions <- predict(mod, ahead = 1:4, LPL = TRUE, Y_obs = test, LPL_VoI = c("GDPC1","FEDFUNDS"))
 #' predictions$LPL_VoI
 #' }
