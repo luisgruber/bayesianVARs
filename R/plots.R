@@ -133,7 +133,7 @@ posterior_heatmap <- function(x,
 
   #par()$mar/par()$mai=5; convert inches to lines
   oldpar <- par(no.readonly = TRUE)
-  on.exit(oldpar)
+  on.exit(par(oldpar))
   par(mgp=c(2,.1,0))
   mar <- rep(0.1,4)
   par(mar=mar)
