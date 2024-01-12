@@ -131,7 +131,7 @@
 #'  decomposition for sigma is specified).
 #'* `bench`: Numerical indicating the average time it took to generate one
 #'  single draw of the joint posterior distribution of all parameters.
-#'* `V_prior`: A array containing the posterior draws of the variances of the
+#'* `V_prior`: An array containing the posterior draws of the variances of the
 #'  conditional normal prior on the VAR coefficients.
 #'* `facload`: A `bayesianVARs_draws` object, an array, containing draws from the
 #'  posterior distribution of the factor loadings matrix (if factor
