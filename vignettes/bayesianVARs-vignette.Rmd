@@ -9,6 +9,9 @@ vignette: >
   %\VignetteIndexEntry{Shrinkage Priors for Bayesian Vectorautoregressions featuring Stochastic Volatility Using the **R** Package **bayesianVARs**}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+pkgdown:
+  as_is: true
+  extension: pdf
 ---
 
 ```{r, include = FALSE}
@@ -148,12 +151,10 @@ function \texttt{posterior\_heatmap} visualizes posterior summaries,
 such as the posterior median or posterior interquartile-range, as
 heatmaps, see Figure\nobreakspace{}\ref{fig:unnamed-chunk-5}.
 
-```{r, out.width="50%", fig.align='center', fig.cap="Posterior summary of the VAR coefficients. Left: Heatmap of the posterior median. Right: Heatmap of the posterior interquartile range.", fig.pos="t"}
+```{r, out.width="45%", fig.asp=1.5,fig.align='center', fig.cap="Posterior summary of the VAR coefficients. Left: Heatmap of the posterior median. Right: Heatmap of the posterior interquartile range.", fig.pos="t", fig.show='hold'}
 phi <- coef(mod)
-oldpar <- par(mfrow=c(1,2))
 posterior_heatmap(phi,median)
 posterior_heatmap(phi, IQR)
-par(oldpar)
 ```
 
 The \texttt{predict} method simulates from the posterior predictive
