@@ -28,7 +28,8 @@ Imports:
     stats,
     stochvol (>= 3.0.2),
     utils
-Suggests: 
+Suggests:
+    coda,
     knitr,
     rmarkdown,
     testthat (>= 3.0.0)
