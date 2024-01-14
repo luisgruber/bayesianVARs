@@ -1,7 +1,5 @@
-bayesianVARs: Hierarchical shrinkage priors
-================
-Luis Gruber
-2023 12 20
+
+# bayesianVARs <img src="man/figures/logo.png" align="right" height="139" alt="" />
 
 <!-- badges: start -->
 
@@ -28,12 +26,20 @@ Install directly from GitHub.
 devtools::install_github("luisgruber/bayesianVARs")
 ```
 
-# Getting started
+# Usage
 
-Data used in the following example is from Michael W. McCracken and
-Serena Ng, “FRED-QD: A Quarterly Database for Macroeconomic Research,”
-Federal Reserve Bank of St. Louis Review, First Quarter 2021, pp. 1-44.
-<https://doi.org/10.20955/r.103.1-44>.
+The main workhorse to conduct Bayesian inference for
+vectorautoregression models in this package is the function `bvar()`.
+
+Some features:
+
+- Prediction, plotting, extraction of model parameters and extraction of
+  fitted values with the usual generic functions `predict()`, `plot()`,
+  `coef()`, `vcov()` and `fitted()`.
+- Configure prior distributions with helper functions
+  `specify_prior_phi()` and `specify_prior_sigma()`.
+
+# Demonstration
 
 ``` r
 set.seed(537)
@@ -41,8 +47,8 @@ set.seed(537)
 library(bayesianVARs)
 
 # Load data
-train_data <-100* usmacro_growth[1:237,c("GDPC1", "PCECC96", "GPDIC1", "AWHMAN", "GDPCTPI", "CES2000000008x", "FEDFUNDS", "GS10", "EXUSUKx", "S&P 500")]
-test_data <-100* usmacro_growth[238:241,c("GDPC1", "PCECC96", "GPDIC1", "AWHMAN", "GDPCTPI", "CES2000000008x", "FEDFUNDS", "GS10", "EXUSUKx", "S&P 500")]
+train_data <-100 * usmacro_growth[1:237,c("GDPC1", "PCECC96", "GPDIC1", "AWHMAN", "GDPCTPI", "CES2000000008x", "FEDFUNDS", "GS10", "EXUSUKx", "S&P 500")]
+test_data <-100 * usmacro_growth[238:241,c("GDPC1", "PCECC96", "GPDIC1", "AWHMAN", "GDPCTPI", "CES2000000008x", "FEDFUNDS", "GS10", "EXUSUKx", "S&P 500")]
                                    
 # Estimate model using default prior settings
 mod <- bvar(train_data, lags = 2L, draws = 2000, burnin = 1000, sv_keep = "all")
