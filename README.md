@@ -1,9 +1,11 @@
 
-# bayesianVARs <img src="man/figures/logo.png" align="right" height="139" alt="" />
+# bayesianVARs <img src="man/figures/logo.png" align="right" height="139"/>
 
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/luisgruber/bayesianVARs/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/luisgruber/bayesianVARs/actions/workflows/R-CMD-check.yaml)
+[![CRAN
+status](https://www.r-pkg.org/badges/version/bayesianVARs)](https://CRAN.R-project.org/package=bayesianVARs)
 <!-- badges: end -->
 
 Estimation of Bayesian vectorautoregressions with/without stochastic
@@ -20,7 +22,13 @@ order-invariant factor structure or an order-variant cholesky structure.
 
 # Installation
 
-Install directly from GitHub.
+Install [CRAN](https://cran.r-project.org/package=bayesianVARs) version:
+
+``` r
+install.packages("bayesianVARs")
+```
+
+Install latest development version directly from GitHub:
 
 ``` r
 devtools::install_github("luisgruber/bayesianVARs")
@@ -62,6 +70,5 @@ plot(mod, predictions = pred)
 
 # Documentation
 
-``` r
-browseVignettes("bayesianVARs")
-```
+[bayesianVARs - Shrinkage Priors for Bayesian Vectorautoregressions in
+R](https://bayesian.org/wp-content/uploads/2023/12/2312.pdf#SOFTWARE%20HIGHLIGHT)
