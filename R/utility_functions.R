@@ -185,7 +185,7 @@ vcov.bayesianVARs_bvar <- function(object, ...){
   M <- ncol(object$Y)
   factors <- dim(object$facload)[2]
   Tobs <- nrow(object$logvar)
-  nsave <- dim(object$facload)[3]
+  nsave <- dim(object$PHI)[3]
 
   dates <- NULL
   if(Tobs==1L){
