@@ -176,43 +176,43 @@ log-predictive-likelihood for a subset of variables (if <code>LPL=TRUE</code> an
 <span class="r-out co"><span class="r-pr">#&gt;</span> 'stable=TRUE': Calling 'stable_bvar()' to discard those posterior</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>           draws, that do not fulfill the stable criterion.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  621 stable posterior draws remaining for prediction!</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  548 stable posterior draws remaining for prediction!</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Summary</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">predictions</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> LPL:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   t+1   t+2   t+3   t+4 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4.993 9.459 9.062 6.274 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3.235 9.026 8.817 6.652 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Marginal univariate LPLs:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       GDPC1 CPIAUCSL FEDFUNDS</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> t+1 -0.6854   0.3767    3.602</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> t+2  2.7634   2.6746    3.399</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> t+3  2.8713   2.4965    3.311</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> t+4  2.9650   0.6012    3.248</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> t+1 -0.8684   0.6011    3.712</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> t+2  2.7867   2.8237    3.381</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> t+3  2.9328   2.6620    3.184</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> t+4  3.0552   0.6202    3.041</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Prediction quantiles:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> , , GDPC1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          t+1       t+2       t+3       t+4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5%  -0.08838 -0.057335 -0.035597 -0.023096</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 50% -0.01942  0.001172  0.004994  0.006083</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 95%  0.03981  0.049893  0.039392  0.032121</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5%  -0.07364 -0.047081 -0.032258 -0.022524</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 50% -0.01704  0.001636  0.006596  0.008863</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 95%  0.03824  0.047625  0.048551  0.044943</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> , , CPIAUCSL</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>           t+1       t+2       t+3       t+4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5%  -0.019335 -0.018439 -0.018021 -0.014651</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 50% -0.007852 -0.005186 -0.003412 -0.001315</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 95%  0.001973  0.007633  0.010348  0.011388</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5%  -0.018885 -0.017801 -0.016011 -0.015435</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 50% -0.007309 -0.004426 -0.002213 -0.000941</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 95%  0.004347  0.006617  0.010907  0.012736</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> , , FEDFUNDS</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>           t+1       t+2       t+3       t+4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5%  -0.016523 -0.027121 -0.031461 -0.033329</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 50% -0.004153 -0.004552 -0.005621 -0.004908</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 95%  0.008367  0.016859  0.023505  0.028607</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>          t+1       t+2       t+3       t+4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5%  -0.01778 -0.032851 -0.036036 -0.041033</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 50% -0.00313 -0.006104 -0.003877 -0.005056</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 95%  0.01240  0.020438  0.030921  0.034473</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Visualize via fan-charts</span></span></span>
@@ -226,10 +226,10 @@ log-predictive-likelihood for a subset of variables (if <code>LPL=TRUE</code> an
 <span class="r-out co"><span class="r-pr">#&gt;</span> 'stable=TRUE': Calling 'stable_bvar()' to discard those posterior</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>           draws, that do not fulfill the stable criterion.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  621 stable posterior draws remaining for prediction!</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  548 stable posterior draws remaining for prediction!</span>
 <span class="r-in"><span><span class="va">predictions</span><span class="op">$</span><span class="va">LPL_VoI</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      t+1      t+2      t+3      t+4 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2.371252 6.678405 6.494280 6.439325 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2.735580 6.178043 6.144938 6.121610 </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
