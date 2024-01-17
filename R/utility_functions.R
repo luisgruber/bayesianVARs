@@ -164,6 +164,8 @@ coef.bayesianVARs_bvar <- function(object, ...){
 #' variance-covariance matrix for the last observation are returned, only.
 #'
 #' @param object An object of class `bayesianVARs_bvar` obtained via [`bvar()`].
+#' @param t Vector indicating which points in time should be extracted, defaults
+#'   to all.
 #' @param ... Currently ignored.
 #'
 #' @return An array of class `bayesianVARs_draws` of dimension \eqn{T \times M
@@ -181,18 +183,13 @@ coef.bayesianVARs_bvar <- function(object, ...){
 #'
 #' # Extract posterior draws of the variance-covariance matrix
 #' bvar_vcov <- vcov(mod)
-vcov.bayesianVARs_bvar <- function(object, ...){
+vcov.bayesianVARs_bvar <- function(object, t = seq_len(nrow(object$logvar)), ...){
   M <- ncol(object$Y)
   factors <- dim(object$facload)[2]
-  Tobs <- nrow(object$logvar)
+  Tobs <- length(t)
   nsave <- dim(object$PHI)[3]
 
-  dates <- NULL
-  if(Tobs==1L){
-    dates <- nrow(object$Y)
-  }else if(Tobs == nrow(object$Y)){
-    dates <- 1:nrow(object$Y)
-  }
+  dates <- t
 
   if(!is.null(rownames(object$Y)) & !is.null(dates)){
     dates <- tryCatch(as.Date(rownames(object$Yraw)[dates]),
@@ -201,7 +198,7 @@ vcov.bayesianVARs_bvar <- function(object, ...){
 
   out <- vcov_cpp(object$sigma_type == "factor",
                   object$facload,
-                  object$logvar,
+                  object$logvar[t,,,drop=FALSE],
                   object$U,
                   M,
                   factors)
