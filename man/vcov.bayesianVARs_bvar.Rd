@@ -5,10 +5,13 @@
 \title{Extract posterior draws of the (time-varying) variance-covariance matrix for
 a VAR model}
 \usage{
-\method{vcov}{bayesianVARs_bvar}(object, ...)
+\method{vcov}{bayesianVARs_bvar}(object, t = seq_len(nrow(object$logvar)), ...)
 }
 \arguments{
 \item{object}{An object of class \code{bayesianVARs_bvar} obtained via \code{\link[=bvar]{bvar()}}.}
+
+\item{t}{Vector indicating which points in time should be extracted, defaults
+to all.}
 
 \item{...}{Currently ignored.}
 }
