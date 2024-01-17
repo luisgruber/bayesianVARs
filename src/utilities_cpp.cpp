@@ -61,7 +61,7 @@ void build_sigma(arma::mat& Sigma, arma::mat& Sigma_chol, const bool& factor,
     arma::uvec uppertri = arma::trimatu_ind(arma::size(Um), 1);
     Um(uppertri) = u;
     arma::mat U_inv = arma::inv(arma::trimatu(Um));
-    Sigma_chol = U_inv.each_row() % arma::exp(logvar_t/2);
+    Sigma_chol = U_inv.each_col() % arma::exp(logvar_t.as_col()/2);
     if(!return_chol){
       Sigma=Sigma_chol.t()*Sigma_chol;
     }
