@@ -1,9 +1,12 @@
 Package: bayesianVARs
 Title: MCMC Estimation of Bayesian Vectorautoregressions
 Version: 0.1.1.9000
-Authors@R: 
+Authors@R: c(
     person("Luis", "Gruber", , "Luis.Gruber@aau.at", role = c("cph", "aut", "cre"),
-           comment = c(ORCID = "0000-0002-2399-738X"))
+           comment = c(ORCID = "0000-0002-2399-738X")),
+    person("Gregor", "Kastner", , "gregor.kastner@aau.at", role = "ctb",
+           comment = c(ORCID = "0000-0002-8237-8271"))
+  )
 Description: Efficient Markov Chain Monte Carlo (MCMC) algorithms for the
     fully Bayesian estimation of vectorautoregressions (VARs) featuring
     stochastic volatility (SV). Implements state-of-the-art shrinkage
@@ -12,21 +15,22 @@ Description: Efficient Markov Chain Monte Carlo (MCMC) algorithms for the
     (2020) <doi:10.1002/for.2680> and Carrerio et al. (2021)
     <doi:10.1016/j.jeconom.2021.11.010>.
 License: GPL (>= 3)
-URL: https://github.com/luisgruber/bayesianVARs, https://luisgruber.github.io/bayesianVARs/
+URL: https://github.com/luisgruber/bayesianVARs,
+    https://luisgruber.github.io/bayesianVARs/
 BugReports: https://github.com/luisgruber/bayesianVARs/issues
 Depends: 
     R (>= 3.3.0)
 Imports: 
     colorspace,
     factorstochvol (>= 1.1.0),
-    GIGrvg,
+    GIGrvg (>= 0.7),
     graphics,
     MASS,
     mvtnorm,
-    Rcpp,
+    Rcpp (>= 1.0.0),
     scales,
     stats,
-    stochvol (>= 3.0.2),
+    stochvol (>= 3.0.3),
     utils
 Suggests:
     coda,
