@@ -1,4 +1,4 @@
-# bayesianVARs (development version)
+# bayesianVARs 0.1.2
 
 * Added minimum version to factorstochvol in the Imports field of the DESCRIPTION file in order to avoid unnecessary building errors. Thanks to Sergey Fedorov for pointing this out.
 * vcov.bayesianVARs_bvar method now can be specified for specific time-points.
