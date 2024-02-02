@@ -551,7 +551,7 @@ bvar <- function(data,
                       phi = c(rep(.8, M), rep(.8, prior_sigma$factor_factors)) + pmin(rnorm(M + prior_sigma$factor_factors, sd=.06), .095),
                       sigma = rep(.1, M + prior_sigma$factor_factors) + rgamma(M + prior_sigma$factor_factors, 1, 10))
     startlogvar <- matrix(startpara["mu",][1] + rnorm(Tobs*(M + prior_sigma$factor_factors)), Tobs, M + prior_sigma$factor_factors)
-    startlogvar[,M+which(isFALSE(prior_sigma$sv_heteroscedastic[-c(1:M)]))] <- 0 # !!! important, needed for factorstochvol: if factor is assumed to be homoscedastic, the corresponding column in logvar has to be 0!!!
+    startlogvar[,M+which(prior_sigma$sv_heteroscedastic[-c(1:M)]==FALSE)] <- 0 # !!! important, needed for factorstochvol: if factor is assumed to be homoscedastic, the corresponding column in logvar has to be 0!!!
     startlogvar0 <- startpara["mu",][1] + rnorm(M + prior_sigma$factor_factors)
     starttau2 <- if(!prior_sigma$factor_ngprior){ # if prior is 'normal'
       prior_sigma$factor_starttau2
