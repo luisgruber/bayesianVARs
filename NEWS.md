@@ -1,4 +1,4 @@
-# bayesianVARs (development version)
+# bayesianVARs 0.1.3
 
 * bugfix concerning VAR with factor structure on errors with homoscedastic factors.
 
