@@ -148,7 +148,7 @@ callable on the C-level only.
 To sample efficiently the reduced-form VAR coefficients, assuming a
 \strong{cholesky-structure for the errors}, the corrected triangular algorithm in
 Carriero et al. (2021) is implemented. The SV parameters and latent
-variables are sampled using package \code{\link{stochvol}}'s
+variables are sampled using package \code{\link[stochvol]{stochvol}}'s
 \code{\link[stochvol]{update_fast_sv}} function. The precision parameters,
 i.e. the free off-diagonal elements in \eqn{\boldsymbol{U}}, are sampled as in
 Cogley and Sargent (2005).
