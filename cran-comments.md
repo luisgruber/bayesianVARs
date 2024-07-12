@@ -1,2 +1,0 @@
-## R CMD check results
-
