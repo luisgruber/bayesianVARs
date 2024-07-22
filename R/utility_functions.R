@@ -1532,8 +1532,8 @@ specify_prior_phi <- function(data = NULL,
   }
 
   if(prior == "DL"){
-    text <- c("Argument 'DL_a' must be either a single positive numeric or one of 'hyperprior',
-           '1/K' or '1/n'. \n ")
+
+    text <- c("Argument 'DL_a' should be a single positive numeric. For more advanced options read the function documentation. \n ")
 
     if(any(DL_a <= 0)) {
       stop(text)
