@@ -51,7 +51,7 @@ and latent variables and returns the posterior draws.</p>
 <span>  draws <span class="op">=</span> <span class="fl">1000L</span>,</span>
 <span>  burnin <span class="op">=</span> <span class="fl">1000L</span>,</span>
 <span>  thin <span class="op">=</span> <span class="fl">1L</span>,</span>
-<span>  prior_intercept <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  prior_intercept <span class="op">=</span> <span class="fl">10</span>,</span>
 <span>  prior_phi <span class="op">=</span> <span class="fu"><a href="specify_prior_phi.html">specify_prior_phi</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">data</span>, lags <span class="op">=</span> <span class="va">lags</span>, prior <span class="op">=</span> <span class="st">"HS"</span><span class="op">)</span>,</span>
 <span>  prior_sigma <span class="op">=</span> <span class="fu"><a href="specify_prior_sigma.html">specify_prior_sigma</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">data</span>, type <span class="op">=</span> <span class="st">"factor"</span>, quiet <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span>  sv_keep <span class="op">=</span> <span class="st">"last"</span>,</span>
@@ -92,8 +92,8 @@ burnin</p></dd>
 <dt id="arg-prior-intercept">prior_intercept<a class="anchor" aria-label="anchor" href="#arg-prior-intercept"></a></dt>
 <dd><p>Either <code>prior_intercept=FALSE</code> and no constant
 term (intercept) will be included. Or a numeric vector of length \(M\)
-indicating the (fixed) prior variances on the constant term. A single number
-will be recycled accordingly. Default is <code>prior_intercept=100</code>.</p></dd>
+indicating the (fixed) prior standard deviations on the constant term. A single number
+will be recycled accordingly. Default is <code>prior_intercept=10</code>.</p></dd>
 
 
 <dt id="arg-prior-phi">prior_phi<a class="anchor" aria-label="anchor" href="#arg-prior-phi"></a></dt>
