@@ -1,96 +1,34 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/404.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/LICENSE.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/articles/index.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/authors.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/index.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/news/index.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/bvar.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/coef.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/fitted.bayesianVARs_bvar.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/index.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/my_gig.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/pairs_predict.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/plot.bayesianVARs_bvar.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/plot.bayesianVARs_fitted.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/plot.bayesianVARs_predict.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/posterior_heatmap.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/predict.bayesianVARs_bvar.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/print.bayesianVARs_bvar.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/print.bayesianVARs_predict.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/print.summary.bayesianVARs_bvar.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/print.summary.bayesianVARs_predict.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/specify_prior_phi.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/specify_prior_sigma.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/stable_bvar.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/sub-.bayesianVARs_coef.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/sub-.bayesianVARs_draws.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/summary.bayesianVARs_bvar.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/summary.bayesianVARs_draws.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/summary.bayesianVARs_predict.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/usmacro_growth.html</loc>
-  </url>
-  <url>
-    <loc>https://luisgruber.github.io/bayesianVARs/reference/vcov.bayesianVARs_bvar.html</loc>
-  </url>
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>https://luisgruber.github.io/bayesianVARs/404.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/LICENSE.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/articles/index.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/authors.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/index.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/news/index.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/bvar.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/coef.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/fitted.bayesianVARs_bvar.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/index.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/my_gig.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/pairs_predict.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/plot.bayesianVARs_bvar.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/plot.bayesianVARs_fitted.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/plot.bayesianVARs_predict.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/posterior_heatmap.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/predict.bayesianVARs_bvar.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/print.bayesianVARs_bvar.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/print.bayesianVARs_predict.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/print.summary.bayesianVARs_bvar.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/print.summary.bayesianVARs_predict.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/specify_prior_phi.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/specify_prior_sigma.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/stable_bvar.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/sub-.bayesianVARs_coef.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/sub-.bayesianVARs_draws.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/summary.bayesianVARs_bvar.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/summary.bayesianVARs_draws.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/summary.bayesianVARs_predict.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/usmacro_growth.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/vcov.bayesianVARs_bvar.html</loc></url>
 </urlset>
+
