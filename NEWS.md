@@ -1,4 +1,4 @@
-# bayesianVARs (development version)
+# bayesianVARs 0.1.4
 
 * For consistency with other functions, from now on prior_intercept in bvar() specifies standard deviations instead of variances.
 * Bug fix concerning 'additional check' valgrind. Seems to pass the check now. Thanks to Brian Ripley for reporting the bug.
