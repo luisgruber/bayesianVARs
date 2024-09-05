@@ -260,6 +260,7 @@ bvar <- function(data,
     intercept <- 0
     priorIntercept <- vector("numeric")
   }else{
+    prior_intercept <- prior_intercept^2 # transform to variances
     if(length(prior_intercept)==1L){
       priorIntercept <- rep(prior_intercept, M)
     }else if(length(prior_intercept)==M){
@@ -270,7 +271,6 @@ bvar <- function(data,
 
     intercept <- 1
   }
-  prior_intercept <- prior_intercept^2 # transform to variances
   PHI0 <- matrix(0, K+intercept, M) # prior mean of intercept is 0
   PHI0[1:K,] <- prior_phi$PHI0 # prior mean of VAR coefficients is specified with specify_prior_phi()
 
