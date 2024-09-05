@@ -680,7 +680,7 @@ List bvar_cpp(const arma::mat& Y,
       for(int j =0; j<M; j++){
         if(heteroscedastic(j) == false){
           double s_p = priorHomoscedastic(j,1) + 0.5*accu(square(str_resid.col(j)));
-          double d_i = 1. / R::rgamma(priorHomoscedastic(j,0)+T/2, 1./s_p);
+          double d_i = 1. / R::rgamma(priorHomoscedastic(j,0)+.5*T, 1./s_p);
           d_sqrt.col(j).fill(sqrt(d_i));
           logvar.col(j).fill(log(d_i));
         }else if(heteroscedastic(j) == true){
