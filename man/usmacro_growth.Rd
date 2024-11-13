@@ -9,7 +9,7 @@ A matrix with 247 rows and 21 columns.
 }
 \source{
 Raw (untransformed) data available at
-\url{https://research.stlouisfed.org/econ/mccracken/fred-databases/},
+\url{https://www.stlouisfed.org/research/economists/mccracken/fred-databases},
 \url{https://files.stlouisfed.org/files/htdocs/fred-md/quarterly/2021-07.csv}.
 }
 \usage{
