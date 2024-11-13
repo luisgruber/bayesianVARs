@@ -1354,7 +1354,7 @@ specify_prior_sigma <- function(data=NULL,
 #'  determine the scale parameter in each group. Expert option would be to set
 #'  the scale parameter proportional to \code{NG_a}. E.g. in the case where a
 #'  discrete hyperprior for \code{NG_a} is chosen, a desired proportion of let's
-#'  say \code{0.2} is achieved by setting \code{NG_c="0.2a"} (character input!).
+#'  say \code{0.2} is achieved by setting \code{NG_c="0.2*a"} (character input!).
 #'  \code{NG_c} has only to be specified if \code{prior="NG"}.
 #'@param NG_tol  Minimum number that a parameter draw of one of the shrinking
 #'  parameters of the normal-gamma prior can take. Prevents numerical issues
