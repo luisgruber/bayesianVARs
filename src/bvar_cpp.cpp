@@ -306,7 +306,10 @@ List bvar_cpp(const arma::mat& Y,
   arma::icolvec nonzerosperrow = arma::sum(factor_armarestr, 1);
   for (unsigned int i = 0; i < armafacload.n_rows; i++) {
     for (unsigned int j = 0; j < armafacload.n_cols; j++) {
-      if (factor_armarestr(i, j) == 0) armafacload(i,j) = 0.;
+      if (factor_armarestr(i, j) == 0) {
+        armafacload(i,j) = 0.;
+        armatau2(i,j) = 0.;
+        }
     }
   }
 
