@@ -1,5 +1,7 @@
 # bayesianVARs (development version)
 
+* Bug fix which makes estimation possible of a VAR with factor stochastic volatility structure on the errors with the restriction that the loadings matrix has zeros above the diagonal. Thanks to Stefan Haan for reporting the bug.
+
 # bayesianVARs 0.1.4
 
 * For consistency with other functions, from now on prior_intercept in bvar() specifies standard deviations instead of variances.
