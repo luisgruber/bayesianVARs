@@ -1733,7 +1733,6 @@ predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TR
 
   # relevant mod settings
   sv_indicator <- which(object$heteroscedastic==TRUE)
-  intercept <- object$intercept
 
   # data preparation
   variables <- colnames(object$Y)
@@ -2038,10 +2037,10 @@ predict_old <- function(object, n.ahead, stable = TRUE, LPL = FALSE, Y_obs = NA,
 #' predictions <- predict(mod, ahead = 1L)
 #' print(predictions)
 print.bayesianVARs_predict <- function(x, ...){
-  cat(paste("\nGeneric functions for bayesianVARs_predict objects:\n",
-            " - summary.bayesianVARs_predict(),\n",
-            " - pairs.bayesianVARs_predict(),\n",
-            " - plot.bayesianVARs_predict() (alias for pairs.bayesianVARs_predict()).\n"))
+  cat("\nGeneric functions for bayesianVARs_predict objects:\n",
+      " - summary.bayesianVARs_predict(),\n",
+      " - pairs.bayesianVARs_predict(),\n",
+      " - plot.bayesianVARs_predict() (alias for pairs.bayesianVARs_predict()).\n")
   invisible(x)
 }
 
