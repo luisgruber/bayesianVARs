@@ -23,8 +23,8 @@ my_gig <- function(n, lambda, chi, psi) {
     .Call(`_bayesianVARs_my_gig`, n, lambda, chi, psi)
 }
 
-irf_cpp <- function(coefficients, factor_loadings, f_shock, ahead) {
-    .Call(`_bayesianVARs_irf_cpp`, coefficients, factor_loadings, f_shock, ahead)
+irf_cpp <- function(coefficients, factor_loadings, U_vecs, shock, ahead) {
+    .Call(`_bayesianVARs_irf_cpp`, coefficients, factor_loadings, U_vecs, shock, ahead)
 }
 
 sample_PHI_cholesky <- function(PHI, PHI_prior, Y, X, U, d_sqrt, V_prior) {

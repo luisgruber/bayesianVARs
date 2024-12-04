@@ -16,21 +16,33 @@ inline void shift_and_insert(
 // [[Rcpp::export]]
 arma::cube irf_cpp(
 	const arma::cube& coefficients, //rows: lagged variables + intercept, columns: variables, slices: draws
-	const arma::cube& factor_loadings, //rows: variables, columns: factors, slices: draws
-	const arma::colvec& f_shock, //columns: how much each of the factors is shocked
+	const arma::cube& factor_loadings, //rows: variables, columns: factors, slices: draws,
+	const arma::mat& U_vecs, //rows: entries of a (variables x variables)-upper triagonal matrix with ones on the diagonals, cols: draws
+	const arma::colvec& shock, //columns: how much each of the factors is shocked
 	const arma::uword ahead //how far to predict ahead
 ) {
 	const uword n_variables = coefficients.n_cols;
 	const uword n_posterior_draws = coefficients.n_slices;
+	const bool is_factor_model = factor_loadings.n_cols > 0;
+
 	arma::cube irf(ahead+1, n_variables, n_posterior_draws, arma::fill::none);
 	
 	// trace out n_posterior_draws paths
 	arma::mat current_predictors(n_posterior_draws, coefficients.n_rows, arma::fill::zeros);
 	// all paths start with the some shock at t=0 to the variables
-	// the shock is to the factors, so the uncertainty of the factor loadings
-	// translates to uncertainty to the shock to the variables
+	const arma::uvec upper_indices = arma::trimatu_ind(arma::size(n_variables, n_variables), 1);
 	for (uword r = 0; r < n_posterior_draws; r++) {
-		const rowvec y_shock = (factor_loadings.slice(r) * f_shock).t();
+		rowvec y_shock;
+		if (is_factor_model) {
+			y_shock = (factor_loadings.slice(r) * shock).t();
+		}
+		else {
+		    arma::mat U(n_variables, n_variables, arma::fill::eye);
+			U(upper_indices) = U_vecs.col(r);
+			U = U.t();
+			y_shock = solve(arma::trimatl(U), shock).t();
+		}
+
 		irf.slice(r).row(0) = y_shock;
 		current_predictors.head_cols(n_variables).row(r) = y_shock;
 	}

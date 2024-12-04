@@ -5,20 +5,27 @@
 #' @param x An object of type `bayesianVARs_bvar`
 #'
 #' @export
-irf <- function(x, factor_shock, ahead=8) {
-	if (x$sigma_type != "factor") {
-		stop("impulse reponse functions are only available for factor models")
+irf <- function(x, shock, ahead=8) {
+	if (x$sigma_type == "factor") {
+		number_of_factors <- dim(x$facload)[2]
+		if (length(shock) != number_of_factors) {
+			stop("the shock vector must have dimension equals to the number of factors")
+		}
 	}
-	
-	number_of_factors <- dim(x$facload)[2]
-	if (length(factor_shock) != number_of_factors) {
-		stop("the shock vector to the factors must have dimension equals to the number of factors")
+	else if (x$sigma_type == "cholesky") {
+		if (length(shock) != ncol(mod$PHI)) {
+			stop("the shock vector must have dimension equals to the number of variables")
+		}
+	}
+	else {
+		stop("unknown model")
 	}
 
 	ret <- irf_cpp(
 		x$PHI,
 		x$facload,
-		factor_shock,
+		x$U,
+		shock,
 		ahead
 	)
 

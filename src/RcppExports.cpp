@@ -57,16 +57,17 @@ BEGIN_RCPP
 END_RCPP
 }
 // irf_cpp
-arma::cube irf_cpp(const arma::cube& coefficients, const arma::cube& factor_loadings, const arma::colvec& f_shock, const arma::uword ahead);
-RcppExport SEXP _bayesianVARs_irf_cpp(SEXP coefficientsSEXP, SEXP factor_loadingsSEXP, SEXP f_shockSEXP, SEXP aheadSEXP) {
+arma::cube irf_cpp(const arma::cube& coefficients, const arma::cube& factor_loadings, const arma::mat& U_vecs, const arma::colvec& shock, const arma::uword ahead);
+RcppExport SEXP _bayesianVARs_irf_cpp(SEXP coefficientsSEXP, SEXP factor_loadingsSEXP, SEXP U_vecsSEXP, SEXP shockSEXP, SEXP aheadSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::cube& >::type coefficients(coefficientsSEXP);
     Rcpp::traits::input_parameter< const arma::cube& >::type factor_loadings(factor_loadingsSEXP);
-    Rcpp::traits::input_parameter< const arma::colvec& >::type f_shock(f_shockSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type U_vecs(U_vecsSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type shock(shockSEXP);
     Rcpp::traits::input_parameter< const arma::uword >::type ahead(aheadSEXP);
-    rcpp_result_gen = Rcpp::wrap(irf_cpp(coefficients, factor_loadings, f_shock, ahead));
+    rcpp_result_gen = Rcpp::wrap(irf_cpp(coefficients, factor_loadings, U_vecs, shock, ahead));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -181,7 +182,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 21},
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
-    {"_bayesianVARs_irf_cpp", (DL_FUNC) &_bayesianVARs_irf_cpp, 4},
+    {"_bayesianVARs_irf_cpp", (DL_FUNC) &_bayesianVARs_irf_cpp, 5},
     {"_bayesianVARs_sample_PHI_cholesky", (DL_FUNC) &_bayesianVARs_sample_PHI_cholesky, 7},
     {"_bayesianVARs_dmvnrm_arma_fast", (DL_FUNC) &_bayesianVARs_dmvnrm_arma_fast, 4},
     {"_bayesianVARs_predh", (DL_FUNC) &_bayesianVARs_predh, 6},
