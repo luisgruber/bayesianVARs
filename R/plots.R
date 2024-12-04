@@ -623,3 +623,78 @@ plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NUL
 
   invisible(x)
 }
+
+#' @export
+plot.bayesianVARs_irf <- function(x, vars = "all",
+                                      quantiles = c(0.05,0.25,0.5,0.75,0.95),
+                                      n_col = 1L,
+                                      ...){
+
+  n_ahead <- nrow(x)
+
+  if(length(vars)==1L & any(vars == "all")){
+    vars <- 1:ncol(x)
+  }else if(is.character(vars)){
+    if(any(base::isFALSE(vars %in% colnames(x)))){
+      stop("Elements of 'vars' must coincide with 'colnames(x)'!")
+    }else{
+      vars <- which(colnames(x) %in% vars)
+    }
+  }else if(is.numeric(vars)){
+    vars <- as.integer(vars)
+    if(any(vars > ncol(x))){
+      stop("'max(vars)' must be at most 'ncol(x)'!")
+    }
+  }
+  var_names <- colnames(x)
+
+  t <- seq_len(n_ahead)
+  dates <- t-1
+
+  quantiles <- sort(quantiles)
+  nr_quantiles <- length(quantiles)
+  nr_intervals <- floor(nr_quantiles/2)
+  even <- nr_quantiles%%2 == 0
+
+  pred_quants <- apply(x, 1:2, quantile, quantiles)
+
+  oldpar <- par(no.readonly = TRUE)
+  on.exit(par(oldpar), add = TRUE)
+  M <- length(vars)
+  par(mfrow=c(min(5,ceiling(M/n_col)),n_col), mar = c(2,2,2,1), mgp = c(2,.5,0))
+  for(j in seq_along(vars)){
+    plot(t, rep(0, n_ahead), type = "n", xlab="", ylab = "",
+         xaxt="n", ylim = range(pred_quants[,,vars[j]]))
+
+    axis(side=1, at = t, labels = dates[t])
+    mtext(var_names[j], side = 3)
+
+    if(nr_intervals>0){
+      for(r in seq.int(nr_intervals)){
+        alpha_upper <- 0.4
+        alpha_lower <- 0.2
+        alphas <- seq(alpha_lower, alpha_upper, length.out = nr_intervals)
+        if(nr_intervals==1){
+          alphas <- alpha_upper
+        }
+        polygon(x = c(t, rev(t)),
+                y = c(pred_quants[r,,vars[j]], rev(pred_quants[r+1,,vars[j]])),
+                col = scales::alpha("red", alphas[r]),
+                border = NA)
+        if(length(quantiles)>2){
+          polygon(x = c(t, rev(t)),
+                  y = c(pred_quants[nrow(pred_quants)+1-r,,vars[j]],
+                        rev(pred_quants[nrow(pred_quants)-r,,vars[j]])),
+                  col = scales::alpha("red", alphas[r]),
+                  border = NA)
+        }
+      }
+      if(!even){
+        lines(t, pred_quants[ceiling(length(quantiles)/2),,vars[j]],
+              col = "red", lwd = 2)
+      }
+    }
+  }
+
+  invisible(x)
+}

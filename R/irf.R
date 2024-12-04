@@ -1,4 +1,10 @@
-# x should be of class bayesianVARs_bvar
+#' Impulse response functions
+#'
+#' Effect of a shock on the variables over time
+#'
+#' @param x An object of type `bayesianVARs_bvar`
+#'
+#' @export
 irf <- function(x, factor_shock, ahead=8) {
 	if (x$sigma_type != "factor") {
 		stop("impulse reponse functions are only available for factor models")
@@ -15,6 +21,8 @@ irf <- function(x, factor_shock, ahead=8) {
 		factor_shock,
 		ahead
 	)
-	dimnames(ret)[[2]] <- dimnames(x$Y)[[2]]
+
+	colnames(ret) <- colnames(x$Y)
+	class(ret) <- "bayesianVARs_irf"
 	ret
 }
