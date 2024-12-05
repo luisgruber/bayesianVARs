@@ -4,11 +4,30 @@
 \alias{irf}
 \title{Impulse response functions}
 \usage{
-irf(x, factor_shock, ahead = 8)
+irf(x, shock, ahead = 8)
 }
 \arguments{
-\item{x}{An object of type \code{bayesianVARs_bvar}}
+\item{x}{An object of type \code{bayesianVARs_bvar}.}
+
+\item{shock}{A vector of shocks. If a factor model was used, then \code{shock} is
+applied to the factors, and its dimension must be the number of factors.
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{If the Cholesky model was used, then the dimension of `shock` is expected
+to be equals the number of equations. Note that the contemporaneous effects
+of a shock in the Cholesky model depend on the ordering of equations.
+}\if{html}{\out{</div>}}}
+}
+\value{
+Returns a \code{bayesianVARs_irf} object
 }
 \description{
-Effect of a shock on the variables over time
+Effect of a shock on the factors or variables over time
+}
+\examples{
+train_data <- 100 * usmacro_growth[,c("GDPC1", "PCECC96", "GPDIC1", "AWHMAN", "GDPCTPI", "CES2000000008x", "FEDFUNDS", "GS10", "EXUSUKx", "S&P 500")]
+prior_sigma <- specify_prior_sigma(data=train_data, type="cholesky")
+mod <- bvar(train_data, lags=2L, draws=2000, prior_sigma=prior_sigma)
+ir <- irf(mod, shock=c(0,0,0,0,0,0,1,0,0,0))
+plot(ir, n_col=2)
+
 }
