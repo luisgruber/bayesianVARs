@@ -1,7 +1,4 @@
-#include <RcppArmadillo.h>
-
-using namespace Rcpp;
-using namespace arma;
+#include "utilities_cpp.h"
 
 //https://gallery.rcpp.org/articles/dmvnorm_arma/
 static double const log2pi = std::log(2.0 * M_PI);

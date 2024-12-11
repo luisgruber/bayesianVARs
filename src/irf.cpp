@@ -1,7 +1,90 @@
-#include <RcppArmadillo.h>
+#include "utilities_cpp.h"
 
-using namespace Rcpp;
-using namespace arma;
+inline arma::cube Sigma_chol_draws (
+	const uword n_variables,
+	const uword n_posterior_draws,
+	const arma::cube& factor_loadings, //rows: variables, columns: factors, slices: draws
+	const arma::mat& U_vecs, //rows: entries of a (variables x variables)-upper triagonal matrix with ones on the diagonals, cols: draws
+	const arma::mat& logvar_T
+) {
+	const bool is_factor_model = factor_loadings.n_cols > 0;
+	
+	arma::cube ret(n_variables, n_variables, n_posterior_draws, arma::fill::none);
+	for (uword r = 0; r < n_posterior_draws; r++) {
+		// obtain the cholesky factorization of the covariance matrix
+		arma::mat Sigma_unused, Sigma_chol, facload_mat;
+		arma::vec u_vec;
+		if(is_factor_model){
+			facload_mat = factor_loadings.slice(r);
+		} else {
+			u_vec = U_vecs.col(r);
+		}
+		build_sigma(Sigma_unused, Sigma_chol, is_factor_model, facload_mat,
+				logvar_T.col(r).as_row(), factor_loadings.n_cols,
+				n_variables, u_vec, true);
+
+		ret.slice(r) = Sigma_chol;
+	}
+	
+	return ret;
+}
+
+// [[Rcpp::export]]
+Rcpp::List obtain_restrictable_matrices (
+	const arma::cube& reduced_coefficients, //rows: lagged variables + intercept, columns: variables, slices: draws
+	const arma::cube& factor_loadings, //rows: variables, columns: factors, slices: draws
+	const arma::mat& U_vecs, //rows: entries of a (variables x variables)-upper triagonal matrix with ones on the diagonals, cols: draws
+	const arma::mat& logvar_T,
+	
+	const bool include_B0 = false,
+	const bool include_structural_coeff = false,
+	const bool include_long_run_ir = false
+) {
+	const uword n_variables = reduced_coefficients.n_cols;
+	const uword n_posterior_draws = reduced_coefficients.n_slices;
+	
+	const arma::cube Sigma_chol = Sigma_chol_draws(
+		n_variables,
+		n_posterior_draws,
+		factor_loadings,
+		U_vecs,
+		logvar_T
+	);
+	
+	Rcpp::List ret = Rcpp::List::create(
+		Named("B0_inv") = Sigma_chol
+  	);
+  	
+  	if (include_B0 || include_structural_coeff || include_long_run_ir) {
+  		arma::cube B0(n_variables, n_variables, n_posterior_draws, arma::fill::none);
+  		for (uword r = 0; r < n_posterior_draws; r++) {
+			B0.slice(r) = arma::inv(arma::trimatu(Sigma_chol.slice(r)));
+		}
+		ret["B0"] = B0;
+		
+		if (include_structural_coeff || include_long_run_ir) {
+			arma::cube structural_coeff(reduced_coefficients);
+			for (uword r = 0; r < n_posterior_draws; r++) {
+				structural_coeff.slice(r) *= B0.slice(r);
+			}
+			ret["structural_coeff"] = structural_coeff;
+			
+			if (include_long_run_ir) {
+				arma::cube IR_inf(n_variables, n_variables, n_posterior_draws, arma::fill::none);
+				for (uword r = 0; r < n_posterior_draws; r++) {
+					arma::mat sum_of_lags(n_variables, n_variables);
+					for (uword l = 0; l + n_variables < structural_coeff.n_rows; l += n_variables) {
+						sum_of_lags += structural_coeff.slice(r).rows(l, l + n_variables - 1);
+					}
+					IR_inf.slice(r) = arma::inv((B0.slice(r) - sum_of_lags).t());
+				}
+				ret["IR_inf"] = IR_inf;
+			}
+		}		
+  	}
+	
+	return ret;
+}
 
 inline void shift_and_insert(
 	arma::mat& X, //the columns of X should be y1,y2,y3, y1.l1,y2.l1,y3.l1,...,1
@@ -16,7 +99,7 @@ inline void shift_and_insert(
 // [[Rcpp::export]]
 arma::cube irf_cpp(
 	const arma::cube& coefficients, //rows: lagged variables + intercept, columns: variables, slices: draws
-	const arma::cube& factor_loadings, //rows: variables, columns: factors, slices: draws,
+	const arma::cube& factor_loadings, //rows: variables, columns: factors, slices: draws
 	const arma::mat& U_vecs, //rows: entries of a (variables x variables)-upper triagonal matrix with ones on the diagonals, cols: draws
 	const arma::colvec& shock, //columns: how much each of the factors is shocked
 	const arma::uword ahead //how far to predict ahead

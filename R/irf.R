@@ -35,7 +35,7 @@ irf <- function(x, shock, ahead=8) {
 	else {
 		stop("unknown model")
 	}
-
+		
 	ret <- irf_cpp(
 		x$PHI,
 		x$facload,
@@ -48,3 +48,10 @@ irf <- function(x, shock, ahead=8) {
 	class(ret) <- "bayesianVARs_irf"
 	ret
 }
+
+# obtain_restrictable_matrices(
+#		x$PHI,
+#		x$facload,
+#		x$U,
+#		x$logvar[nrow(x$logvar),,] #most recent log volatility
+# )
