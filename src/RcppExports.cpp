@@ -57,8 +57,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // obtain_restrictable_matrices
-Rcpp::List obtain_restrictable_matrices(const arma::cube& reduced_coefficients, const arma::cube& factor_loadings, const arma::mat& U_vecs, const arma::mat& logvar_T, const bool include_B0, const bool include_structural_coeff, const bool include_long_run_ir);
-RcppExport SEXP _bayesianVARs_obtain_restrictable_matrices(SEXP reduced_coefficientsSEXP, SEXP factor_loadingsSEXP, SEXP U_vecsSEXP, SEXP logvar_TSEXP, SEXP include_B0SEXP, SEXP include_structural_coeffSEXP, SEXP include_long_run_irSEXP) {
+Rcpp::List obtain_restrictable_matrices(const arma::cube& reduced_coefficients, const arma::cube& factor_loadings, const arma::mat& U_vecs, const arma::mat& logvar_T, const bool include_B0_inv, const bool include_B0, const bool include_structural_coeff, const bool include_long_run_ir);
+RcppExport SEXP _bayesianVARs_obtain_restrictable_matrices(SEXP reduced_coefficientsSEXP, SEXP factor_loadingsSEXP, SEXP U_vecsSEXP, SEXP logvar_TSEXP, SEXP include_B0_invSEXP, SEXP include_B0SEXP, SEXP include_structural_coeffSEXP, SEXP include_long_run_irSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -66,10 +66,23 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::cube& >::type factor_loadings(factor_loadingsSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type U_vecs(U_vecsSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type logvar_T(logvar_TSEXP);
+    Rcpp::traits::input_parameter< const bool >::type include_B0_inv(include_B0_invSEXP);
     Rcpp::traits::input_parameter< const bool >::type include_B0(include_B0SEXP);
     Rcpp::traits::input_parameter< const bool >::type include_structural_coeff(include_structural_coeffSEXP);
     Rcpp::traits::input_parameter< const bool >::type include_long_run_ir(include_long_run_irSEXP);
-    rcpp_result_gen = Rcpp::wrap(obtain_restrictable_matrices(reduced_coefficients, factor_loadings, U_vecs, logvar_T, include_B0, include_structural_coeff, include_long_run_ir));
+    rcpp_result_gen = Rcpp::wrap(obtain_restrictable_matrices(reduced_coefficients, factor_loadings, U_vecs, logvar_T, include_B0_inv, include_B0, include_structural_coeff, include_long_run_ir));
+    return rcpp_result_gen;
+END_RCPP
+}
+// find_rotation_cpp
+arma::cube find_rotation_cpp(arma::cube restrictable_matrices, arma::cube restrictions);
+RcppExport SEXP _bayesianVARs_find_rotation_cpp(SEXP restrictable_matricesSEXP, SEXP restrictionsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::cube >::type restrictable_matrices(restrictable_matricesSEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type restrictions(restrictionsSEXP);
+    rcpp_result_gen = Rcpp::wrap(find_rotation_cpp(restrictable_matrices, restrictions));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -199,7 +212,8 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 21},
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
-    {"_bayesianVARs_obtain_restrictable_matrices", (DL_FUNC) &_bayesianVARs_obtain_restrictable_matrices, 7},
+    {"_bayesianVARs_obtain_restrictable_matrices", (DL_FUNC) &_bayesianVARs_obtain_restrictable_matrices, 8},
+    {"_bayesianVARs_find_rotation_cpp", (DL_FUNC) &_bayesianVARs_find_rotation_cpp, 2},
     {"_bayesianVARs_irf_cpp", (DL_FUNC) &_bayesianVARs_irf_cpp, 5},
     {"_bayesianVARs_sample_PHI_cholesky", (DL_FUNC) &_bayesianVARs_sample_PHI_cholesky, 7},
     {"_bayesianVARs_dmvnrm_arma_fast", (DL_FUNC) &_bayesianVARs_dmvnrm_arma_fast, 4},

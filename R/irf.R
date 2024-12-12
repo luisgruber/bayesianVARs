@@ -49,9 +49,22 @@ irf <- function(x, shock, ahead=8) {
 	ret
 }
 
-# obtain_restrictable_matrices(
-#		x$PHI,
-#		x$facload,
-#		x$U,
-#		x$logvar[nrow(x$logvar),,] #most recent log volatility
-# )
+find_rotation <- function(
+	x,
+	restrictions_B0_inv = NULL,
+	restrictions_B0 = NULL,
+	restrictions_structural_coeff = NULL,
+	restrictions_long_run_ir = NULL
+) {
+	fA <- obtain_restrictable_matrices(
+		x$PHI,
+		x$facload,
+		x$U,
+		x$logvar[nrow(x$logvar),,], #most recent log volatility
+		include_B0_inv = !is.null(restrictions_B0_inv),
+		include_B0 = !is.null(restrictions_B0),
+		include_structural_coeff = !is.null(restrictions_structural_coeff),
+		include_long_run_ir = !is.null(restrictions_long_run_ir)
+	)
+	fA
+}

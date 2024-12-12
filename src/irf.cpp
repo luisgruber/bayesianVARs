@@ -36,6 +36,7 @@ Rcpp::List obtain_restrictable_matrices (
 	const arma::mat& U_vecs, //rows: entries of a (variables x variables)-upper triagonal matrix with ones on the diagonals, cols: draws
 	const arma::mat& logvar_T,
 	
+	const bool include_B0_inv = true,
 	const bool include_B0 = false,
 	const bool include_structural_coeff = false,
 	const bool include_long_run_ir = false
@@ -51,23 +52,22 @@ Rcpp::List obtain_restrictable_matrices (
 		logvar_T
 	);
 	
-	Rcpp::List ret = Rcpp::List::create(
-		Named("B0_inv") = Sigma_chol
-  	);
+	Rcpp::List ret = Rcpp::List::create();
+	if (include_B0_inv) ret["B0_inv"] = Sigma_chol;
   	
   	if (include_B0 || include_structural_coeff || include_long_run_ir) {
   		arma::cube B0(n_variables, n_variables, n_posterior_draws, arma::fill::none);
   		for (uword r = 0; r < n_posterior_draws; r++) {
 			B0.slice(r) = arma::inv(arma::trimatu(Sigma_chol.slice(r)));
 		}
-		ret["B0"] = B0;
+		if (include_B0) ret["B0"] = B0;
 		
 		if (include_structural_coeff || include_long_run_ir) {
 			arma::cube structural_coeff(reduced_coefficients);
 			for (uword r = 0; r < n_posterior_draws; r++) {
 				structural_coeff.slice(r) *= B0.slice(r);
 			}
-			ret["structural_coeff"] = structural_coeff;
+			if (include_structural_coeff) ret["structural_coeff"] = structural_coeff;
 			
 			if (include_long_run_ir) {
 				arma::cube IR_inf(n_variables, n_variables, n_posterior_draws, arma::fill::none);
@@ -80,10 +80,32 @@ Rcpp::List obtain_restrictable_matrices (
 				}
 				ret["IR_inf"] = IR_inf;
 			}
-		}		
+		}
   	}
 	
 	return ret;
+}
+
+// [[Rcpp::export]]
+arma::cube find_rotation_cpp(
+	arma::cube restrictable_matrices, //rows: *, cols: 1..dim rotation, slices: draws
+	arma::cube restrictions //rows: 1..dim rotation, cols: *, slices: 1..dim rotation
+) {
+	const uword dim_rotation = restrictable_matrices.n_cols;
+	const uword n_posterior_draws = restrictable_matrices.n_slices;
+	arma::cube rotation(dim_rotation, dim_rotation, n_posterior_draws, arma::fill::none);
+
+	for (uword r = 0; r < n_posterior_draws; r++) {
+		for (uword j = 0; j < dim_rotation; j++) {
+			arma::mat Q = arma::join_vert(
+				restrictions.slice(j) * restrictable_matrices.slice(r),
+				rotation.slice(r).head_cols(j).t()
+			);
+			arma::mat nullspaceQ = arma::null(Q);
+			rotation.slice(r).col(j) = nullspaceQ.col(0);
+		}
+	}
+	return rotation;
 }
 
 inline void shift_and_insert(
