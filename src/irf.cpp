@@ -30,7 +30,7 @@ inline arma::cube Sigma_chol_draws (
 }
 
 // [[Rcpp::export]]
-Rcpp::List obtain_restrictable_matrices (
+Rcpp::List compute_parameter_transformations (
 	const arma::cube& reduced_coefficients, //rows: lagged variables + intercept, columns: variables, slices: draws
 	const arma::cube& factor_loadings, //rows: variables, columns: factors, slices: draws
 	const arma::mat& U_vecs, //rows: entries of a (variables x variables)-upper triagonal matrix with ones on the diagonals, cols: draws
@@ -88,20 +88,23 @@ Rcpp::List obtain_restrictable_matrices (
 
 // [[Rcpp::export]]
 arma::cube find_rotation_cpp(
-	arma::cube restrictable_matrices, //rows: *, cols: 1..dim rotation, slices: draws
-	arma::cube restrictions //rows: 1..dim rotation, cols: *, slices: 1..dim rotation
+	const arma::field<arma::cube>& parameter_transformations, //each field element: rows: transformation size, cols: variables, slices: draws
+	const arma::field<arma::cube>& restrictions //each: rows: number of restrictions, cols: transformation size, slices: variables
 ) {
-	const uword dim_rotation = restrictable_matrices.n_cols;
-	const uword n_posterior_draws = restrictable_matrices.n_slices;
-	arma::cube rotation(dim_rotation, dim_rotation, n_posterior_draws, arma::fill::none);
+	const uword n_variables = parameter_transformations(0).n_cols;
+	const uword n_posterior_draws = parameter_transformations(0).n_slices;
+	arma::cube rotation(n_variables, n_variables, n_posterior_draws, arma::fill::none);
 
 	for (uword r = 0; r < n_posterior_draws; r++) {
-		for (uword j = 0; j < dim_rotation; j++) {
-			arma::mat Q = arma::join_vert(
-				restrictions.slice(j) * restrictable_matrices.slice(r),
-				rotation.slice(r).head_cols(j).t()
-			);
+		for (uword j = 0; j < n_variables; j++) {
+			arma::mat Q(rotation.slice(r).head_cols(j).t());
+			for (uword i = 0; i < parameter_transformations.n_elem; i++) {
+				Q.insert_rows(Q.n_rows, restrictions(i).slice(j) * parameter_transformations(i).slice(r));
+			}
 			arma::mat nullspaceQ = arma::null(Q);
+			if (nullspaceQ.n_cols == 0) {
+				throw std::logic_error("Could not satisfy restrictions");
+			}
 			rotation.slice(r).col(j) = nullspaceQ.col(0);
 		}
 	}

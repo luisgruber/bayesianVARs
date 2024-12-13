@@ -23,12 +23,12 @@ my_gig <- function(n, lambda, chi, psi) {
     .Call(`_bayesianVARs_my_gig`, n, lambda, chi, psi)
 }
 
-obtain_restrictable_matrices <- function(reduced_coefficients, factor_loadings, U_vecs, logvar_T, include_B0_inv = TRUE, include_B0 = FALSE, include_structural_coeff = FALSE, include_long_run_ir = FALSE) {
-    .Call(`_bayesianVARs_obtain_restrictable_matrices`, reduced_coefficients, factor_loadings, U_vecs, logvar_T, include_B0_inv, include_B0, include_structural_coeff, include_long_run_ir)
+compute_parameter_transformations <- function(reduced_coefficients, factor_loadings, U_vecs, logvar_T, include_B0_inv = TRUE, include_B0 = FALSE, include_structural_coeff = FALSE, include_long_run_ir = FALSE) {
+    .Call(`_bayesianVARs_compute_parameter_transformations`, reduced_coefficients, factor_loadings, U_vecs, logvar_T, include_B0_inv, include_B0, include_structural_coeff, include_long_run_ir)
 }
 
-find_rotation_cpp <- function(restrictable_matrices, restrictions) {
-    .Call(`_bayesianVARs_find_rotation_cpp`, restrictable_matrices, restrictions)
+find_rotation_cpp <- function(parameter_transformations, restrictions) {
+    .Call(`_bayesianVARs_find_rotation_cpp`, parameter_transformations, restrictions)
 }
 
 irf_cpp <- function(coefficients, factor_loadings, U_vecs, shock, ahead) {
