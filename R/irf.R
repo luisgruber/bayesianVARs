@@ -28,7 +28,7 @@ irf <- function(x, shock, ahead=8, rotation=NULL) {
 		}
 	}
 	else if (x$sigma_type == "cholesky") {
-		if (length(shock) != ncol(mod$PHI)) {
+		if (length(shock) != ncol(x$PHI)) {
 			stop("the shock vector must have dimension equals to the number of variables")
 		}
 	}
@@ -62,7 +62,7 @@ specify_zero_restrictions <- function(spec) {
 
 find_rotation <- function(
 	x,
-	restrictions_B0_inv = NULL,
+	restrictions_B0_inv_t = NULL,
 	restrictions_B0 = NULL,
 	restrictions_structural_coeff = NULL,
 	restrictions_long_run_ir = NULL
@@ -72,13 +72,13 @@ find_rotation <- function(
 		x$facload,
 		x$U,
 		x$logvar[nrow(x$logvar),,], #most recent log volatility
-		include_B0_inv = !is.null(restrictions_B0_inv),
+		include_B0_inv_t = !is.null(restrictions_B0_inv_t),
 		include_B0 = !is.null(restrictions_B0),
 		include_structural_coeff = !is.null(restrictions_structural_coeff),
 		include_long_run_ir = !is.null(restrictions_long_run_ir)
 	)
 	# order must match the output of `compute_parameter_transformations`!
-	restrictions <- list("B0_inv" = restrictions_B0_inv,
+	restrictions <- list("B0_inv_t" = restrictions_B0_inv_t,
 			 "B0" = restrictions_B0,
 		     "structural_coeff" = restrictions_structural_coeff,
 		     "restrictions_long_run_ir" = restrictions_long_run_ir)

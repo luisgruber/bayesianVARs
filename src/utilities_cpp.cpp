@@ -41,6 +41,7 @@ arma::vec dmvnrm_arma_fast(arma::mat const &x,
   return exp(out);
 }
 
+// if return_chol is true, Sigma_chol is a upper triangular matrix
 void build_sigma(arma::mat& Sigma, arma::mat& Sigma_chol, const bool& factor,
                  const arma::mat& facload, const arma::rowvec& logvar_t,
                  const int& factors, const int& m, const arma::vec u,

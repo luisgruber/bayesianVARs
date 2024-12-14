@@ -36,7 +36,7 @@ Rcpp::List compute_parameter_transformations (
 	const arma::mat& U_vecs, //rows: entries of a (variables x variables)-upper triagonal matrix with ones on the diagonals, cols: draws
 	const arma::mat& logvar_T,
 	
-	const bool include_B0_inv = true,
+	const bool include_B0_inv_t = true,
 	const bool include_B0 = false,
 	const bool include_structural_coeff = false,
 	const bool include_long_run_ir = false
@@ -44,7 +44,7 @@ Rcpp::List compute_parameter_transformations (
 	const uword n_variables = reduced_coefficients.n_cols;
 	const uword n_posterior_draws = reduced_coefficients.n_slices;
 	
-	const arma::cube Sigma_chol = Sigma_chol_draws(
+	const arma::cube B0_inv_t = Sigma_chol_draws(
 		n_variables,
 		n_posterior_draws,
 		factor_loadings,
@@ -53,12 +53,12 @@ Rcpp::List compute_parameter_transformations (
 	);
 	
 	Rcpp::List ret = Rcpp::List::create();
-	if (include_B0_inv) ret["B0_inv"] = Sigma_chol;
+	if (include_B0_inv_t) ret["B0_inv_t"] = B0_inv_t;
   	
   	if (include_B0 || include_structural_coeff || include_long_run_ir) {
   		arma::cube B0(n_variables, n_variables, n_posterior_draws, arma::fill::none);
   		for (uword r = 0; r < n_posterior_draws; r++) {
-			B0.slice(r) = arma::inv(arma::trimatu(Sigma_chol.slice(r)));
+			B0.slice(r) = arma::inv(arma::trimatl(B0_inv_t.slice(r).t()));
 		}
 		if (include_B0) ret["B0"] = B0;
 		
@@ -99,7 +99,7 @@ arma::cube find_rotation_cpp(
 		for (uword j = 0; j < n_variables; j++) {
 			arma::mat Q(rotation.slice(r).head_cols(j).t());
 			for (uword i = 0; i < parameter_transformations.n_elem; i++) {
-				Q.insert_rows(Q.n_rows, restrictions(i).slice(j) * parameter_transformations(i).slice(r));
+				Q.insert_rows(0, restrictions(i).slice(j) * parameter_transformations(i).slice(r));
 			}
 			arma::mat nullspaceQ = arma::null(Q);
 			if (nullspaceQ.n_cols == 0) {
