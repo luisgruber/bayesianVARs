@@ -49,6 +49,15 @@ irf <- function(x, shock, ahead=8) {
 	ret
 }
 
+specify_zero_restrictions <- function(spec) {
+	ret <- array(0, dim=c(nrow(spec), nrow(spec), ncol(spec)))
+	for (j in seq_len(ncol(spec))) {
+		ret[,,j] = diag(spec[,j] + 1)
+	}
+	ret[is.na(ret)] <- 0
+	ret
+}
+
 find_rotation <- function(
 	x,
 	restrictions_B0_inv = NULL,
