@@ -20,7 +20,7 @@
 #' plot(ir, n_col=2)
 #'
 #' @export
-irf <- function(x, shock, ahead=8) {
+irf <- function(x, shock, ahead=8, rotation=NULL) {
 	if (x$sigma_type == "factor") {
 		number_of_factors <- dim(x$facload)[2]
 		if (length(shock) != number_of_factors) {
@@ -40,8 +40,10 @@ irf <- function(x, shock, ahead=8) {
 		x$PHI,
 		x$facload,
 		x$U,
+		x$logvar[nrow(x$logvar),,], #most recent log volatility
 		shock,
-		ahead
+		ahead,
+		rotation
 	)
 
 	colnames(ret) <- colnames(x$Y)

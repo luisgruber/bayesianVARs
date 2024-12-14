@@ -126,12 +126,20 @@ arma::cube irf_cpp(
 	const arma::cube& coefficients, //rows: lagged variables + intercept, columns: variables, slices: draws
 	const arma::cube& factor_loadings, //rows: variables, columns: factors, slices: draws
 	const arma::mat& U_vecs, //rows: entries of a (variables x variables)-upper triagonal matrix with ones on the diagonals, cols: draws
+	const arma::mat& logvar_t, //rows: log variances, cols: draws
 	const arma::colvec& shock, //columns: how much each of the factors is shocked
-	const arma::uword ahead //how far to predict ahead
+	const arma::uword ahead, //how far to predict ahead
+	const Rcpp::Nullable<Rcpp::NumericMatrix> rotation_ = R_NilValue //rows: variables, cols: dim shock, slices: draws
 ) {
 	const uword n_variables = coefficients.n_cols;
 	const uword n_posterior_draws = coefficients.n_slices;
 	const bool is_factor_model = factor_loadings.n_cols > 0;
+	arma::cube rotation;
+	if (rotation_.isNotNull()) {
+		if (is_factor_model)
+			throw std::logic_error("Rotations are not implemented for factor models");
+		rotation = Rcpp::as<arma::cube>(rotation_);
+	}
 
 	arma::cube irf(ahead+1, n_variables, n_posterior_draws, arma::fill::none);
 	
@@ -147,8 +155,17 @@ arma::cube irf_cpp(
 		else {
 		    arma::mat U(n_variables, n_variables, arma::fill::eye);
 			U(upper_indices) = U_vecs.col(r);
-			U = U.t();
-			y_shock = solve(arma::trimatl(U), shock).t();
+
+			arma::vec sqrt_D_t = arma::exp(logvar_t.col(r) / 2.0);
+
+			arma::colvec rotated_shock;
+			if (rotation.n_slices > 0) {
+				rotated_shock = rotation.slice(r) * shock;
+			} else {
+				rotated_shock = shock;
+			}
+
+			y_shock = solve(arma::trimatl(U.t()), sqrt_D_t % rotated_shock).t();
 		}
 
 		irf.slice(r).row(0) = y_shock;
