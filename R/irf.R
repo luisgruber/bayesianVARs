@@ -65,7 +65,7 @@ find_rotation <- function(
 	restrictions_structural_coeff = NULL,
 	restrictions_long_run_ir = NULL
 ) {
-	fA <- obtain_restrictable_matrices(
+	parameter_transformations <- compute_parameter_transformations(
 		x$PHI,
 		x$facload,
 		x$U,
@@ -75,5 +75,13 @@ find_rotation <- function(
 		include_structural_coeff = !is.null(restrictions_structural_coeff),
 		include_long_run_ir = !is.null(restrictions_long_run_ir)
 	)
-	fA
+	# order must match the output of `compute_parameter_transformations`!
+	restrictions <- list("B0_inv" = restrictions_B0_inv,
+			 "B0" = restrictions_B0,
+		     "structural_coeff" = restrictions_structural_coeff,
+		     "restrictions_long_run_ir" = restrictions_long_run_ir)
+	find_rotation_cpp(
+		parameter_transformations,
+		restrictions = restrictions[lengths(restrictions) > 0]
+	)
 }
