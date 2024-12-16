@@ -64,7 +64,15 @@ specify_zero_restrictions <- function(spec) {
 		ret[,,j] = diag(spec[,j] + 1)
 	}
 	ret[is.na(ret)] <- 0
-	ret
+
+	# simplify by removing all-zero rows
+	zero_row_indices <- c()
+	for (i in seq_len(nrow(ret))) {
+		if (all(ret[i,,] == 0))
+			zero_row_indices <- c(zero_row_indices, i)
+	}
+	if (length(zero_row_indices) > 1) ret[-zero_row_indices,,]
+	else ret
 }
 
 #' Identifying restrictions for the structural parameters
@@ -102,23 +110,38 @@ find_rotation <- function(
 	restrictions_B0 = NULL,
 	restrictions_structural_coeff = NULL,
 	restrictions_long_run_ir = NULL,
+	restrictions_facload = NULL,
 	tolerance = 0.0
 ) {
-	parameter_transformations <- compute_parameter_transformations(
-		x$PHI,
-		x$facload,
-		x$U,
-		x$logvar[nrow(x$logvar),,], #most recent log volatility
-		include_B0_inv_t = !is.null(restrictions_B0_inv_t),
-		include_B0 = !is.null(restrictions_B0),
-		include_structural_coeff = !is.null(restrictions_structural_coeff),
-		include_long_run_ir = !is.null(restrictions_long_run_ir)
-	)
-	# order must match the output of `compute_parameter_transformations`!
-	restrictions <- list("B0_inv_t" = restrictions_B0_inv_t,
-			 "B0" = restrictions_B0,
-		     "structural_coeff" = restrictions_structural_coeff,
-		     "restrictions_long_run_ir" = restrictions_long_run_ir)
+	parameter_transformations <- list()
+	restrictions <- list()
+	if (x$sigma_type == "factor") {
+		parameter_transformations <- list("facload" = x$facload)
+		restrictions <- list("facload" = restrictions_facload)
+	}
+	else if (x$sigma_type == "cholesky") {
+		parameter_transformations <- compute_parameter_transformations(
+			x$PHI,
+			x$facload,
+			x$U,
+			x$logvar[nrow(x$logvar),,], #most recent log volatility
+			include_B0_inv_t = !is.null(restrictions_B0_inv_t),
+			include_B0 = !is.null(restrictions_B0),
+			include_structural_coeff = !is.null(restrictions_structural_coeff),
+			include_long_run_ir = !is.null(restrictions_long_run_ir)
+		)
+		# order must match the output of `compute_parameter_transformations`!
+		restrictions <- list(
+			"B0_inv_t" = restrictions_B0_inv_t,
+			"B0" = restrictions_B0,
+		    "structural_coeff" = restrictions_structural_coeff,
+		    "restrictions_long_run_ir" = restrictions_long_run_ir
+		)
+	}
+	if (all(lengths(parameter_transformations) == 0) || all(lengths(restrictions) == 0)) {
+		stop("None of the restrictions apply to this model")
+	}
+
 	find_rotation_cpp(
 		parameter_transformations = parameter_transformations,
 		restrictions = restrictions[lengths(restrictions) > 0],

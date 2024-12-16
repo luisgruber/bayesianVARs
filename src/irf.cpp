@@ -139,8 +139,6 @@ arma::cube irf_cpp(
 	const bool is_factor_model = factor_loadings.n_cols > 0;
 	arma::cube rotation;
 	if (rotation_.isNotNull()) {
-		if (is_factor_model)
-			throw std::logic_error("Rotations are not implemented for factor models");
 		rotation = Rcpp::as<arma::cube>(rotation_);
 	}
 
@@ -151,23 +149,17 @@ arma::cube irf_cpp(
 	// all paths start with the some shock at t=0 to the variables
 	const arma::uvec upper_indices = arma::trimatu_ind(arma::size(n_variables, n_variables), 1);
 	for (uword r = 0; r < n_posterior_draws; r++) {
-		rowvec y_shock;
+		arma::rowvec y_shock;
+		arma::colvec rotated_shock = rotation.n_slices > 0 ? rotation.slice(r) * shock : shock;
+
 		if (is_factor_model) {
-			y_shock = (factor_loadings.slice(r) * shock).t();
+			y_shock = (factor_loadings.slice(r) * rotated_shock).t();
 		}
 		else {
 		    arma::mat U(n_variables, n_variables, arma::fill::eye);
 			U(upper_indices) = U_vecs.col(r);
 
 			arma::vec sqrt_D_t = arma::exp(logvar_t.col(r) / 2.0);
-
-			arma::colvec rotated_shock;
-			if (rotation.n_slices > 0) {
-				rotated_shock = rotation.slice(r) * shock;
-			} else {
-				rotated_shock = shock;
-			}
-
 			y_shock = solve(arma::trimatl(U.t()), sqrt_D_t % rotated_shock).t();
 		}
 
