@@ -51,6 +51,7 @@ irf <- function(x, shock, ahead=8, rotation=NULL) {
 	ret
 }
 
+#' @export
 specify_zero_restrictions <- function(spec) {
 	ret <- array(0, dim=c(nrow(spec), nrow(spec), ncol(spec)))
 	for (j in seq_len(ncol(spec))) {
@@ -60,6 +61,35 @@ specify_zero_restrictions <- function(spec) {
 	ret
 }
 
+#' Identifying restrictions for the structural parameters
+#'
+#' @export
+#' @examples
+#' train_data <- 100 * usmacro_growth[,c("GDPC1", "GPDICTPI", "GS1", "M2REAL", "CPIAUCSL")]
+#' prior_sigma <- specify_prior_sigma(data=train_data, type="cholesky")
+#' x <- bvar(train_data, lags=2L, draws=10000, prior_sigma=prior_sigma)
+#' 
+#' restrictions_B0 <- cbind(
+#' 	c(NA, 0, 0, 0, 0),
+#' 	c(NA, NA, 0, 0, 0),
+#' 	c(NA, 0, NA, NA, NA),
+#' 	c(NA, NA, NA, NA, NA),
+#' 	c(NA, NA, NA, NA, NA)
+#' )
+#' 
+#' restrictions_IR_inf <- cbind(
+#' 	c(NA, NA, NA, NA, NA),
+#' 	c(NA, NA, NA, NA, NA),
+#' 	c(0, NA, NA, NA, NA),
+#' 	c(NA, NA, NA, NA, NA),
+#' 	c(NA, NA, NA, NA, NA)
+#' )
+#' 
+#' rotation <- find_rotation(x,
+#' 	restrictions_B0 = specify_zero_restrictions(restrictions_B0),
+#' 	restrictions_long_run_ir = specify_zero_restrictions(restrictions_IR_inf)
+#' )
+#' plot(irf(x, shock=c(0,0,1,0,0), rotation=rotation))
 find_rotation <- function(
 	x,
 	restrictions_B0_inv_t = NULL,

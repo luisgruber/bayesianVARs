@@ -665,7 +665,7 @@ plot.bayesianVARs_irf <- function(x, vars = "all",
   for(j in seq_along(vars)){
     plot(t, rep(0, n_ahead), type = "n", xlab="", ylab = "",
          xaxt="n", ylim = range(pred_quants[,,vars[j]]))
-
+	abline(h=0, lty=2)
     axis(side=1, at = t, labels = dates[t])
     mtext(var_names[j], side = 3)
 
