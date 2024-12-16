@@ -16,7 +16,7 @@
 #' train_data <- 100 * usmacro_growth[,c("GDPC1", "PCECC96", "GPDIC1", "AWHMAN", "GDPCTPI", "CES2000000008x", "FEDFUNDS", "GS10", "EXUSUKx", "S&P 500")]
 #' prior_sigma <- specify_prior_sigma(data=train_data, type="cholesky")
 #' mod <- bvar(train_data, lags=2L, draws=2000, prior_sigma=prior_sigma)
-#' ir <- irf(mod, shock=c(0,0,0,0,0,0,1,0,0,0))
+#' ir <- irf(mod, shock=7)
 #' plot(ir, n_col=2)
 #'
 #' @export
@@ -24,12 +24,18 @@ irf <- function(x, shock, ahead=8, rotation=NULL) {
 	if (x$sigma_type == "factor") {
 		number_of_factors <- dim(x$facload)[2]
 		if (length(shock) != number_of_factors) {
-			stop("the shock vector must have dimension equals to the number of factors")
+			if (length(shock) == 1) {
+				shock <- diag(number_of_factors)[shock,]
+			}
+			else stop("the shock vector must have dimension equals to the number of factors")
 		}
 	}
 	else if (x$sigma_type == "cholesky") {
-		if (length(shock) != ncol(x$PHI)) {
-			stop("the shock vector must have dimension equals to the number of variables")
+		if (length(shock) != ncol(x$Y)) {
+			if (length(shock) == 1) {
+				shock <- diag(ncol(x$Y))[shock,]
+			}
+			else stop("the shock vector must have dimension equals to the number of variables")
 		}
 	}
 	else {
@@ -95,7 +101,8 @@ find_rotation <- function(
 	restrictions_B0_inv_t = NULL,
 	restrictions_B0 = NULL,
 	restrictions_structural_coeff = NULL,
-	restrictions_long_run_ir = NULL
+	restrictions_long_run_ir = NULL,
+	tolerance = 0.0
 ) {
 	parameter_transformations <- compute_parameter_transformations(
 		x$PHI,
@@ -113,7 +120,8 @@ find_rotation <- function(
 		     "structural_coeff" = restrictions_structural_coeff,
 		     "restrictions_long_run_ir" = restrictions_long_run_ir)
 	find_rotation_cpp(
-		parameter_transformations,
-		restrictions = restrictions[lengths(restrictions) > 0]
+		parameter_transformations = parameter_transformations,
+		restrictions = restrictions[lengths(restrictions) > 0],
+		tolerance = tolerance
 	)
 }

@@ -89,7 +89,8 @@ Rcpp::List compute_parameter_transformations (
 // [[Rcpp::export]]
 arma::cube find_rotation_cpp(
 	const arma::field<arma::cube>& parameter_transformations, //each field element: rows: transformation size, cols: variables, slices: draws
-	const arma::field<arma::cube>& restrictions //each: rows: number of restrictions, cols: transformation size, slices: variables
+	const arma::field<arma::cube>& restrictions, //each: rows: number of restrictions, cols: transformation size, slices: variables
+	const double tolerance = 0.0
 ) {
 	const uword n_variables = parameter_transformations(0).n_cols;
 	const uword n_posterior_draws = parameter_transformations(0).n_slices;
@@ -101,11 +102,13 @@ arma::cube find_rotation_cpp(
 			for (uword i = 0; i < parameter_transformations.n_elem; i++) {
 				Q.insert_rows(0, restrictions(i).slice(j) * parameter_transformations(i).slice(r));
 			}
-			arma::mat nullspaceQ = arma::null(Q);
+			arma::mat nullspaceQ = arma::null(Q, tolerance);
 			if (nullspaceQ.n_cols == 0) {
-				throw std::logic_error("Could not satisfy restrictions");
+				throw std::logic_error("Could not satisfy restrictions. Increase the tolerance for approximate results.");
 			}
-			rotation.slice(r).col(j) = nullspaceQ.col(0);
+			//vector with corresponding to the smallest singular value should be the last one
+			//however this is an armadillo internal detail not guranteed by the public API!
+			rotation.slice(r).col(j) = nullspaceQ.col(nullspaceQ.n_cols - 1);
 		}
 	}
 	return rotation;
