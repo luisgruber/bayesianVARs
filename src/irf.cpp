@@ -53,21 +53,21 @@ Rcpp::List compute_parameter_transformations (
 	);
 	
 	Rcpp::List ret = Rcpp::List::create();
-	if (include_B0_inv_t) ret["B0_inv_t"] = B0_inv_t;
+	if (include_B0_inv_t) ret.push_back(B0_inv_t, "B0_inv_t");
   	
   	if (include_B0 || include_structural_coeff || include_long_run_ir) {
   		arma::cube B0(n_variables, n_variables, n_posterior_draws, arma::fill::none);
   		for (uword r = 0; r < n_posterior_draws; r++) {
 			B0.slice(r) = arma::inv(arma::trimatl(B0_inv_t.slice(r).t()));
 		}
-		if (include_B0) ret["B0"] = B0;
+		if (include_B0) ret.push_back(B0, "B0");
 		
 		if (include_structural_coeff || include_long_run_ir) {
 			arma::cube structural_coeff(reduced_coefficients);
 			for (uword r = 0; r < n_posterior_draws; r++) {
 				structural_coeff.slice(r) *= B0.slice(r);
 			}
-			if (include_structural_coeff) ret["structural_coeff"] = structural_coeff;
+			if (include_structural_coeff) ret.push_back(structural_coeff, "structural_coeff");
 			
 			if (include_long_run_ir) {
 				arma::cube IR_inf(n_variables, n_variables, n_posterior_draws, arma::fill::none);
@@ -78,7 +78,7 @@ Rcpp::List compute_parameter_transformations (
 					}
 					IR_inf.slice(r) = arma::inv((B0.slice(r) - sum_of_lags).t());
 				}
-				ret["IR_inf"] = IR_inf;
+				ret.push_back(IR_inf, "IR_inf");
 			}
 		}
   	}
@@ -86,29 +86,108 @@ Rcpp::List compute_parameter_transformations (
 	return ret;
 }
 
+uword count(const Rcpp::LogicalVector& vec) {
+	// vec can contain the values TRUE, FALSE and notably NA_LOGICAL
+	uword counter = 0;
+	for(int i = 0; i < vec.size(); i++) {
+		if (vec[i] == TRUE) counter++;
+	}
+	return counter;
+}
+
+arma::mat construct_zero_restriction(const NumericMatrix::ConstColumn& spec) {
+	const LogicalVector spec_is_zero = (spec == 0);
+	const uword n_zero_restrictions = count(spec_is_zero);
+
+	mat zero_restriction_matrix(n_zero_restrictions, spec.size());
+	uword i = 0;
+	for (uword j = 0; j < spec_is_zero.size(); j++) {
+		if (spec_is_zero[j] == TRUE) {
+			zero_restriction_matrix(i++, j) = 1;
+		}
+	}
+	return zero_restriction_matrix;
+}
+
+vec calculate_sign_restriction_scores(
+	const NumericMatrix::ConstColumn& spec, //rows: transformation size
+	const mat& rotated_params //rows: transformation size, cols: candidates for p_j
+) {
+	vec scores(rotated_params.n_cols);
+	for (uword i = 0; i < rotated_params.n_rows && !NumericMatrix::is_na(spec[i]); i++) {
+		for (uword j = 0; j < rotated_params.n_cols; j++) {
+			scores[j] += std::copysign(spec[i], rotated_params(i, j) * spec[i]);
+			// if the rotated params and its sign specification spec[i] have the same sign
+			// the score increases by spec[i] otherwise the score will decrease by that amount.
+			// if the score is negative overall, we will choose -p_j instead of p_j.
+		}
+	}
+	return scores;
+}
+
+
 // [[Rcpp::export]]
 arma::cube find_rotation_cpp(
 	const arma::field<arma::cube>& parameter_transformations, //each field element: rows: transformation size, cols: variables, slices: draws
-	const arma::field<arma::cube>& restrictions, //each: rows: number of restrictions, cols: transformation size, slices: variables
+	const arma::field<Rcpp::NumericMatrix>& restriction_specs, //each field element: rows: transformation size, cols: variables
 	const double tolerance = 0.0
 ) {
+	//algorithm from RUBIO-RAMÍREZ ET AL. (doi: 10.1111/j.1467-937X.2009.00578.x)
+
+	if (restriction_specs.n_elem != parameter_transformations.n_elem) {
+		throw std::logic_error("Number of restrictions does not match number of parameter transformations.");
+	}
+
 	const uword n_variables = parameter_transformations(0).n_cols;
 	const uword n_posterior_draws = parameter_transformations(0).n_slices;
 	arma::cube rotation(n_variables, n_variables, n_posterior_draws, arma::fill::none);
 
+	//field rows: tranformations, field cols: cols of the transformation
+	//each field element: rows: number of restrictions, cols: transformation size
+	arma::field<arma::mat> zero_restrictions(restriction_specs.n_elem, n_variables);
+	uword n_sign_restrictions = 0;
+	for (uword i = 0; i < restriction_specs.n_elem; i++) {
+		for (uword j = 0; j < n_variables; j++) {
+			const NumericMatrix::ConstColumn column_restriction_spec = restriction_specs(i).column(j);
+			zero_restrictions(i, j) = construct_zero_restriction(column_restriction_spec);
+			n_sign_restrictions += count(column_restriction_spec != 0);
+		}
+	}
+
 	for (uword r = 0; r < n_posterior_draws; r++) {
 		for (uword j = 0; j < n_variables; j++) {
-			arma::mat Q(rotation.slice(r).head_cols(j).t());
+			arma::mat Q_tilde(rotation.slice(r).head_cols(j).t());
 			for (uword i = 0; i < parameter_transformations.n_elem; i++) {
-				Q.insert_rows(0, restrictions(i).slice(j) * parameter_transformations(i).slice(r));
+				Q_tilde.insert_rows(0, zero_restrictions(i, j) * parameter_transformations(i).slice(r));
 			}
-			arma::mat nullspaceQ = arma::null(Q, tolerance);
-			if (nullspaceQ.n_cols == 0) {
+			arma::mat nullspace_Q_tilde = arma::null(Q_tilde, tolerance);
+			if (nullspace_Q_tilde.n_cols == 0) {
 				throw std::logic_error("Could not satisfy restrictions. Increase the tolerance for approximate results.");
 			}
-			//vector with corresponding to the smallest singular value should be the last one
-			//however this is an armadillo internal detail not guranteed by the public API!
-			rotation.slice(r).col(j) = nullspaceQ.col(nullspaceQ.n_cols - 1);
+
+			colvec p_j;
+			if (n_sign_restrictions > 0) {
+				//find the vector in the nullspace of Q which scores best in the sign restrictions
+				vec sign_restriction_scores(nullspace_Q_tilde.n_cols, arma::fill::zeros);
+				for (uword i = 0; i < parameter_transformations.n_elem; i++) {
+					const NumericMatrix::ConstColumn column_restriction_spec = restriction_specs(i).column(j);
+					const mat rotated_params = parameter_transformations(i).slice(r) * nullspace_Q_tilde;
+					sign_restriction_scores += calculate_sign_restriction_scores(column_restriction_spec, rotated_params);
+				}
+				uword index_of_best_score = abs(sign_restriction_scores).index_max();
+				p_j = nullspace_Q_tilde.col(index_of_best_score);
+				if (sign_restriction_scores[index_of_best_score] < 0) {
+					p_j = -p_j;
+				}
+			}
+			else {
+				//any vector from the null space is fine
+				//vector with corresponding to the smallest singular value should be the last one
+				//however this is an not guranteed by the public armadillo API!
+				p_j = nullspace_Q_tilde.col(nullspace_Q_tilde.n_cols - 1);
+			}
+
+			rotation.slice(r).col(j) = p_j;
 		}
 	}
 	return rotation;

@@ -75,15 +75,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // find_rotation_cpp
-arma::cube find_rotation_cpp(const arma::field<arma::cube>& parameter_transformations, const arma::field<arma::cube>& restrictions, const double tolerance);
-RcppExport SEXP _bayesianVARs_find_rotation_cpp(SEXP parameter_transformationsSEXP, SEXP restrictionsSEXP, SEXP toleranceSEXP) {
+arma::cube find_rotation_cpp(const arma::field<arma::cube>& parameter_transformations, const arma::field<Rcpp::NumericMatrix>& restriction_specs, const double tolerance);
+RcppExport SEXP _bayesianVARs_find_rotation_cpp(SEXP parameter_transformationsSEXP, SEXP restriction_specsSEXP, SEXP toleranceSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::field<arma::cube>& >::type parameter_transformations(parameter_transformationsSEXP);
-    Rcpp::traits::input_parameter< const arma::field<arma::cube>& >::type restrictions(restrictionsSEXP);
+    Rcpp::traits::input_parameter< const arma::field<Rcpp::NumericMatrix>& >::type restriction_specs(restriction_specsSEXP);
     Rcpp::traits::input_parameter< const double >::type tolerance(toleranceSEXP);
-    rcpp_result_gen = Rcpp::wrap(find_rotation_cpp(parameter_transformations, restrictions, tolerance));
+    rcpp_result_gen = Rcpp::wrap(find_rotation_cpp(parameter_transformations, restriction_specs, tolerance));
     return rcpp_result_gen;
 END_RCPP
 }

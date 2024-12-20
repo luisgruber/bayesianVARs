@@ -27,7 +27,7 @@ Effect of a shock on the factors or variables over time
 train_data <- 100 * usmacro_growth[,c("GDPC1", "PCECC96", "GPDIC1", "AWHMAN", "GDPCTPI", "CES2000000008x", "FEDFUNDS", "GS10", "EXUSUKx", "S&P 500")]
 prior_sigma <- specify_prior_sigma(data=train_data, type="cholesky")
 mod <- bvar(train_data, lags=2L, draws=2000, prior_sigma=prior_sigma)
-ir <- irf(mod, shock=c(0,0,0,0,0,0,1,0,0,0))
+ir <- irf(mod, shock=7)
 plot(ir, n_col=2)
 
 }
