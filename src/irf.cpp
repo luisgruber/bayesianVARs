@@ -114,7 +114,9 @@ vec calculate_sign_restriction_scores(
 	const mat& rotated_params //rows: transformation size, cols: candidates for p_j
 ) {
 	vec scores(rotated_params.n_cols);
-	for (uword i = 0; i < rotated_params.n_rows && !NumericMatrix::is_na(spec[i]); i++) {
+	for (uword i = 0; i < rotated_params.n_rows; i++) {
+		if (NumericMatrix::is_na(spec[i]) || spec[i] == 0)
+			continue;
 		for (uword j = 0; j < rotated_params.n_cols; j++) {
 			scores[j] += std::copysign(spec[i], rotated_params(i, j) * spec[i]);
 			// if the rotated params and its sign specification spec[i] have the same sign
@@ -145,12 +147,12 @@ arma::cube find_rotation_cpp(
 	//field rows: tranformations, field cols: cols of the transformation
 	//each field element: rows: number of restrictions, cols: transformation size
 	arma::field<arma::mat> zero_restrictions(restriction_specs.n_elem, n_variables);
-	uword n_sign_restrictions = 0;
+	arma::vec n_sign_restrictions(n_variables);
 	for (uword i = 0; i < restriction_specs.n_elem; i++) {
 		for (uword j = 0; j < n_variables; j++) {
 			const NumericMatrix::ConstColumn column_restriction_spec = restriction_specs(i).column(j);
 			zero_restrictions(i, j) = construct_zero_restriction(column_restriction_spec);
-			n_sign_restrictions += count(column_restriction_spec != 0);
+			n_sign_restrictions(j) += count(column_restriction_spec != 0);
 		}
 	}
 
@@ -166,7 +168,7 @@ arma::cube find_rotation_cpp(
 			}
 
 			colvec p_j;
-			if (n_sign_restrictions > 0) {
+			if (n_sign_restrictions(j) > 0) {
 				//find the vector in the nullspace of Q which scores best in the sign restrictions
 				vec sign_restriction_scores(nullspace_Q_tilde.n_cols, arma::fill::zeros);
 				for (uword i = 0; i < parameter_transformations.n_elem; i++) {
