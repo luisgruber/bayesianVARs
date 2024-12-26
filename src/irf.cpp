@@ -34,16 +34,31 @@ Rcpp::List compute_parameter_transformations (
 	const arma::cube& reduced_coefficients, //rows: lagged variables + intercept, columns: variables, slices: draws
 	const arma::cube& factor_loadings, //rows: variables, columns: factors, slices: draws
 	const arma::mat& U_vecs, //rows: entries of a (variables x variables)-upper triagonal matrix with ones on the diagonals, cols: draws
-	const arma::mat& logvar_T,
+	const arma::mat& logvar_T, //cols: draws
 	
-	const bool include_B0_inv_t = true,
+	const bool include_facload = false,
+	const bool include_B0_inv_t = false,
 	const bool include_B0 = false,
 	const bool include_structural_coeff = false,
 	const bool include_long_run_ir = false
 ) {
 	const uword n_variables = reduced_coefficients.n_cols;
 	const uword n_posterior_draws = reduced_coefficients.n_slices;
+	const uword n_factors = factor_loadings.n_cols;
 	
+	Rcpp::List ret = Rcpp::List::create();
+	
+	if (include_facload) {
+		if (factor_loadings.n_elem == 0)
+			throw std::logic_error("facload can only be included for the factor model");
+		cube factor_loadings_T (factor_loadings);
+		for (uword r = 0; r < n_posterior_draws; r++) {
+			factor_loadings_T.slice(r).each_row() %= exp(logvar_T.col(r).head(n_factors)/2).t();
+		}
+		ret.push_back(factor_loadings_T, "facload");
+	}
+
+	if (!(include_B0_inv_t || include_B0 || include_structural_coeff || include_long_run_ir)) return ret;
 	const arma::cube B0_inv_t = Sigma_chol_draws(
 		n_variables,
 		n_posterior_draws,
@@ -51,38 +66,32 @@ Rcpp::List compute_parameter_transformations (
 		U_vecs,
 		logvar_T
 	);
-	
-	Rcpp::List ret = Rcpp::List::create();
 	if (include_B0_inv_t) ret.push_back(B0_inv_t, "B0_inv_t");
-  	
-  	if (include_B0 || include_structural_coeff || include_long_run_ir) {
-  		arma::cube B0(n_variables, n_variables, n_posterior_draws, arma::fill::none);
-  		for (uword r = 0; r < n_posterior_draws; r++) {
-			B0.slice(r) = arma::inv(arma::trimatl(B0_inv_t.slice(r).t()));
+
+	if (!(include_B0 || include_structural_coeff || include_long_run_ir)) return ret;
+	arma::cube B0(n_variables, n_variables, n_posterior_draws, arma::fill::none);
+	for (uword r = 0; r < n_posterior_draws; r++) {
+		B0.slice(r) = arma::inv(arma::trimatl(B0_inv_t.slice(r).t()));
+	}
+	if (include_B0) ret.push_back(B0, "B0");
+
+	if (!(include_structural_coeff || include_long_run_ir)) return ret;
+	arma::cube structural_coeff(reduced_coefficients);
+	for (uword r = 0; r < n_posterior_draws; r++) {
+		structural_coeff.slice(r) *= B0.slice(r);
+	}
+	if (include_structural_coeff) ret.push_back(structural_coeff, "structural_coeff");
+
+	if (!include_long_run_ir) return ret;
+	arma::cube IR_inf(n_variables, n_variables, n_posterior_draws, arma::fill::none);
+	for (uword r = 0; r < n_posterior_draws; r++) {
+		arma::mat sum_of_lags(n_variables, n_variables);
+		for (uword l = 0; l + n_variables < structural_coeff.n_rows; l += n_variables) {
+			sum_of_lags += structural_coeff.slice(r).rows(l, l + n_variables - 1);
 		}
-		if (include_B0) ret.push_back(B0, "B0");
-		
-		if (include_structural_coeff || include_long_run_ir) {
-			arma::cube structural_coeff(reduced_coefficients);
-			for (uword r = 0; r < n_posterior_draws; r++) {
-				structural_coeff.slice(r) *= B0.slice(r);
-			}
-			if (include_structural_coeff) ret.push_back(structural_coeff, "structural_coeff");
-			
-			if (include_long_run_ir) {
-				arma::cube IR_inf(n_variables, n_variables, n_posterior_draws, arma::fill::none);
-				for (uword r = 0; r < n_posterior_draws; r++) {
-					arma::mat sum_of_lags(n_variables, n_variables);
-					for (uword l = 0; l + n_variables < structural_coeff.n_rows; l += n_variables) {
-						sum_of_lags += structural_coeff.slice(r).rows(l, l + n_variables - 1);
-					}
-					IR_inf.slice(r) = arma::inv((B0.slice(r) - sum_of_lags).t());
-				}
-				ret.push_back(IR_inf, "IR_inf");
-			}
-		}
-  	}
-	
+		IR_inf.slice(r) = arma::inv((B0.slice(r) - sum_of_lags).t());
+	}
+	ret.push_back(IR_inf, "IR_inf");
 	return ret;
 }
 
@@ -234,7 +243,8 @@ arma::cube irf_cpp(
 		arma::colvec rotated_shock = rotation.n_slices > 0 ? rotation.slice(r) * shock : shock;
 
 		if (is_factor_model) {
-			y_shock = (factor_loadings.slice(r) * rotated_shock).t();
+			arma::vec sqrt_V_t = arma::exp(logvar_t.col(r).head(factor_loadings.n_cols) / 2);
+			y_shock = (factor_loadings.slice(r) * (sqrt_V_t % rotated_shock)).t();
 		}
 		else {
 		    arma::mat U(n_variables, n_variables, arma::fill::eye);

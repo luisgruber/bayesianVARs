@@ -97,38 +97,51 @@ irf <- function(x, shock, ahead=8, rotation=NULL) {
 #' plot(irf(x, shock=c(0,0,1,0,0), rotation=rotation))
 find_rotation <- function(
 	x,
+	restrictions_facload = NULL,
 	restrictions_B0_inv_t = NULL,
 	restrictions_B0 = NULL,
 	restrictions_structural_coeff = NULL,
 	restrictions_long_run_ir = NULL,
-	restrictions_facload = NULL,
 	tolerance = 0.0
 ) {
-	parameter_transformations <- list()
-	restrictions <- list()
 	if (x$sigma_type == "factor") {
-		parameter_transformations <- list("facload" = x$facload)
-		restrictions <- list("facload" = restrictions_facload)
+		forbidden_restrictions <- c(
+			!is.null(restrictions_B0_inv_t),
+			!is.null(restrictions_B0),
+			!is.null(restrictions_structural_coeff),
+			!is.null(restrictions_long_run_ir)
+		)
+		if (any(forbidden_restrictions))
+			stop("For factor models, only the factor loadings can be restricted")
 	}
 	else if (x$sigma_type == "cholesky") {
-		parameter_transformations <- compute_parameter_transformations(
-			x$PHI,
-			x$facload,
-			x$U,
-			x$logvar[nrow(x$logvar),,], #most recent log volatility
-			include_B0_inv_t = !is.null(restrictions_B0_inv_t),
-			include_B0 = !is.null(restrictions_B0),
-			include_structural_coeff = !is.null(restrictions_structural_coeff),
-			include_long_run_ir = !is.null(restrictions_long_run_ir)
-		)
-		# order must match the output of `compute_parameter_transformations`!
-		restrictions <- list(
-			"B0_inv_t" = restrictions_B0_inv_t,
-			"B0" = restrictions_B0,
-		    "structural_coeff" = restrictions_structural_coeff,
-		    "restrictions_long_run_ir" = restrictions_long_run_ir
-		)
+		if (!is.null(restrictions_facload))
+			stop("Factor loadings cannot be restricted for a Cholesky model")
 	}
+	else {
+		stop("Unkown model type")
+	}
+	
+	parameter_transformations <- compute_parameter_transformations(
+		x$PHI,
+		x$facload,
+		x$U,
+		x$logvar[nrow(x$logvar),,], #most recent log volatility,
+		include_facload = !is.null(restrictions_facload),
+		include_B0_inv_t = !is.null(restrictions_B0_inv_t),
+		include_B0 = !is.null(restrictions_B0),
+		include_structural_coeff = !is.null(restrictions_structural_coeff),
+		include_long_run_ir = !is.null(restrictions_long_run_ir)
+	)
+	# order must match the output of `compute_parameter_transformations`!
+	restrictions <- list(
+		"facload" = restrictions_facload,
+		"B0_inv_t" = restrictions_B0_inv_t,
+		"B0" = restrictions_B0,
+	    "structural_coeff" = restrictions_structural_coeff,
+	    "restrictions_long_run_ir" = restrictions_long_run_ir
+	)
+	
 	if (all(lengths(parameter_transformations) == 0) || all(lengths(restrictions) == 0)) {
 		stop("None of the restrictions apply to this model")
 	}
