@@ -4,12 +4,15 @@
 \alias{summary.bayesianVARs_bvar}
 \title{Summary method for bayesianVARs_bvar objects}
 \usage{
-\method{summary}{bayesianVARs_bvar}(object, quantiles = c(0.025, 0.25, 0.5, 0.75, 0.975), ...)
+\method{summary}{bayesianVARs_bvar}(object, quantiles = c(0.025, 0.25, 0.5, 0.75, 0.975), digits = 3L, ...)
 }
 \arguments{
 \item{object}{A \code{bayesianVARs_bvar} object obtained via \code{\link[=bvar]{bvar()}}.}
 
 \item{quantiles}{numeric vector which quantiles to compute.}
+
+\item{digits}{Single integer indicating the number of decimal places to be
+used for rounding the summary statistics. Negative values are not allowed.}
 
 \item{...}{Currently ignored!}
 }

@@ -47,6 +47,8 @@ print.bayesianVARs_bvar <- function(x, ...) {
 #'
 #' @param object A `bayesianVARs_bvar` object obtained via [`bvar()`].
 #' @param quantiles numeric vector which quantiles to compute.
+#' @param digits Single integer indicating the number of decimal places to be
+#'   used for rounding the summary statistics. Negative values are not allowed.
 #' @param ... Currently ignored!
 #'
 #' @return An object of type `summary.bayesianVARs_bvar`.
@@ -61,28 +63,43 @@ print.bayesianVARs_bvar <- function(x, ...) {
 #'
 #' # Summary
 #' sum <- summary(mod)
-summary.bayesianVARs_bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.75, 0.975),...){
-  PHImedian <- apply(object$PHI, 1:2, stats::median)
-  PHIquantiles <- apply(object$PHI, 1:2, stats::quantile, quantiles)
-  PHIiqr <- apply(object$PHI, 1:2, stats::IQR)
-  if(object$sigma_type == "cholesky"){
-    Umedian <- Uiqr <- diag(1, nrow = ncol(object$Y))
-    colnames(Umedian) <- rownames(Umedian) <-
-      colnames(Uiqr) <- rownames(Uiqr) <- colnames(object$Y)
-    Umedian[upper.tri(Umedian)] <- apply(object$U, 1, stats::median)
-    Uquantiles <- apply(object$U, 1, stats::quantile, quantiles)
-    Uiqr[upper.tri(Uiqr)] <- apply(object$U, 1, stats::IQR)
-  }
+summary.bayesianVARs_bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.75, 0.975),
+                                      digits = 3L, ...){
+  digits <- as.integer(digits)
+  if(digits<0) stop("'digits' must be an integer greater than or equal to zero!")
+  PHImedian <- round(apply(object$PHI, 1:2, stats::median), digits = digits)
+  PHIquantiles <- round(apply(object$PHI, 1:2, stats::quantile, quantiles), digits = digits)
+  PHIiqr <- round(apply(object$PHI, 1:2, stats::IQR), digits = digits)
 
   out <- list(PHImedian = PHImedian,
               PHIquantiles = PHIquantiles,
               PHIiqr = PHIiqr
   )
+
   if(object$sigma_type == "cholesky"){
+    Umedian <- Uiqr <- diag(1, nrow = ncol(object$Y))
+    colnames(Umedian) <- rownames(Umedian) <-
+      colnames(Uiqr) <- rownames(Uiqr) <- colnames(object$Y)
+    Umedian[upper.tri(Umedian)] <- round(apply(object$U, 1, stats::median), digits = digits)
+    Uquantiles <- round(apply(object$U, 1, stats::quantile, quantiles), digits = digits)
+    Uiqr[upper.tri(Uiqr)] <- round(apply(object$U, 1, stats::IQR), digits = digits)
+
     out$Umedian <- Umedian
     out$Uquantiles <- Uquantiles
     out$Uiqr <- Uiqr
   }
+  if(object[["sigma_type"]] == "factor"){
+    factors <- dim(object$facload)[2]
+    out[["facloadmedian"]] <- round(apply(object[["facload"]], 1:2, stats::median), digits = digits)
+    rownames(out[["facloadmedian"]]) <- colnames(object$Y)
+    colnames(out[["facloadmedian"]]) <- paste0("factor", 1:factors)
+    out[["facloadquantiles"]] <- round(apply(object[["facload"]], 1:2, stats::quantile, quantiles), digits = digits)
+    out[["facloadiqr"]] <- round(apply(object[["facload"]], 1:2, stats::IQR), digits = digits)
+    rownames(out[["facloadiqr"]]) <- colnames(object$Y)
+    colnames(out[["facloadiqr"]]) <- paste0("factor", 1:factors)
+
+  }
+
   out$sigma_type <- object$sigma_type
 
   class(out) <- "summary.bayesianVARs_bvar"
@@ -120,6 +137,12 @@ print.summary.bayesianVARs_bvar <- function(x, ...){
     print(as.table(x$Umedian - diag(nrow(x$Umedian))), digits = digits, zero.print = "-")
     cat("\nPosterior interquartile range of contemporaneous coefficients:\n")
     print(as.table(x$Uiqr- diag(nrow(x$Uiqr))), digits = digits, zero.print = "-")
+  }
+  if(x[["sigma_type"]] == "factor"){
+    cat("\nPosterior median of factor loadings:\n")
+    print(x[["facloadmedian"]], digits = digits)
+    cat("\nPosterior interquartile range of factor loadings:\n")
+    print(x[["facloadiqr"]], digits = digits)
   }
   invisible(x)
 }
