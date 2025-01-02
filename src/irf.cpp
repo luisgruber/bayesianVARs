@@ -118,35 +118,36 @@ arma::mat construct_zero_restriction(const NumericMatrix::ConstColumn& spec) {
 	return zero_restriction_matrix;
 }
 
-vec calculate_sign_restriction_scores(
-	const NumericMatrix::ConstColumn& spec, //rows: transformation size
-	const mat& rotated_params //rows: transformation size, cols: candidates for p_j
-) {
-	vec scores(rotated_params.n_cols);
-	for (uword i = 0; i < rotated_params.n_rows; i++) {
-		if (NumericMatrix::is_na(spec[i]) || spec[i] == 0)
-			continue;
-		for (uword j = 0; j < rotated_params.n_cols; j++) {
-			scores[j] += std::copysign(spec[i], rotated_params(i, j) * spec[i]);
-			// if the rotated params and its sign specification spec[i] have the same sign
-			// the score increases by spec[i] otherwise the score will decrease by that amount.
-			// if the score is negative overall, we will choose -p_j instead of p_j.
+arma::mat construct_sign_restriction (const NumericMatrix::ConstColumn& spec) {
+	const uword n_sign_restrictions = count(spec != 0);
+
+	mat sign_restriction_matrix(n_sign_restrictions, spec.size());
+	uword i = 0;
+	for (R_xlen_t j = 0; j < spec.size(); j++) {
+		if ((spec[j] > 0) == TRUE) {
+			sign_restriction_matrix(i++, j) = 1;
+		}
+		else if ((spec[j] < 0) == TRUE) {
+			sign_restriction_matrix(i++, j) = -1;
 		}
 	}
-	return scores;
+	return sign_restriction_matrix;
 }
-
 
 // [[Rcpp::export]]
 arma::cube find_rotation_cpp(
 	const arma::field<arma::cube>& parameter_transformations, //each field element: rows: transformation size, cols: variables, slices: draws
 	const arma::field<Rcpp::NumericMatrix>& restriction_specs, //each field element: rows: transformation size, cols: variables
-	const double tolerance = 0.0
+	const double tolerance = 0.0,
+	const double sign_epsilon = 1e-6
 ) {
 	//algorithm from RUBIO-RAMÍREZ ET AL. (doi: 10.1111/j.1467-937X.2009.00578.x)
 
 	if (restriction_specs.n_elem != parameter_transformations.n_elem) {
 		throw std::logic_error("Number of restrictions does not match number of parameter transformations.");
+	}
+	if (!(sign_epsilon > 0)) {
+		throw std::logic_error("sign_epsilon must be a positive number");
 	}
 
 	const uword n_variables = parameter_transformations(0).n_cols;
@@ -156,46 +157,44 @@ arma::cube find_rotation_cpp(
 	//field rows: tranformations, field cols: cols of the transformation
 	//each field element: rows: number of restrictions, cols: transformation size
 	arma::field<arma::mat> zero_restrictions(restriction_specs.n_elem, n_variables);
-	arma::vec n_sign_restrictions(n_variables);
+	arma::field<arma::mat> sign_restrictions(restriction_specs.n_elem, n_variables);
+	arma::uvec n_sign_restrictions(n_variables);
 	for (uword i = 0; i < restriction_specs.n_elem; i++) {
 		for (uword j = 0; j < n_variables; j++) {
 			const NumericMatrix::ConstColumn column_restriction_spec = restriction_specs(i).column(j);
 			zero_restrictions(i, j) = construct_zero_restriction(column_restriction_spec);
-			n_sign_restrictions(j) += count(column_restriction_spec != 0);
+			sign_restrictions(i, j) = construct_sign_restriction(column_restriction_spec);
+			n_sign_restrictions(j) += sign_restrictions(i, j).n_rows;
 		}
 	}
 
 	for (uword r = 0; r < n_posterior_draws; r++) {
 		for (uword j = 0; j < n_variables; j++) {
-			arma::mat Q_tilde(rotation.slice(r).head_cols(j).t());
+			arma::mat Q_zero(rotation.slice(r).head_cols(j).t());
 			for (uword i = 0; i < parameter_transformations.n_elem; i++) {
-				Q_tilde.insert_rows(0, zero_restrictions(i, j) * parameter_transformations(i).slice(r));
+				Q_zero.insert_rows(0, zero_restrictions(i, j) * parameter_transformations(i).slice(r));
 			}
-			arma::mat nullspace_Q_tilde = arma::null(Q_tilde, tolerance);
-			if (nullspace_Q_tilde.n_cols == 0) {
-				throw std::logic_error("Could not satisfy restrictions. Increase the tolerance for approximate results.");
+			arma::mat nullspace_Q_zero = arma::null(Q_zero, tolerance);
+			if (nullspace_Q_zero.n_cols == 0) {
+				throw std::logic_error("Could not satisfy zero restrictions. Increase the tolerance for approximate results.");
 			}
 
 			colvec p_j;
 			if (n_sign_restrictions(j) > 0) {
-				//find the vector in the nullspace of Q which scores best in the sign restrictions
-				vec sign_restriction_scores(nullspace_Q_tilde.n_cols, arma::fill::zeros);
+				//find the vector in the nullspace of Q_zero which satisfies the sign restrictions
+				arma::mat Q_sign(0, n_variables);
 				for (uword i = 0; i < parameter_transformations.n_elem; i++) {
-					const NumericMatrix::ConstColumn column_restriction_spec = restriction_specs(i).column(j);
-					const mat rotated_params = parameter_transformations(i).slice(r) * nullspace_Q_tilde;
-					sign_restriction_scores += calculate_sign_restriction_scores(column_restriction_spec, rotated_params);
+					Q_sign.insert_rows(0, sign_restrictions(i, j) * parameter_transformations(i).slice(r));
 				}
-				uword index_of_best_score = abs(sign_restriction_scores).index_max();
-				p_j = nullspace_Q_tilde.col(index_of_best_score);
-				if (sign_restriction_scores[index_of_best_score] < 0) {
-					p_j = -p_j;
-				}
+				const vec small_positive_vector(Q_sign.n_rows, arma::fill::value(sign_epsilon));
+				p_j = nullspace_Q_zero * arma::solve(Q_sign * nullspace_Q_zero, small_positive_vector);
+				p_j = normalise(p_j);
 			}
 			else {
 				//any vector from the null space is fine
 				//vector with corresponding to the smallest singular value should be the last one
 				//however this is an not guranteed by the public armadillo API!
-				p_j = nullspace_Q_tilde.col(nullspace_Q_tilde.n_cols - 1);
+				p_j = nullspace_Q_zero.col(nullspace_Q_zero.n_cols - 1);
 			}
 
 			rotation.slice(r).col(j) = p_j;
