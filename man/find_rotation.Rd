@@ -6,11 +6,11 @@
 \usage{
 find_rotation(
   x,
+  restrictions_facload = NULL,
   restrictions_B0_inv_t = NULL,
   restrictions_B0 = NULL,
   restrictions_structural_coeff = NULL,
   restrictions_long_run_ir = NULL,
-  restrictions_facload = NULL,
   tolerance = 0
 )
 }
@@ -21,8 +21,7 @@ find_rotation(
 \item{0:}{The entry at this position is restricted to be zero (i.e. an exclusion restriction).}
 \item{A positive number:}{The sign of this entry should be positive.}
 \item{A negative number:}{The sign of this entry should be negative.}
-}
-The magnitude of the numbers signifies the importance of the sign restriction.}
+}}
 }
 \description{
 Identifying restrictions for the structural parameters
@@ -33,8 +32,8 @@ prior_sigma <- specify_prior_sigma(data=train_data, type="cholesky")
 x <- bvar(train_data, lags=2L, draws=10000, prior_sigma=prior_sigma)
 
 restrictions_B0 <- cbind(
-	c(10, 0, 0, 0, 0),
-	c(NA, 5, 0, 0, 0),
+	c(1, 0, 0, 0, 0),
+	c(NA, 1, 0, 0, 0),
 	c(NA, 0, NA, NA, NA),
 	c(NA, NA, NA, NA, NA),
 	c(NA, NA, NA, NA, NA)
@@ -52,5 +51,5 @@ rotation <- find_rotation(x,
 	restrictions_B0 = restrictions_B0,
 	restrictions_long_run_ir = restrictions_IR_inf
 )
-plot(irf(x, shock=c(0,0,1,0,0), rotation=rotation))
+plot(irf(x, rotation=rotation))
 }

@@ -1,19 +1,19 @@
 #include "utilities_cpp.h"
 
-inline arma::cube Sigma_chol_draws (
+inline cube Sigma_chol_draws (
 	const uword n_variables,
 	const uword n_posterior_draws,
-	const arma::cube& factor_loadings, //rows: variables, columns: factors, slices: draws
-	const arma::mat& U_vecs, //rows: entries of a (variables x variables)-upper triagonal matrix with ones on the diagonals, cols: draws
-	const arma::mat& logvar_T
+	const cube& factor_loadings, //rows: variables, columns: factors, slices: draws
+	const mat& U_vecs, //rows: entries of a (variables x variables)-upper triagonal matrix with ones on the diagonals, cols: draws
+	const mat& logvar_T
 ) {
 	const bool is_factor_model = factor_loadings.n_cols > 0;
 	
-	arma::cube ret(n_variables, n_variables, n_posterior_draws, arma::fill::none);
+	cube ret(n_variables, n_variables, n_posterior_draws, fill::none);
 	for (uword r = 0; r < n_posterior_draws; r++) {
 		// obtain the cholesky factorization of the covariance matrix
-		arma::mat Sigma_unused, Sigma_chol, facload_mat;
-		arma::vec u_vec;
+		mat Sigma_unused, Sigma_chol, facload_mat;
+		vec u_vec;
 		if(is_factor_model){
 			facload_mat = factor_loadings.slice(r);
 		} else {
@@ -59,7 +59,7 @@ Rcpp::List compute_parameter_transformations (
 	}
 
 	if (!(include_B0_inv_t || include_B0 || include_structural_coeff || include_long_run_ir)) return ret;
-	const arma::cube B0_inv_t = Sigma_chol_draws(
+	const cube B0_inv_t = Sigma_chol_draws(
 		n_variables,
 		n_posterior_draws,
 		factor_loadings,
@@ -69,27 +69,27 @@ Rcpp::List compute_parameter_transformations (
 	if (include_B0_inv_t) ret.push_back(B0_inv_t, "B0_inv_t");
 
 	if (!(include_B0 || include_structural_coeff || include_long_run_ir)) return ret;
-	arma::cube B0(n_variables, n_variables, n_posterior_draws, arma::fill::none);
+	cube B0(n_variables, n_variables, n_posterior_draws, fill::none);
 	for (uword r = 0; r < n_posterior_draws; r++) {
-		B0.slice(r) = arma::inv(arma::trimatl(B0_inv_t.slice(r).t()));
+		B0.slice(r) = inv(trimatl(B0_inv_t.slice(r).t()));
 	}
 	if (include_B0) ret.push_back(B0, "B0");
 
 	if (!(include_structural_coeff || include_long_run_ir)) return ret;
-	arma::cube structural_coeff(reduced_coefficients);
+	cube structural_coeff(reduced_coefficients);
 	for (uword r = 0; r < n_posterior_draws; r++) {
 		structural_coeff.slice(r) *= B0.slice(r);
 	}
 	if (include_structural_coeff) ret.push_back(structural_coeff, "structural_coeff");
 
 	if (!include_long_run_ir) return ret;
-	arma::cube IR_inf(n_variables, n_variables, n_posterior_draws, arma::fill::none);
+	cube IR_inf(n_variables, n_variables, n_posterior_draws, fill::none);
 	for (uword r = 0; r < n_posterior_draws; r++) {
-		arma::mat sum_of_lags(n_variables, n_variables);
+		mat sum_of_lags(n_variables, n_variables);
 		for (uword l = 0; l + n_variables < structural_coeff.n_rows; l += n_variables) {
 			sum_of_lags += structural_coeff.slice(r).rows(l, l + n_variables - 1);
 		}
-		IR_inf.slice(r) = arma::inv((B0.slice(r) - sum_of_lags).t());
+		IR_inf.slice(r) = inv((B0.slice(r) - sum_of_lags).t());
 	}
 	ret.push_back(IR_inf, "IR_inf");
 	return ret;
@@ -104,7 +104,7 @@ uword count(const Rcpp::LogicalVector& vec) {
 	return counter;
 }
 
-arma::mat construct_zero_restriction(const NumericMatrix::ConstColumn& spec) {
+mat construct_zero_restriction(const NumericMatrix::ConstColumn& spec) {
 	const LogicalVector spec_is_zero = (spec == 0);
 	const uword n_zero_restrictions = count(spec_is_zero);
 
@@ -118,7 +118,7 @@ arma::mat construct_zero_restriction(const NumericMatrix::ConstColumn& spec) {
 	return zero_restriction_matrix;
 }
 
-arma::mat construct_sign_restriction (const NumericMatrix::ConstColumn& spec) {
+mat construct_sign_restriction (const NumericMatrix::ConstColumn& spec) {
 	const uword n_sign_restrictions = count(spec != 0);
 
 	mat sign_restriction_matrix(n_sign_restrictions, spec.size());
@@ -152,13 +152,13 @@ arma::cube find_rotation_cpp(
 
 	const uword n_variables = parameter_transformations(0).n_cols;
 	const uword n_posterior_draws = parameter_transformations(0).n_slices;
-	arma::cube rotation(n_variables, n_variables, n_posterior_draws, arma::fill::none);
+	cube rotation(n_variables, n_variables, n_posterior_draws, fill::none);
 
 	//field rows: tranformations, field cols: cols of the transformation
 	//each field element: rows: number of restrictions, cols: transformation size
-	arma::field<arma::mat> zero_restrictions(restriction_specs.n_elem, n_variables);
-	arma::field<arma::mat> sign_restrictions(restriction_specs.n_elem, n_variables);
-	arma::uvec n_sign_restrictions(n_variables);
+	field<mat> zero_restrictions(restriction_specs.n_elem, n_variables);
+	field<mat> sign_restrictions(restriction_specs.n_elem, n_variables);
+	uvec n_sign_restrictions(n_variables, fill::zeros);
 	for (uword i = 0; i < restriction_specs.n_elem; i++) {
 		for (uword j = 0; j < n_variables; j++) {
 			const NumericMatrix::ConstColumn column_restriction_spec = restriction_specs(i).column(j);
@@ -170,31 +170,37 @@ arma::cube find_rotation_cpp(
 
 	for (uword r = 0; r < n_posterior_draws; r++) {
 		for (uword j = 0; j < n_variables; j++) {
-			arma::mat Q_zero(rotation.slice(r).head_cols(j).t());
+			colvec p_j; // find the j-th column of the rotation matrix
+			
+			mat Q_zero(rotation.slice(r).head_cols(j).t());
 			for (uword i = 0; i < parameter_transformations.n_elem; i++) {
 				Q_zero.insert_rows(0, zero_restrictions(i, j) * parameter_transformations(i).slice(r));
 			}
-			arma::mat nullspace_Q_zero = arma::null(Q_zero, tolerance);
-			if (nullspace_Q_zero.n_cols == 0) {
-				throw std::logic_error("Could not satisfy zero restrictions. Increase the tolerance for approximate results.");
+			mat nullspace_Q_zero;
+			if (Q_zero.n_rows == 0) {
+				nullspace_Q_zero = mat(n_variables, n_variables, fill::eye);
+			} else {
+				nullspace_Q_zero = null(Q_zero, tolerance);
+				if (nullspace_Q_zero.n_cols == 0) {
+					throw std::logic_error("Could not satisfy zero restrictions. Increase the tolerance for approximate results.");
+				}
 			}
 
-			colvec p_j;
 			if (n_sign_restrictions(j) > 0) {
 				//find the vector in the nullspace of Q_zero which satisfies the sign restrictions
-				arma::mat Q_sign(0, n_variables);
+				mat Q_sign(0, n_variables);
 				for (uword i = 0; i < parameter_transformations.n_elem; i++) {
 					Q_sign.insert_rows(0, sign_restrictions(i, j) * parameter_transformations(i).slice(r));
 				}
-				const vec small_positive_vector(Q_sign.n_rows, arma::fill::value(sign_epsilon));
-				p_j = nullspace_Q_zero * arma::solve(Q_sign * nullspace_Q_zero, small_positive_vector);
+				const vec small_positive_vector(Q_sign.n_rows, fill::value(sign_epsilon));
+				p_j = nullspace_Q_zero * solve(Q_sign * nullspace_Q_zero, small_positive_vector);
 				p_j = normalise(p_j);
 			}
 			else {
 				//any vector from the null space is fine
 				//vector with corresponding to the smallest singular value should be the last one
 				//however this is an not guranteed by the public armadillo API!
-				p_j = nullspace_Q_zero.col(nullspace_Q_zero.n_cols - 1);
+				p_j = nullspace_Q_zero.col(nullspace_Q_zero.n_cols - 1);	
 			}
 
 			rotation.slice(r).col(j) = p_j;
@@ -204,8 +210,8 @@ arma::cube find_rotation_cpp(
 }
 
 inline void shift_and_insert(
-	arma::mat& X, //the columns of X should be y1,y2,y3, y1.l1,y2.l1,y3.l1,...,1
-	const arma::mat& new_y //what to insert in y1,y2,y3
+	mat& X, //the columns of X should be y1,y2,y3, y1.l1,y2.l1,y3.l1,...,1
+	const mat& new_y //what to insert in y1,y2,y3
 ) {
 	for (uword i = X.n_cols-2; new_y.n_cols <= i; i--) {
 		X.col(i) = X.col(i-new_y.n_cols);
@@ -214,56 +220,55 @@ inline void shift_and_insert(
 }
 
 // [[Rcpp::export]]
-arma::cube irf_cpp(
+arma::field<arma::cube> irf_cpp(
 	const arma::cube& coefficients, //rows: lagged variables + intercept, columns: variables, slices: draws
 	const arma::cube& factor_loadings, //rows: variables, columns: factors, slices: draws
 	const arma::mat& U_vecs, //rows: entries of a (variables x variables)-upper triagonal matrix with ones on the diagonals, cols: draws
 	const arma::mat& logvar_t, //rows: log variances, cols: draws
-	const arma::colvec& shock, //columns: how much each of the factors is shocked
+	const arma::mat& shocks, //rows: dim shock, cols: shocks
 	const arma::uword ahead, //how far to predict ahead
 	const Rcpp::Nullable<Rcpp::NumericMatrix> rotation_ = R_NilValue //rows: variables, cols: dim shock, slices: draws
 ) {
+	const uword n_shocks = shocks.n_cols;
 	const uword n_variables = coefficients.n_cols;
 	const uword n_posterior_draws = coefficients.n_slices;
 	const bool is_factor_model = factor_loadings.n_cols > 0;
-	arma::cube rotation;
+	const uvec upper_indices = trimatu_ind(size(n_variables, n_variables), 1);
+	cube rotation;
 	if (rotation_.isNotNull()) {
-		rotation = Rcpp::as<arma::cube>(rotation_);
+		rotation = Rcpp::as<cube>(rotation_);
 	}
 
-	arma::cube irf(ahead+1, n_variables, n_posterior_draws, arma::fill::none);
-	
-	// trace out n_posterior_draws paths
-	arma::mat current_predictors(n_posterior_draws, coefficients.n_rows, arma::fill::zeros);
-	// all paths start with the some shock at t=0 to the variables
-	const arma::uvec upper_indices = arma::trimatu_ind(arma::size(n_variables, n_variables), 1);
+	field<cube> ret(n_posterior_draws);
 	for (uword r = 0; r < n_posterior_draws; r++) {
-		arma::rowvec y_shock;
-		arma::colvec rotated_shock = rotation.n_slices > 0 ? rotation.slice(r) * shock : shock;
-
+		cube irf(n_shocks, n_variables, ahead+1);
+		
+		//compute the responses to the shocks at t=0
+		mat rotated_shocks = rotation.n_slices > 0 ? rotation.slice(r) * shocks : shocks;
 		if (is_factor_model) {
-			arma::vec sqrt_V_t = arma::exp(logvar_t.col(r).head(factor_loadings.n_cols) / 2);
-			y_shock = (factor_loadings.slice(r) * (sqrt_V_t % rotated_shock)).t();
+			vec sqrt_V_t = exp(logvar_t.col(r).head(factor_loadings.n_cols) / 2);
+			rotated_shocks.each_col() %= sqrt_V_t;
+			irf.slice(0) = (factor_loadings.slice(r) * rotated_shocks).t();
 		}
 		else {
-		    arma::mat U(n_variables, n_variables, arma::fill::eye);
+		    mat U(n_variables, n_variables, fill::eye);
 			U(upper_indices) = U_vecs.col(r);
 
-			arma::vec sqrt_D_t = arma::exp(logvar_t.col(r) / 2.0);
-			y_shock = solve(arma::trimatl(U.t()), sqrt_D_t % rotated_shock).t();
+			vec sqrt_D_t = exp(logvar_t.col(r) / 2.0);
+			rotated_shocks.each_col() %= sqrt_D_t;
+			irf.slice(0) = solve(trimatl(U.t()), rotated_shocks).t();
 		}
-
-		irf.slice(r).row(0) = y_shock;
-		current_predictors.head_cols(n_variables).row(r) = y_shock;
+		
+		// compute how the shocks propagate using the reduced form coeffs
+		mat current_predictors(n_shocks, coefficients.n_rows, fill::zeros);
+		current_predictors.head_cols(n_variables) = irf.slice(0); //set lag zero
+		for (uword t = 1; t <= ahead; t++) {
+			irf.slice(t) = current_predictors * coefficients.slice(r);
+			// shift everything and make predictions the new predictors at lag zero
+			shift_and_insert(current_predictors, irf.slice(t));
+		}
+		ret(r) = irf;
 	}
 	
-	for (uword t = 1; t <= ahead; t++) {
-		for(uword r = 0; r < n_posterior_draws; r++) {
-			irf.slice(r).row(t) = current_predictors.row(r) * coefficients.slice(r);
-		}
-		// shift everything and make predictions the new predictors at lag zero
-		shift_and_insert(current_predictors, irf.row_as_mat(t));
-	}
-	
-	return irf;
+	return ret;
 }

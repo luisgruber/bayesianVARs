@@ -31,8 +31,8 @@ find_rotation_cpp <- function(parameter_transformations, restriction_specs, tole
     .Call(`_bayesianVARs_find_rotation_cpp`, parameter_transformations, restriction_specs, tolerance, sign_epsilon)
 }
 
-irf_cpp <- function(coefficients, factor_loadings, U_vecs, logvar_t, shock, ahead, rotation_ = NULL) {
-    .Call(`_bayesianVARs_irf_cpp`, coefficients, factor_loadings, U_vecs, logvar_t, shock, ahead, rotation_)
+irf_cpp <- function(coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahead, rotation_ = NULL) {
+    .Call(`_bayesianVARs_irf_cpp`, coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahead, rotation_)
 }
 
 sample_PHI_cholesky <- function(PHI, PHI_prior, Y, X, U, d_sqrt, V_prior) {
