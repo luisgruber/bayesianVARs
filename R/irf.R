@@ -41,8 +41,8 @@ irf <- function(x, ahead=8, rotation=NULL, shocks=NULL) {
 		ahead,
 		rotation
 	))
-	dim(ret) <- c(n_shocks, n_variables, 1+ahead, n_posterior_draws)
-	dimnames(ret) <- list(paste("shock",1:n_shocks), colnames(x$Y), paste0("t=",0:ahead))
+	dim(ret) <- c(n_variables, n_shocks, 1+ahead, n_posterior_draws)
+	dimnames(ret) <- list(colnames(x$Y), paste("shock",1:n_shocks), paste0("t=",0:ahead))
 	class(ret) <- "bayesianVARs_irf"
 	ret
 }

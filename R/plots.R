@@ -627,8 +627,8 @@ plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NUL
 #' @export
 plot.bayesianVARs_irf <- function(x, vars = "all", quantiles = c(0.05,0.25,0.5,0.75,0.95), ...){
   n_ahead <- dim(x)[3]
-  n_shocks <- nrow(x)
-  var_names <- colnames(x)
+  n_shocks <- ncol(x)
+  var_names <- rownames(x)
 
   if(length(vars)==1L & any(vars == "all")){
     vars <- 1:ncol(x)
@@ -653,7 +653,7 @@ plot.bayesianVARs_irf <- function(x, vars = "all", quantiles = c(0.05,0.25,0.5,0
   nr_intervals <- floor(nr_quantiles/2)
   even <- nr_quantiles%%2 == 0
 
-  # dimensions: quantiles x shocks x vars x time
+  # dimensions: quantiles x vars x shocks x time
   pred_quants <- apply(x, MARGIN=1:3, FUN=quantile, quantiles)
 
   oldpar <- par(no.readonly = TRUE)
@@ -662,7 +662,7 @@ plot.bayesianVARs_irf <- function(x, vars = "all", quantiles = c(0.05,0.25,0.5,0
   for(j in seq_along(vars)){
   for(i in seq_len(n_shocks)) {
     plot(t, rep(0, n_ahead), type = "n", xlab="", ylab = "",
-         xaxt="n", ylim = range(pred_quants[,i,vars[j],]))
+         xaxt="n", ylim = range(pred_quants[,vars[j],i,]))
 	abline(h=0, lty=2)
     axis(side=1, at = t, labels = dates[t])
     mtext(var_names[j], side = 3)
@@ -676,19 +676,19 @@ plot.bayesianVARs_irf <- function(x, vars = "all", quantiles = c(0.05,0.25,0.5,0
           alphas <- alpha_upper
         }
         polygon(x = c(t, rev(t)),
-                y = c(pred_quants[r,i,vars[j],], rev(pred_quants[r+1,i,vars[j],])),
+                y = c(pred_quants[r,vars[j],i,], rev(pred_quants[r+1,vars[j],i,])),
                 col = scales::alpha("red", alphas[r]),
                 border = NA)
         if(length(quantiles)>2){
           polygon(x = c(t, rev(t)),
-                  y = c(pred_quants[nrow(pred_quants)+1-r,i,vars[j],],
-                        rev(pred_quants[nrow(pred_quants)-r,i,vars[j],])),
+                  y = c(pred_quants[nrow(pred_quants)+1-r,vars[j],i,],
+                        rev(pred_quants[nrow(pred_quants)-r,vars[j],i,])),
                   col = scales::alpha("red", alphas[r]),
                   border = NA)
         }
       }
       if(!even){
-        lines(t, pred_quants[ceiling(length(quantiles)/2),i,vars[j],],
+        lines(t, pred_quants[ceiling(length(quantiles)/2),vars[j],i,],
               col = "red", lwd = 2)
       }
     }

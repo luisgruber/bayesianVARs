@@ -139,7 +139,7 @@ arma::cube find_rotation_cpp(
 	const arma::field<arma::cube>& parameter_transformations, //each field element: rows: transformation size, cols: variables, slices: draws
 	const arma::field<Rcpp::NumericMatrix>& restriction_specs, //each field element: rows: transformation size, cols: variables
 	const double tolerance = 0.0,
-	const double sign_epsilon = 1e-6
+	const double sign_epsilon = 1e-2
 ) {
 	//algorithm from RUBIO-RAMÍREZ ET AL. (doi: 10.1111/j.1467-937X.2009.00578.x)
 
@@ -241,14 +241,14 @@ arma::field<arma::cube> irf_cpp(
 
 	field<cube> ret(n_posterior_draws);
 	for (uword r = 0; r < n_posterior_draws; r++) {
-		cube irf(n_shocks, n_variables, ahead+1);
+		cube irf(n_variables, n_shocks, ahead+1);
 		
 		//compute the responses to the shocks at t=0
 		mat rotated_shocks = rotation.n_slices > 0 ? rotation.slice(r) * shocks : shocks;
 		if (is_factor_model) {
 			vec sqrt_V_t = exp(logvar_t.col(r).head(factor_loadings.n_cols) / 2);
 			rotated_shocks.each_col() %= sqrt_V_t;
-			irf.slice(0) = (factor_loadings.slice(r) * rotated_shocks).t();
+			irf.slice(0) = factor_loadings.slice(r) * rotated_shocks;
 		}
 		else {
 		    mat U(n_variables, n_variables, fill::eye);
@@ -256,16 +256,17 @@ arma::field<arma::cube> irf_cpp(
 
 			vec sqrt_D_t = exp(logvar_t.col(r) / 2.0);
 			rotated_shocks.each_col() %= sqrt_D_t;
-			irf.slice(0) = solve(trimatl(U.t()), rotated_shocks).t();
+			irf.slice(0) = solve(trimatl(U.t()), rotated_shocks);
 		}
 		
 		// compute how the shocks propagate using the reduced form coeffs
 		mat current_predictors(n_shocks, coefficients.n_rows, fill::zeros);
-		current_predictors.head_cols(n_variables) = irf.slice(0); //set lag zero
+		current_predictors.head_cols(n_variables) = irf.slice(0).t(); //set lag zero
 		for (uword t = 1; t <= ahead; t++) {
-			irf.slice(t) = current_predictors * coefficients.slice(r);
+			mat new_predictiors = current_predictors * coefficients.slice(r);
+			irf.slice(t) = new_predictiors.t();
 			// shift everything and make predictions the new predictors at lag zero
-			shift_and_insert(current_predictors, irf.slice(t));
+			shift_and_insert(current_predictors, new_predictiors);
 		}
 		ret(r) = irf;
 	}
