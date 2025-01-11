@@ -47,6 +47,21 @@ irf <- function(x, ahead=8, rotation=NULL, shocks=NULL) {
 	ret
 }
 
+mspe_decomposition <- function(ir) {
+	# cf. Structural Vector Autoregressive Analysis, Kilian & Lütkepohl, section 4.2
+
+	# cumsum over time (-> dimension 3 of ir)
+	# result has dimensions: time * variables * shocks * draws
+	mspe_h <- apply(ir^2, MARGIN=c(1,2,4), FUN=cumsum)
+
+	# proportions of the mspe_h over the shocks (-> dimension 3 of mspe_h)
+	# result has dimensions: time * variables * shocks * draws
+	ret <- proportions(mspe_h, margin=c(1,2,4))
+
+	# use the same order of dimensions as `irf` for consistency
+	aperm(ret, c(2, 3, 1, 4))
+}
+
 #' Identifying restrictions for the structural parameters
 #'
 #' @export
