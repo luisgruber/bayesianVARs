@@ -576,7 +576,7 @@ bvar <- function(data,
   }
 
   if(!quiet){
-    cat("\nCalling MCMC sampler for a ", prior_sigma$type, "-VAR(",lags,") for ",M, " series of length ", Traw, ".\n")
+    cat("\nCalling MCMC sampler for a ", prior_sigma$type, "-VAR(",lags,") for ",M, " series of length ", Traw, ".\n", sep = "")
   }
 
   res <- bvar_cpp(Y,

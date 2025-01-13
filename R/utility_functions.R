@@ -87,8 +87,7 @@ summary.bayesianVARs_bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.
     out$Umedian <- Umedian
     out$Uquantiles <- Uquantiles
     out$Uiqr <- Uiqr
-  }
-  if(object[["sigma_type"]] == "factor"){
+  }else if(object[["sigma_type"]] == "factor"){
     factors <- dim(object$facload)[2]
     out[["facloadmedian"]] <- round(apply(object[["facload"]], 1:2, stats::median), digits = digits)
     rownames(out[["facloadmedian"]]) <- colnames(object$Y)
@@ -97,7 +96,6 @@ summary.bayesianVARs_bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.
     out[["facloadiqr"]] <- round(apply(object[["facload"]], 1:2, stats::IQR), digits = digits)
     rownames(out[["facloadiqr"]]) <- colnames(object$Y)
     colnames(out[["facloadiqr"]]) <- paste0("factor", 1:factors)
-
   }
 
   out$sigma_type <- object$sigma_type
@@ -1748,9 +1746,10 @@ predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TR
   if(stable){
     if(!inherits(object, "bayesianVARs_bvar_stable")){
       cat("'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
-          draws, that do not fulfill the stable criterion.\n")
+          draws that do not fulfill the stable criterion.\n")
+      ndraws <- dim(object$PHI)[3]
       object <- stable_bvar(object, quiet = TRUE)
-      cat("\n",dim(object$PHI)[3],"stable posterior draws remaining for prediction!\n")
+      cat("\n",dim(object$PHI)[3],"/",ndraws," stable posterior draws remaining for prediction!\n", sep = "")
     }
   }
 
