@@ -316,6 +316,12 @@ fitted.bayesianVARs_bvar <- function(object, error_term = TRUE, ...){
   out
 }
 
+#' @export
+residuals.bayesianVARs_bvar <- function(object) {
+	yh <- fitted(object)
+	yh$fitted - rep(object$Y, mod$config$draws)
+}
+
 # Functions for prior configuration ---------------------------------------
 
 #'Specify prior on Sigma
