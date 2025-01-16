@@ -1,3 +1,4 @@
+#include <lp_lib.h>
 #include "utilities_cpp.h"
 
 inline cube Sigma_chol_draws (
@@ -137,17 +138,11 @@ mat construct_sign_restriction (const NumericMatrix::ConstColumn& spec) {
 // [[Rcpp::export]]
 arma::cube find_rotation_cpp(
 	const arma::field<arma::cube>& parameter_transformations, //each field element: rows: transformation size, cols: variables, slices: draws
-	const arma::field<Rcpp::NumericMatrix>& restriction_specs, //each field element: rows: transformation size, cols: variables
-	const double tolerance = 0.0,
-	const double sign_epsilon = 1e-2
+	const arma::field<Rcpp::NumericMatrix>& restriction_specs //each field element: rows: transformation size, cols: variables
 ) {
 	//algorithm from RUBIO-RAMÍREZ ET AL. (doi: 10.1111/j.1467-937X.2009.00578.x)
-
 	if (restriction_specs.n_elem != parameter_transformations.n_elem) {
 		throw std::logic_error("Number of restrictions does not match number of parameter transformations.");
-	}
-	if (!(sign_epsilon > 0)) {
-		throw std::logic_error("sign_epsilon must be a positive number");
 	}
 
 	const uword n_variables = parameter_transformations(0).n_cols;
@@ -158,52 +153,76 @@ arma::cube find_rotation_cpp(
 	//each field element: rows: number of restrictions, cols: transformation size
 	field<mat> zero_restrictions(restriction_specs.n_elem, n_variables);
 	field<mat> sign_restrictions(restriction_specs.n_elem, n_variables);
+	uvec n_zero_restrictions(n_variables, fill::zeros);
 	uvec n_sign_restrictions(n_variables, fill::zeros);
 	for (uword i = 0; i < restriction_specs.n_elem; i++) {
 		for (uword j = 0; j < n_variables; j++) {
 			const NumericMatrix::ConstColumn column_restriction_spec = restriction_specs(i).column(j);
 			zero_restrictions(i, j) = construct_zero_restriction(column_restriction_spec);
 			sign_restrictions(i, j) = construct_sign_restriction(column_restriction_spec);
-			n_sign_restrictions(j) += sign_restrictions(i, j).n_rows;
+			n_zero_restrictions(j) += zero_restrictions(i, j).n_rows; //rank = n_rows by construction!
+			n_sign_restrictions(j) += sign_restrictions(i, j).n_rows; //rank = n_rows by construction!
 		}
 	}
-
+	
+	uvec col_order = sort_index(n_zero_restrictions, "descend");
+	ivec p_cols = regspace<ivec>(1, n_variables); // the array 1...n_variables
+	
 	for (uword r = 0; r < n_posterior_draws; r++) {
-		for (uword j = 0; j < n_variables; j++) {
-			colvec p_j; // find the j-th column of the rotation matrix
+		for (uword j_index = 0; j_index < n_variables; j_index++) {
+			const uword j = col_order[j_index]; //iterate over columns in order col_order
 			
-			mat Q_zero(rotation.slice(r).head_cols(j).t());
+			lprec *lp = make_lp(0, n_variables);
+			if (lp == NULL) throw std::bad_alloc();
+			
+			set_verbose(lp, IMPORTANT);
+			set_maxim(lp);
+			for (uword jj = 0; jj < n_variables; jj++) {
+				set_obj(lp, jj+1, 1.0);
+				set_bounds(lp, jj+1, -1, 1);
+			}
+			set_add_rowmode(lp, TRUE);
+			
+			// the column j of the rotation matrix must be orthogonal to columns that came before
+			for (uword j_index_other = 0; j_index_other < j_index; j_index_other++) {
+				const uword j_other = col_order[j_index_other];
+				add_constraintex(lp, n_variables, rotation.slice(r).colptr(j_other), p_cols.memptr(), EQ, 0);
+			}
+			
+			// add zero restrictions
 			for (uword i = 0; i < parameter_transformations.n_elem; i++) {
-				Q_zero.insert_rows(0, zero_restrictions(i, j) * parameter_transformations(i).slice(r));
+				mat zero_constraints = zero_restrictions(i, j) * parameter_transformations(i).slice(r);
+				zero_constraints.each_row([&](rowvec& row) {
+					add_constraintex(lp, n_variables, row.memptr(), p_cols.memptr(), EQ, 0);
+				});
 			}
-			mat nullspace_Q_zero;
-			if (Q_zero.n_rows == 0) {
-				nullspace_Q_zero = mat(n_variables, n_variables, fill::eye);
-			} else {
-				nullspace_Q_zero = null(Q_zero, tolerance);
-				if (nullspace_Q_zero.n_cols == 0) {
-					throw std::logic_error("Could not satisfy zero restrictions. Increase the tolerance for approximate results.");
-				}
-			}
-
+			
+			//add sign restrictions
 			if (n_sign_restrictions(j) > 0) {
-				//find the vector in the nullspace of Q_zero which satisfies the sign restrictions
-				mat Q_sign(0, n_variables);
 				for (uword i = 0; i < parameter_transformations.n_elem; i++) {
-					Q_sign.insert_rows(0, sign_restrictions(i, j) * parameter_transformations(i).slice(r));
+					mat sign_constraints = sign_restrictions(i, j) * parameter_transformations(i).slice(r);
+					sign_constraints.each_row([&](rowvec& row){
+						add_constraintex(lp, n_variables, row.memptr(), p_cols.memptr(), GE, 0);
+					});
 				}
-				const vec small_positive_vector(Q_sign.n_rows, fill::value(sign_epsilon));
-				p_j = nullspace_Q_zero * solve(Q_sign * nullspace_Q_zero, small_positive_vector);
-				p_j = normalise(p_j);
 			}
-			else {
-				//any vector from the null space is fine
-				//vector with corresponding to the smallest singular value should be the last one
-				//however this is an not guranteed by the public armadillo API!
-				p_j = nullspace_Q_zero.col(nullspace_Q_zero.n_cols - 1);	
+			
+			set_add_rowmode(lp, FALSE);
+			int ret = solve(lp);
+			if(ret != 0) {
+			    delete_lp(lp);
+				throw std::logic_error(get_statustext(lp, ret));
+			};
+			vec p_j(n_variables);
+			get_variables(lp, p_j.memptr());
+			if (p_j.is_zero(1e-6)) {
+				Rcout << "posterior sample: #" << r << ", column:" << j+1 << " (" << j_index+1 << "-th in order of rank" << endl;
+				print_lp(lp);
+				throw std::logic_error("Could not satisfy restrictions");
 			}
-
+			p_j = normalise(p_j);
 			rotation.slice(r).col(j) = p_j;
+			delete_lp(lp); //TODO: maybe we can recycle lp efficiently
 		}
 	}
 	return rotation;

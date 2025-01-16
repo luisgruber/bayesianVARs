@@ -42,7 +42,8 @@ LinkingTo:
     Rcpp,
     RcppArmadillo,
     RcppProgress,
-    stochvol
+    stochvol,
+    lpSolveAPI
 VignetteBuilder: 
     knitr
 Config/testthat/edition: 3
