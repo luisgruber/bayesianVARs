@@ -72,7 +72,7 @@ Rcpp::List compute_parameter_transformations (
 	if (!(include_B0 || include_structural_coeff || include_long_run_ir)) return ret;
 	cube B0(n_variables, n_variables, n_posterior_draws, fill::none);
 	for (uword r = 0; r < n_posterior_draws; r++) {
-		B0.slice(r) = inv(trimatl(B0_inv_t.slice(r).t()));
+		B0.slice(r) = inv(trimatu(B0_inv_t.slice(r).t()));
 	}
 	if (include_B0) ret.push_back(B0, "B0");
 
