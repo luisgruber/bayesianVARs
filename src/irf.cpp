@@ -1,7 +1,7 @@
 #include <lp_lib.h>
 #include "utilities_cpp.h"
 
-inline cube Sigma_chol_draws (
+inline cube Sigma_chol_t_draws (
 	const uword n_variables,
 	const uword n_posterior_draws,
 	const cube& factor_loadings, //rows: variables, columns: factors, slices: draws
@@ -24,7 +24,7 @@ inline cube Sigma_chol_draws (
 				logvar_T.col(r).as_row(), factor_loadings.n_cols,
 				n_variables, u_vec, true);
 
-		ret.slice(r) = Sigma_chol;
+		ret.slice(r) = Sigma_chol.t();
 	}
 	
 	return ret;
@@ -60,7 +60,7 @@ Rcpp::List compute_parameter_transformations (
 	}
 
 	if (!(include_B0_inv_t || include_B0 || include_structural_coeff || include_long_run_ir)) return ret;
-	const cube B0_inv_t = Sigma_chol_draws(
+	const cube B0_inv_t = Sigma_chol_t_draws(
 		n_variables,
 		n_posterior_draws,
 		factor_loadings,
@@ -183,14 +183,14 @@ arma::cube find_rotation_cpp(
 		}
 	}
 	
-	uvec col_order = sort_index(n_zero_restrictions, "descend");
+	uvec col_order = sort_index(2 * n_zero_restrictions + n_sign_restrictions, "descend");
 	ivec p_cols = regspace<ivec>(1, n_variables); // the array 1...n_variables
 	
 	for (uword r = 0; r < n_posterior_draws; r++) {
 		for (uword j_index = 0; j_index < n_variables; j_index++) {
 			//iterate over columns in order or descending rank.
 			//since each column must be orthogonal to the ones that came before,
-			//we start with the column with the most zero restrictions
+			//we start with the column with the most restrictions
 			const uword j = col_order[j_index];
 			
 			lprec *lp = (*make_lp)(0, n_variables);
