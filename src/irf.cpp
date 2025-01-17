@@ -135,11 +135,29 @@ mat construct_sign_restriction (const NumericMatrix::ConstColumn& spec) {
 	return sign_restriction_matrix;
 }
 
+
+using make_lp_func_ptr= lprec*(*)(int, int);
+template<typename R, typename... T> using lp_func_ptr = R(*)(lprec*, T...);
+
 // [[Rcpp::export]]
 arma::cube find_rotation_cpp(
 	const arma::field<arma::cube>& parameter_transformations, //each field element: rows: transformation size, cols: variables, slices: draws
 	const arma::field<Rcpp::NumericMatrix>& restriction_specs //each field element: rows: transformation size, cols: variables
 ) {
+	//import routines from the R package "lpSolveAPI"
+	auto make_lp = (make_lp_func_ptr)R_GetCCallable("lpSolveAPI", "make_lp");
+	auto set_verbose = (lp_func_ptr<void, int>)R_GetCCallable("lpSolveAPI", "set_verbose");
+	auto set_maxim = (lp_func_ptr<void>)R_GetCCallable("lpSolveAPI", "set_maxim");
+	auto set_obj = (lp_func_ptr<bool, int, double>)R_GetCCallable("lpSolveAPI", "set_obj");
+	auto set_bounds = (lp_func_ptr<bool, int, double, double>)R_GetCCallable("lpSolveAPI", "set_bounds");
+	auto set_add_rowmode = (lp_func_ptr<bool, bool>)R_GetCCallable("lpSolveAPI", "set_add_rowmode");
+	auto add_constraintex = (lp_func_ptr<bool, int, double*, int*, int, double>)R_GetCCallable("lpSolveAPI", "add_constraintex");
+	auto solve = (lp_func_ptr<int>)R_GetCCallable("lpSolveAPI", "solve");
+	auto get_variables = (lp_func_ptr<bool, double*>)R_GetCCallable("lpSolveAPI", "get_variables");
+	auto get_statustext = (lp_func_ptr<char*, int>)R_GetCCallable("lpSolveAPI", "get_statustext");
+	auto print_lp = (lp_func_ptr<void>)R_GetCCallable("lpSolveAPI", "print_lp");
+	auto delete_lp = (lp_func_ptr<void>)R_GetCCallable("lpSolveAPI", "delete_lp");
+	
 	//algorithm from RUBIO-RAMÍREZ ET AL. (doi: 10.1111/j.1467-937X.2009.00578.x)
 	if (restriction_specs.n_elem != parameter_transformations.n_elem) {
 		throw std::logic_error("Number of restrictions does not match number of parameter transformations.");
@@ -170,30 +188,35 @@ arma::cube find_rotation_cpp(
 	
 	for (uword r = 0; r < n_posterior_draws; r++) {
 		for (uword j_index = 0; j_index < n_variables; j_index++) {
-			const uword j = col_order[j_index]; //iterate over columns in order col_order
+			//iterate over columns in order or descending rank.
+			//since each column must be orthogonal to the ones that came before,
+			//we start with the column with the most zero restrictions
+			const uword j = col_order[j_index];
 			
-			lprec *lp = make_lp(0, n_variables);
+			lprec *lp = (*make_lp)(0, n_variables);
 			if (lp == NULL) throw std::bad_alloc();
 			
-			set_verbose(lp, IMPORTANT);
+			(*set_verbose)(lp, IMPORTANT);
 			set_maxim(lp);
+			
+			// try to avoid having the zero vector as the optimum
 			for (uword jj = 0; jj < n_variables; jj++) {
-				set_obj(lp, jj+1, 1.0);
-				set_bounds(lp, jj+1, -1, 1);
+				(*set_obj)(lp, jj+1, 1.0);
+				(*set_bounds)(lp, jj+1, -1, 1);
 			}
-			set_add_rowmode(lp, TRUE);
+			(*set_add_rowmode)(lp, TRUE);
 			
 			// the column j of the rotation matrix must be orthogonal to columns that came before
 			for (uword j_index_other = 0; j_index_other < j_index; j_index_other++) {
 				const uword j_other = col_order[j_index_other];
-				add_constraintex(lp, n_variables, rotation.slice(r).colptr(j_other), p_cols.memptr(), EQ, 0);
+				(*add_constraintex)(lp, n_variables, rotation.slice(r).colptr(j_other), p_cols.memptr(), EQ, 0);
 			}
 			
 			// add zero restrictions
 			for (uword i = 0; i < parameter_transformations.n_elem; i++) {
 				mat zero_constraints = zero_restrictions(i, j) * parameter_transformations(i).slice(r);
 				zero_constraints.each_row([&](rowvec& row) {
-					add_constraintex(lp, n_variables, row.memptr(), p_cols.memptr(), EQ, 0);
+					(*add_constraintex)(lp, n_variables, row.memptr(), p_cols.memptr(), EQ, 0);
 				});
 			}
 			
@@ -202,27 +225,29 @@ arma::cube find_rotation_cpp(
 				for (uword i = 0; i < parameter_transformations.n_elem; i++) {
 					mat sign_constraints = sign_restrictions(i, j) * parameter_transformations(i).slice(r);
 					sign_constraints.each_row([&](rowvec& row){
-						add_constraintex(lp, n_variables, row.memptr(), p_cols.memptr(), GE, 0);
+						(*add_constraintex)(lp, n_variables, row.memptr(), p_cols.memptr(), GE, 0);
 					});
 				}
 			}
 			
-			set_add_rowmode(lp, FALSE);
-			int ret = solve(lp);
+			(*set_add_rowmode)(lp, FALSE);
+			int ret = (*solve)(lp);
 			if(ret != 0) {
-			    delete_lp(lp);
-				throw std::logic_error(get_statustext(lp, ret));
+			    (*delete_lp)(lp);
+				throw std::logic_error((*get_statustext)(lp, ret));
 			};
 			vec p_j(n_variables);
-			get_variables(lp, p_j.memptr());
+			(*get_variables)(lp, p_j.memptr());
 			if (p_j.is_zero(1e-6)) {
-				Rcout << "posterior sample: #" << r << ", column:" << j+1 << " (" << j_index+1 << "-th in order of rank" << endl;
-				print_lp(lp);
+				Rcerr << "Cannot satisfy restrictions for posterior sample: #" << r
+					<< ", column:" << j+1
+					<< " (" << j_index+1 << "-th in order of rank)" << endl;
+				(*print_lp)(lp);
 				throw std::logic_error("Could not satisfy restrictions");
 			}
 			p_j = normalise(p_j);
 			rotation.slice(r).col(j) = p_j;
-			delete_lp(lp); //TODO: maybe we can recycle lp efficiently
+			(*delete_lp)(lp); //TODO: maybe we can recycle lp efficiently
 		}
 	}
 	return rotation;

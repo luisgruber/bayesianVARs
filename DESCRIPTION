@@ -31,7 +31,8 @@ Imports:
     scales,
     stats,
     stochvol (>= 3.0.3),
-    utils
+    utils,
+    lpSolveAPI
 Suggests:
     coda,
     knitr,
