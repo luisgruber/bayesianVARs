@@ -141,6 +141,8 @@ class Solver {
 	template<typename R, typename... T> using lp_func_ptr = R(*)(lprec*, T...);
 	
 	private:
+	static constexpr double bigM = 10.0;
+	
 	//import routines from the R package "lpSolveAPI"
 	make_lp_func_ptr make_lp = (make_lp_func_ptr)R_GetCCallable("lpSolveAPI", "make_lp");
 	lp_func_ptr<void, int> set_verbose = (lp_func_ptr<void, int>)R_GetCCallable("lpSolveAPI", "set_verbose");
@@ -154,28 +156,67 @@ class Solver {
 	lp_func_ptr<char*, int> get_statustext = (lp_func_ptr<char*, int>)R_GetCCallable("lpSolveAPI", "get_statustext");
 	lp_func_ptr<void> print_lp = (lp_func_ptr<void>)R_GetCCallable("lpSolveAPI", "print_lp");
 	lp_func_ptr<void> delete_lp = (lp_func_ptr<void>)R_GetCCallable("lpSolveAPI", "delete_lp");
+	lp_func_ptr<bool, int, double*, int*> set_obj_fnex = (lp_func_ptr<bool, int, double*, int*>)R_GetCCallable("lpSolveAPI", "set_obj_fnex");
+	lp_func_ptr<bool, int, int> resize_lp = (lp_func_ptr<bool, int, int>)R_GetCCallable("lpSolveAPI", "resize_lp");
+	lp_func_ptr<bool, int, bool> set_binary = (lp_func_ptr<bool, int, bool>)R_GetCCallable("lpSolveAPI", "set_binary");
+	lp_func_ptr<bool, int, char*> set_col_name = (lp_func_ptr<bool, int, char*>)R_GetCCallable("lpSolveAPI", "set_col_name");
 	
 	lprec *lp;
-	uword n_variables;
-	ivec x_cols; // the array 1...n_variables
+	uword n; //dimension of x
+	ivec x_cols;
+	ivec U_cols;
+	ivec y_cols;
 		
 	public:
-	Solver(const uword n_variables_) : n_variables(n_variables_) {
-		lp = (*make_lp)(0, n_variables);
+	Solver(const uword dim_x) : n(dim_x) {
+		lp = (*make_lp)(0, 3*n);
 		if (lp == NULL) throw std::bad_alloc();
-		x_cols = regspace<ivec>(1, n_variables);
+		
 		(*set_verbose)(lp, IMPORTANT);
 		(*set_maxim)(lp);
+		
+		// we have variables x_i, U_i, y_i for i=1...n
+		x_cols = regspace<ivec>(1, n);
+		U_cols = x_cols + n;
+		y_cols = U_cols + n;
+		for (uword j = 0; j < n; j++) {
+			std::string col_name("x");
+			col_name += std::to_string(j+1);
+			(*set_col_name)(lp, x_cols[j], col_name.data());
+			col_name[0] = 'U';
+			(*set_col_name)(lp, U_cols[j], col_name.data());
+			col_name[0] = 'y';
+			(*set_col_name)(lp, y_cols[j], col_name.data());
+		}
+		
 		(*set_add_rowmode)(lp, TRUE);
-		// try to avoid having the zero vector as the optimum
-		for (uword jj = 0; jj < n_variables; jj++) {
-			(*set_obj)(lp, jj+1, 1.0);
-			(*set_bounds)(lp, jj+1, -1, 1);
+				
+		// maximize over sum of U
+		vec ones(U_cols.n_elem, fill::ones);
+		(*set_obj_fnex)(lp, U_cols.n_elem, ones.memptr(), U_cols.memptr());
+		
+		// set variable bounds
+		for (uword j = 0; j < n; j++) {
+			(*set_bounds)(lp, x_cols[j], -1, 1); //x_i in [-1, 1]
+			(*set_bounds)(lp, U_cols[j], 0, 1); //U_i in [0, 1]
+			(*set_binary)(lp, y_cols[j], TRUE); //y_i in {0, 1}
+		}
+		
+		//setup constraints
+		//x_i must not be within the interval [-U_i, U_i]
+		//y_i switches if x_i is right to the interval or left to the interval
+		//=> in an optimal solution, U_i is the greatest possible value of |x_i|
+		std::array<double, 3> left_constraint  = { 1.0 /* x_i */, 1.0 /*U_i*/, -bigM /*y*/};
+		std::array<double, 3> right_constraint = {-1.0 /* x_i */, 1.0 /*U_i*/,  bigM /*y*/};
+		for (uword j = 0; j < n; j++) {
+			std::array<int, 3> cols = {x_cols[j], U_cols[j], y_cols[j]};
+			(*add_constraintex)(lp, cols.size(), left_constraint.data(), cols.data(), LE, 0);
+			(*add_constraintex)(lp, cols.size(), right_constraint.data(), cols.data(), LE, bigM);
 		}
 	}
 	
-	void add_constraint(double* x_coeff, int constr_type, double rhs) {
-		const bool success = (*add_constraintex)(lp, n_variables, x_coeff, x_cols.memptr(), constr_type, rhs);
+	void add_constraint(double* x_coeff_ptr, int constr_type, double rhs) {
+		const bool success = (*add_constraintex)(lp, n, x_coeff_ptr, x_cols.memptr(), constr_type, rhs);
 		if (success == FALSE) {
 			throw std::runtime_error("Could not add constraint");
 		}
@@ -187,9 +228,9 @@ class Solver {
 		if(ret != 0) {
 			throw std::logic_error((*get_statustext)(lp, ret));
 		};
-		vec optimal_x(n_variables);
-		(*get_variables)(lp, optimal_x.memptr());
-		return optimal_x;
+		vec lp_vars_store(3*n);
+		(*get_variables)(lp, lp_vars_store.memptr());
+		return lp_vars_store.head_rows(n); // only return x
 	}
 	
 	void print() {
