@@ -104,6 +104,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// irf_from_true_parameters
+arma::cube irf_from_true_parameters(arma::mat true_structural_matrix, arma::mat true_reduced_coeff, arma::uword ahead);
+RcppExport SEXP _bayesianVARs_irf_from_true_parameters(SEXP true_structural_matrixSEXP, SEXP true_reduced_coeffSEXP, SEXP aheadSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type true_structural_matrix(true_structural_matrixSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type true_reduced_coeff(true_reduced_coeffSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type ahead(aheadSEXP);
+    rcpp_result_gen = Rcpp::wrap(irf_from_true_parameters(true_structural_matrix, true_reduced_coeff, ahead));
+    return rcpp_result_gen;
+END_RCPP
+}
 // sample_PHI_cholesky
 arma::mat sample_PHI_cholesky(const arma::mat PHI, const arma::mat& PHI_prior, const arma::mat& Y, const arma::mat& X, const arma::mat& U, const arma::mat& d_sqrt, const arma::mat& V_prior);
 RcppExport SEXP _bayesianVARs_sample_PHI_cholesky(SEXP PHISEXP, SEXP PHI_priorSEXP, SEXP YSEXP, SEXP XSEXP, SEXP USEXP, SEXP d_sqrtSEXP, SEXP V_priorSEXP) {
@@ -218,6 +231,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bayesianVARs_compute_parameter_transformations", (DL_FUNC) &_bayesianVARs_compute_parameter_transformations, 9},
     {"_bayesianVARs_find_rotation_cpp", (DL_FUNC) &_bayesianVARs_find_rotation_cpp, 2},
     {"_bayesianVARs_irf_cpp", (DL_FUNC) &_bayesianVARs_irf_cpp, 7},
+    {"_bayesianVARs_irf_from_true_parameters", (DL_FUNC) &_bayesianVARs_irf_from_true_parameters, 3},
     {"_bayesianVARs_sample_PHI_cholesky", (DL_FUNC) &_bayesianVARs_sample_PHI_cholesky, 7},
     {"_bayesianVARs_dmvnrm_arma_fast", (DL_FUNC) &_bayesianVARs_dmvnrm_arma_fast, 4},
     {"_bayesianVARs_predh", (DL_FUNC) &_bayesianVARs_predh, 6},

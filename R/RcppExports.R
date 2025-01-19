@@ -35,6 +35,10 @@ irf_cpp <- function(coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahe
     .Call(`_bayesianVARs_irf_cpp`, coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahead, rotation_)
 }
 
+irf_from_true_parameters <- function(true_structural_matrix, true_reduced_coeff, ahead) {
+    .Call(`_bayesianVARs_irf_from_true_parameters`, true_structural_matrix, true_reduced_coeff, ahead)
+}
+
 sample_PHI_cholesky <- function(PHI, PHI_prior, Y, X, U, d_sqrt, V_prior) {
     .Call(`_bayesianVARs_sample_PHI_cholesky`, PHI, PHI_prior, Y, X, U, d_sqrt, V_prior)
 }

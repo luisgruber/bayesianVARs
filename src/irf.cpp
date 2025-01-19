@@ -136,28 +136,78 @@ mat construct_sign_restriction (const NumericMatrix::ConstColumn& spec) {
 }
 
 
-using make_lp_func_ptr= lprec*(*)(int, int);
-template<typename R, typename... T> using lp_func_ptr = R(*)(lprec*, T...);
+class Solver {
+	using make_lp_func_ptr= lprec*(*)(int, int);
+	template<typename R, typename... T> using lp_func_ptr = R(*)(lprec*, T...);
+	
+	private:
+	//import routines from the R package "lpSolveAPI"
+	make_lp_func_ptr make_lp = (make_lp_func_ptr)R_GetCCallable("lpSolveAPI", "make_lp");
+	lp_func_ptr<void, int> set_verbose = (lp_func_ptr<void, int>)R_GetCCallable("lpSolveAPI", "set_verbose");
+	lp_func_ptr<void> set_maxim = (lp_func_ptr<void>)R_GetCCallable("lpSolveAPI", "set_maxim");
+	lp_func_ptr<bool, int, double> set_obj = (lp_func_ptr<bool, int, double>)R_GetCCallable("lpSolveAPI", "set_obj");
+	lp_func_ptr<bool, int, double, double> set_bounds = (lp_func_ptr<bool, int, double, double>)R_GetCCallable("lpSolveAPI", "set_bounds");
+	lp_func_ptr<bool, bool> set_add_rowmode = (lp_func_ptr<bool, bool>)R_GetCCallable("lpSolveAPI", "set_add_rowmode");
+	lp_func_ptr<bool, int, double*, int*, int, double> add_constraintex = (lp_func_ptr<bool, int, double*, int*, int, double>)R_GetCCallable("lpSolveAPI", "add_constraintex");
+	lp_func_ptr<int> lp_solve = (lp_func_ptr<int>)R_GetCCallable("lpSolveAPI", "solve");
+	lp_func_ptr<bool, double*> get_variables = (lp_func_ptr<bool, double*>)R_GetCCallable("lpSolveAPI", "get_variables");
+	lp_func_ptr<char*, int> get_statustext = (lp_func_ptr<char*, int>)R_GetCCallable("lpSolveAPI", "get_statustext");
+	lp_func_ptr<void> print_lp = (lp_func_ptr<void>)R_GetCCallable("lpSolveAPI", "print_lp");
+	lp_func_ptr<void> delete_lp = (lp_func_ptr<void>)R_GetCCallable("lpSolveAPI", "delete_lp");
+	
+	lprec *lp;
+	uword n_variables;
+	ivec x_cols; // the array 1...n_variables
+		
+	public:
+	Solver(const uword n_variables_) : n_variables(n_variables_) {
+		lp = (*make_lp)(0, n_variables);
+		if (lp == NULL) throw std::bad_alloc();
+		x_cols = regspace<ivec>(1, n_variables);
+		(*set_verbose)(lp, IMPORTANT);
+		(*set_maxim)(lp);
+		(*set_add_rowmode)(lp, TRUE);
+		// try to avoid having the zero vector as the optimum
+		for (uword jj = 0; jj < n_variables; jj++) {
+			(*set_obj)(lp, jj+1, 1.0);
+			(*set_bounds)(lp, jj+1, -1, 1);
+		}
+	}
+	
+	void add_constraint(double* x_coeff, int constr_type, double rhs) {
+		const bool success = (*add_constraintex)(lp, n_variables, x_coeff, x_cols.memptr(), constr_type, rhs);
+		if (success == FALSE) {
+			throw std::runtime_error("Could not add constraint");
+		}
+	}
+	
+	vec solve() {
+		(*set_add_rowmode)(lp, FALSE);
+		int ret = (*lp_solve)(lp);
+		if(ret != 0) {
+			throw std::logic_error((*get_statustext)(lp, ret));
+		};
+		vec optimal_x(n_variables);
+		(*get_variables)(lp, optimal_x.memptr());
+		return optimal_x;
+	}
+	
+	void print() {
+		(*set_add_rowmode)(lp, FALSE);
+		(*print_lp)(lp);
+	}
+		
+	~Solver() {
+		(*delete_lp)(lp);
+	}
+	
+};
 
 // [[Rcpp::export]]
 arma::cube find_rotation_cpp(
 	const arma::field<arma::cube>& parameter_transformations, //each field element: rows: transformation size, cols: variables, slices: draws
 	const arma::field<Rcpp::NumericMatrix>& restriction_specs //each field element: rows: transformation size, cols: variables
 ) {
-	//import routines from the R package "lpSolveAPI"
-	auto make_lp = (make_lp_func_ptr)R_GetCCallable("lpSolveAPI", "make_lp");
-	auto set_verbose = (lp_func_ptr<void, int>)R_GetCCallable("lpSolveAPI", "set_verbose");
-	auto set_maxim = (lp_func_ptr<void>)R_GetCCallable("lpSolveAPI", "set_maxim");
-	auto set_obj = (lp_func_ptr<bool, int, double>)R_GetCCallable("lpSolveAPI", "set_obj");
-	auto set_bounds = (lp_func_ptr<bool, int, double, double>)R_GetCCallable("lpSolveAPI", "set_bounds");
-	auto set_add_rowmode = (lp_func_ptr<bool, bool>)R_GetCCallable("lpSolveAPI", "set_add_rowmode");
-	auto add_constraintex = (lp_func_ptr<bool, int, double*, int*, int, double>)R_GetCCallable("lpSolveAPI", "add_constraintex");
-	auto solve = (lp_func_ptr<int>)R_GetCCallable("lpSolveAPI", "solve");
-	auto get_variables = (lp_func_ptr<bool, double*>)R_GetCCallable("lpSolveAPI", "get_variables");
-	auto get_statustext = (lp_func_ptr<char*, int>)R_GetCCallable("lpSolveAPI", "get_statustext");
-	auto print_lp = (lp_func_ptr<void>)R_GetCCallable("lpSolveAPI", "print_lp");
-	auto delete_lp = (lp_func_ptr<void>)R_GetCCallable("lpSolveAPI", "delete_lp");
-	
 	//algorithm from RUBIO-RAMÍREZ ET AL. (doi: 10.1111/j.1467-937X.2009.00578.x)
 	if (restriction_specs.n_elem != parameter_transformations.n_elem) {
 		throw std::logic_error("Number of restrictions does not match number of parameter transformations.");
@@ -184,7 +234,6 @@ arma::cube find_rotation_cpp(
 	}
 	
 	uvec col_order = sort_index(2 * n_zero_restrictions + n_sign_restrictions, "descend");
-	ivec p_cols = regspace<ivec>(1, n_variables); // the array 1...n_variables
 	
 	for (uword r = 0; r < n_posterior_draws; r++) {
 		for (uword j_index = 0; j_index < n_variables; j_index++) {
@@ -193,30 +242,19 @@ arma::cube find_rotation_cpp(
 			//we start with the column with the most restrictions
 			const uword j = col_order[j_index];
 			
-			lprec *lp = (*make_lp)(0, n_variables);
-			if (lp == NULL) throw std::bad_alloc();
-			
-			(*set_verbose)(lp, IMPORTANT);
-			set_maxim(lp);
-			
-			// try to avoid having the zero vector as the optimum
-			for (uword jj = 0; jj < n_variables; jj++) {
-				(*set_obj)(lp, jj+1, 1.0);
-				(*set_bounds)(lp, jj+1, -1, 1);
-			}
-			(*set_add_rowmode)(lp, TRUE);
+			Solver solver(n_variables);
 			
 			// the column j of the rotation matrix must be orthogonal to columns that came before
 			for (uword j_index_other = 0; j_index_other < j_index; j_index_other++) {
 				const uword j_other = col_order[j_index_other];
-				(*add_constraintex)(lp, n_variables, rotation.slice(r).colptr(j_other), p_cols.memptr(), EQ, 0);
+				solver.add_constraint(rotation.slice(r).colptr(j_other), EQ, 0);
 			}
 			
 			// add zero restrictions
 			for (uword i = 0; i < parameter_transformations.n_elem; i++) {
 				mat zero_constraints = zero_restrictions(i, j) * parameter_transformations(i).slice(r);
 				zero_constraints.each_row([&](rowvec& row) {
-					(*add_constraintex)(lp, n_variables, row.memptr(), p_cols.memptr(), EQ, 0);
+					solver.add_constraint(row.memptr(), EQ, 0);
 				});
 			}
 			
@@ -225,29 +263,21 @@ arma::cube find_rotation_cpp(
 				for (uword i = 0; i < parameter_transformations.n_elem; i++) {
 					mat sign_constraints = sign_restrictions(i, j) * parameter_transformations(i).slice(r);
 					sign_constraints.each_row([&](rowvec& row){
-						(*add_constraintex)(lp, n_variables, row.memptr(), p_cols.memptr(), GE, 0);
+						solver.add_constraint(row.memptr(), GE, 0);
 					});
 				}
 			}
 			
-			(*set_add_rowmode)(lp, FALSE);
-			int ret = (*solve)(lp);
-			if(ret != 0) {
-			    (*delete_lp)(lp);
-				throw std::logic_error((*get_statustext)(lp, ret));
-			};
-			vec p_j(n_variables);
-			(*get_variables)(lp, p_j.memptr());
+			const vec p_j = solver.solve();
 			if (p_j.is_zero(1e-6)) {
+				//zero was the optimal solution
 				Rcerr << "Cannot satisfy restrictions for posterior sample: #" << r
 					<< ", column:" << j+1
 					<< " (" << j_index+1 << "-th in order of rank)" << endl;
-				(*print_lp)(lp);
+				solver.print();
 				throw std::logic_error("Could not satisfy restrictions");
 			}
-			p_j = normalise(p_j);
-			rotation.slice(r).col(j) = p_j;
-			(*delete_lp)(lp); //TODO: maybe we can recycle lp efficiently
+			rotation.slice(r).col(j) = normalise(p_j);
 		}
 	}
 	return rotation;
@@ -316,4 +346,26 @@ arma::field<arma::cube> irf_cpp(
 	}
 	
 	return ret;
+}
+
+// [[Rcpp::export]]
+arma::cube irf_from_true_parameters(
+	arma::mat true_structural_matrix,
+	arma::mat true_reduced_coeff,
+	arma::uword ahead
+) {
+	const uword n_variables = true_structural_matrix.n_rows;
+	const uword n_shocks = true_structural_matrix.n_cols;
+	
+	cube irf(n_variables, n_shocks, ahead+1);
+	irf.slice(0) = inv(true_structural_matrix).t();
+	
+	mat current_predictors(n_shocks, true_reduced_coeff.n_rows, fill::zeros);
+	current_predictors.head_cols(n_variables) = irf.slice(0).t();
+	for (uword t = 1; t <= ahead; t++) {
+		mat new_predictiors = current_predictors * true_reduced_coeff;
+		irf.slice(t) = new_predictiors.t();
+		shift_and_insert(current_predictors, new_predictiors);
+	}
+	return irf;
 }

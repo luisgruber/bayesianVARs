@@ -625,7 +625,13 @@ plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NUL
 }
 
 #' @export
-plot.bayesianVARs_irf <- function(x, vars = "all", quantiles = c(0.05,0.25,0.5,0.75,0.95), ...){
+plot.bayesianVARs_irf <- function(
+	x,
+	vars = "all",
+	quantiles = c(0.05,0.25,0.5,0.75,0.95),
+	true_irf = NULL,
+	...
+) {
   n_ahead <- dim(x)[3]
   n_shocks <- ncol(x)
   var_names <- rownames(x)
@@ -658,11 +664,14 @@ plot.bayesianVARs_irf <- function(x, vars = "all", quantiles = c(0.05,0.25,0.5,0
 
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar), add = TRUE)
-  par(mfrow=c(length(vars), n_shocks), mar = c(2,2,2,1), mgp = c(2,.5,0))
+  par(mfrow=c(length(vars), n_shocks), mar=c(2,2,2,1), mgp=c(2,.5,0))
   for(j in seq_along(vars)){
   for(i in seq_len(n_shocks)) {
-    plot(t, rep(0, n_ahead), type = "n", xlab="", ylab = "",
-         xaxt="n", ylim = range(pred_quants[,vars[j],i,]))
+    ylim <- range(pred_quants[,vars[j],i,])
+    if (!is.null(true_irf)) {
+    	ylim <- range(ylim, true_irf[j,i,])
+    }
+    plot(t, rep(0, n_ahead), type="n", xlab="", ylab="", xaxt="n", ylim=ylim)
 	abline(h=0, lty=2)
     axis(side=1, at = t, labels = dates[t])
     mtext(var_names[j], side = 3)
@@ -691,6 +700,9 @@ plot.bayesianVARs_irf <- function(x, vars = "all", quantiles = c(0.05,0.25,0.5,0
         lines(t, pred_quants[ceiling(length(quantiles)/2),vars[j],i,],
               col = "red", lwd = 2)
       }
+    }
+    if (!is.null(true_irf)) {
+    	lines(t, true_irf[j,i,], col="black", lwd=2, lty=6)
     }
   }
   }
