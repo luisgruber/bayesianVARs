@@ -160,13 +160,17 @@ class Solver {
 	lp_func_ptr<bool, int, int> resize_lp = (lp_func_ptr<bool, int, int>)R_GetCCallable("lpSolveAPI", "resize_lp");
 	lp_func_ptr<bool, int, bool> set_binary = (lp_func_ptr<bool, int, bool>)R_GetCCallable("lpSolveAPI", "set_binary");
 	lp_func_ptr<bool, int, char*> set_col_name = (lp_func_ptr<bool, int, char*>)R_GetCCallable("lpSolveAPI", "set_col_name");
+	lp_func_ptr<void, int, int> set_presolve = NULL; //do not combine presolve and recycling!!
+	lp_func_ptr<int> get_Nrows = (lp_func_ptr<int>)R_GetCCallable("lpSolveAPI", "get_Nrows");
+	lp_func_ptr<int> get_Ncolumns = (lp_func_ptr<int>)R_GetCCallable("lpSolveAPI", "get_Ncolumns");
 	
 	lprec *lp;
 	uword n; //dimension of x
 	ivec x_cols;
 	ivec U_cols;
 	ivec y_cols;
-		
+	int n_initial_rows;
+
 	public:
 	Solver(const uword dim_x) : n(dim_x) {
 		lp = (*make_lp)(0, 3*n);
@@ -213,6 +217,9 @@ class Solver {
 			(*add_constraintex)(lp, cols.size(), left_constraint.data(), cols.data(), LE, 0);
 			(*add_constraintex)(lp, cols.size(), right_constraint.data(), cols.data(), LE, bigM);
 		}
+		
+		//recycling will remove all constraints added by `add_constraint`
+		n_initial_rows = (*get_Nrows)(lp);
 	}
 	
 	void add_constraint(double* x_coeff_ptr, int constr_type, double rhs) {
@@ -233,6 +240,12 @@ class Solver {
 		return lp_vars_store.head_rows(n); // only return x
 	}
 	
+	void recycle() {
+		// delete all non-initial constraints
+		(*resize_lp)(lp, n_initial_rows, (*get_Ncolumns)(lp));
+		(*set_add_rowmode)(lp, TRUE);
+	}
+	
 	void print() {
 		(*set_add_rowmode)(lp, FALSE);
 		(*print_lp)(lp);
@@ -247,7 +260,8 @@ class Solver {
 // [[Rcpp::export]]
 arma::cube find_rotation_cpp(
 	const arma::field<arma::cube>& parameter_transformations, //each field element: rows: transformation size, cols: variables, slices: draws
-	const arma::field<Rcpp::NumericMatrix>& restriction_specs //each field element: rows: transformation size, cols: variables
+	const arma::field<Rcpp::NumericMatrix>& restriction_specs, //each field element: rows: transformation size, cols: variables
+	const double tol = 1e-6
 ) {
 	//algorithm from RUBIO-RAMÍREZ ET AL. (doi: 10.1111/j.1467-937X.2009.00578.x)
 	if (restriction_specs.n_elem != parameter_transformations.n_elem) {
@@ -274,16 +288,15 @@ arma::cube find_rotation_cpp(
 		}
 	}
 	
+	//iterate over columns in order or descending rank.
+	//since each column must be orthogonal to the ones that came before,
+	//we start with the column with the most restrictions	
 	uvec col_order = sort_index(2 * n_zero_restrictions + n_sign_restrictions, "descend");
-	
+	Solver solver(n_variables);
 	for (uword r = 0; r < n_posterior_draws; r++) {
-		for (uword j_index = 0; j_index < n_variables; j_index++) {
-			//iterate over columns in order or descending rank.
-			//since each column must be orthogonal to the ones that came before,
-			//we start with the column with the most restrictions
+		if (r % 512 == 0) Rcpp::checkUserInterrupt();
+		for (uword j_index = 0; j_index < n_variables; solver.recycle(), j_index++) {
 			const uword j = col_order[j_index];
-			
-			Solver solver(n_variables);
 			
 			// the column j of the rotation matrix must be orthogonal to columns that came before
 			for (uword j_index_other = 0; j_index_other < j_index; j_index_other++) {
@@ -309,8 +322,8 @@ arma::cube find_rotation_cpp(
 				}
 			}
 			
-			const vec p_j = solver.solve();
-			if (p_j.is_zero(1e-6)) {
+			const vec p_j = solver.solve().clean(tol);
+			if (p_j.is_zero()) {
 				//zero was the optimal solution
 				Rcerr << "Cannot satisfy restrictions for posterior sample: #" << r
 					<< ", column:" << j+1
