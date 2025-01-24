@@ -1,3 +1,4 @@
+#include <memory>
 #include <lp_lib.h>
 #include "utilities_cpp.h"
 
@@ -135,8 +136,15 @@ mat construct_sign_restriction (const NumericMatrix::ConstColumn& spec) {
 	return sign_restriction_matrix;
 }
 
-
 class Solver {
+	public:
+	virtual void add_constraints(mat& constraints, int constr_type, double rhs) = 0;
+	virtual vec solve() = 0;
+	virtual void recycle() = 0;
+	virtual void print() = 0;
+};
+
+class LPSolver : public Solver {
 	using make_lp_func_ptr= lprec*(*)(int, int);
 	template<typename R, typename... T> using lp_func_ptr = R(*)(lprec*, T...);
 	
@@ -172,7 +180,7 @@ class Solver {
 	int n_initial_rows;
 
 	public:
-	Solver(const uword dim_x) : n(dim_x) {
+	LPSolver(const uword dim_x) : n(dim_x) {
 		lp = (*make_lp)(0, 3*n);
 		if (lp == NULL) throw std::bad_alloc();
 		
@@ -206,7 +214,7 @@ class Solver {
 			(*set_binary)(lp, y_cols[j], TRUE); //y_i in {0, 1}
 		}
 		
-		//setup constraints
+		//setup initial constraints
 		//x_i must not be within the interval [-U_i, U_i]
 		//y_i switches if x_i is right to the interval or left to the interval
 		//=> in an optimal solution, U_i is the greatest possible value of |x_i|
@@ -222,17 +230,20 @@ class Solver {
 		n_initial_rows = (*get_Nrows)(lp);
 	}
 	
-	void add_constraint(double* x_coeff_ptr, int constr_type, double rhs) {
-		const bool success = (*add_constraintex)(lp, n, x_coeff_ptr, x_cols.memptr(), constr_type, rhs);
-		if (success == FALSE) {
-			throw std::runtime_error("Could not add constraint");
-		}
+	void add_constraints(mat& constraints, int constr_type, double rhs) override {
+		constraints.each_row([&](rowvec& row) {
+			const bool success = (*add_constraintex)(lp, n, row.memptr(), x_cols.memptr(), constr_type, rhs);
+			if (success == FALSE) {
+				throw std::runtime_error("Could not add constraints");
+			}
+		});
 	}
 	
-	vec solve() {
+	vec solve() override {
 		(*set_add_rowmode)(lp, FALSE);
 		int ret = (*lp_solve)(lp);
 		if(ret != 0) {
+			print();
 			throw std::logic_error((*get_statustext)(lp, ret));
 		};
 		vec lp_vars_store(3*n);
@@ -240,27 +251,75 @@ class Solver {
 		return lp_vars_store.head_rows(n); // only return x
 	}
 	
-	void recycle() {
+	void recycle() override {
 		// delete all non-initial constraints
 		(*resize_lp)(lp, n_initial_rows, (*get_Ncolumns)(lp));
 		(*set_add_rowmode)(lp, TRUE);
 	}
 	
-	void print() {
+	void print() override {
 		(*set_add_rowmode)(lp, FALSE);
 		(*print_lp)(lp);
 	}
 		
-	~Solver() {
+	~LPSolver() {
 		(*delete_lp)(lp);
 	}
 	
+};
+
+class RandomizedSolver : public Solver {
+	private:
+		mat zero_restrictions;
+		mat sign_restrictions;
+		const double tol;
+		const uword max_attempts;
+	public:
+	RandomizedSolver(const uword dim_x, const uword max_attempts, const double tol) :
+		zero_restrictions(mat(0, dim_x)),
+		sign_restrictions(mat(0, dim_x)),
+		tol(tol), max_attempts(max_attempts)
+	{}
+	
+	void add_constraints(mat& constraints, int constr_type, double rhs) override {
+		if ( constr_type == EQ && rhs == 0) {
+			zero_restrictions = join_vert(zero_restrictions, constraints);
+		}
+		else if ( constr_type == GE && rhs == 0) {
+			sign_restrictions = join_vert(sign_restrictions, constraints);
+		}
+		else throw std::domain_error("Constraint type not implemented");
+	};
+	virtual vec solve() override {
+		const mat zero_restrictions_solution_space = null(zero_restrictions, tol);
+		for (uword i = 0; i < max_attempts; i++) {
+			// draw random unit-length vector
+			vec v(zero_restrictions_solution_space.n_cols);
+    		v.imbue(R::norm_rand);
+    		v = normalise(v);
+    		
+    		const vec x_candidate = zero_restrictions_solution_space*v;
+    		if (all(sign_restrictions * x_candidate >= 0-tol))
+    			return x_candidate;
+		}
+		throw std::runtime_error("Max attempts reached while searching for solution");
+	};
+	virtual void recycle() override {
+		zero_restrictions = mat(0, zero_restrictions.n_cols);
+		sign_restrictions = mat(0, sign_restrictions.n_cols);
+	};
+	virtual void print() override {
+		Rcout << "Zero restrictions:" << endl << zero_restrictions <<
+		         "Sign restrictions:" << endl << sign_restrictions;
+	};
 };
 
 // [[Rcpp::export]]
 arma::cube find_rotation_cpp(
 	const arma::field<arma::cube>& parameter_transformations, //each field element: rows: transformation size, cols: variables, slices: draws
 	const arma::field<Rcpp::NumericMatrix>& restriction_specs, //each field element: rows: transformation size, cols: variables
+	const std::string& solver_option = "randomized", // "randomized" or "lp"
+	const arma::uword randomized_max_attempts = 100, // ignored when solver is "lp"
 	const double tol = 1e-6
 ) {
 	//algorithm from RUBIO-RAMÍREZ ET AL. (doi: 10.1111/j.1467-937X.2009.00578.x)
@@ -272,6 +331,15 @@ arma::cube find_rotation_cpp(
 	const uword n_posterior_draws = parameter_transformations(0).n_slices;
 	cube rotation(n_variables, n_variables, n_posterior_draws, fill::none);
 
+	std::unique_ptr<Solver> solver;
+	if (solver_option == "randomized") {
+		solver.reset(new RandomizedSolver(n_variables, randomized_max_attempts, tol));
+	}
+	else if (solver_option == "lp") {
+		solver.reset(new LPSolver(n_variables));
+	}
+	else throw std::domain_error("Unknown solver option");
+	
 	//field rows: tranformations, field cols: cols of the transformation
 	//each field element: rows: number of restrictions, cols: transformation size
 	field<mat> zero_restrictions(restriction_specs.n_elem, n_variables);
@@ -292,43 +360,36 @@ arma::cube find_rotation_cpp(
 	//since each column must be orthogonal to the ones that came before,
 	//we start with the column with the most restrictions	
 	uvec col_order = sort_index(2 * n_zero_restrictions + n_sign_restrictions, "descend");
-	Solver solver(n_variables);
 	for (uword r = 0; r < n_posterior_draws; r++) {
 		if (r % 512 == 0) Rcpp::checkUserInterrupt();
-		for (uword j_index = 0; j_index < n_variables; solver.recycle(), j_index++) {
+		for (uword j_index = 0; j_index < n_variables; solver->recycle(), j_index++) {
 			const uword j = col_order[j_index];
 			
 			// the column j of the rotation matrix must be orthogonal to columns that came before
-			for (uword j_index_other = 0; j_index_other < j_index; j_index_other++) {
-				const uword j_other = col_order[j_index_other];
-				solver.add_constraint(rotation.slice(r).colptr(j_other), EQ, 0);
-			}
+			mat previous_columns = rotation.slice(r).cols(col_order.head(j_index)).t();
+			solver->add_constraints(previous_columns, EQ, 0);
 			
-			// add zero restrictions
-			for (uword i = 0; i < parameter_transformations.n_elem; i++) {
-				mat zero_constraints = zero_restrictions(i, j) * parameter_transformations(i).slice(r);
-				zero_constraints.each_row([&](rowvec& row) {
-					solver.add_constraint(row.memptr(), EQ, 0);
-				});
-			}
-			
-			//add sign restrictions
-			if (n_sign_restrictions(j) > 0) {
+			if (n_zero_restrictions(j) > 0) {
 				for (uword i = 0; i < parameter_transformations.n_elem; i++) {
-					mat sign_constraints = sign_restrictions(i, j) * parameter_transformations(i).slice(r);
-					sign_constraints.each_row([&](rowvec& row){
-						solver.add_constraint(row.memptr(), GE, 0);
-					});
+					mat zero_constraints = zero_restrictions(i, j) * parameter_transformations(i).slice(r);
+					solver->add_constraints(zero_constraints, EQ, 0);
 				}
 			}
 			
-			const vec p_j = solver.solve().clean(tol);
+			if (n_sign_restrictions(j) > 0) {
+				for (uword i = 0; i < parameter_transformations.n_elem; i++) {
+					mat sign_constraints = sign_restrictions(i, j) * parameter_transformations(i).slice(r);
+					solver->add_constraints(sign_constraints, GE, 0);
+				}
+			}
+			
+			const vec p_j = solver->solve().clean(tol);
 			if (p_j.is_zero()) {
 				//zero was the optimal solution
 				Rcerr << "Cannot satisfy restrictions for posterior sample: #" << r
 					<< ", column:" << j+1
 					<< " (" << j_index+1 << "-th in order of rank)" << endl;
-				solver.print();
+				solver->print();
 				throw std::logic_error("Could not satisfy restrictions");
 			}
 			rotation.slice(r).col(j) = normalise(p_j);

@@ -106,7 +106,9 @@ find_rotation <- function(
 	restrictions_B0 = NULL,
 	restrictions_structural_coeff = NULL,
 	restrictions_long_run_ir = NULL,
-	lp_solve_verbosity = 3
+	
+	solver = "randomized",
+	randomized_max_attempts = 100
 ) {
 	if (x$sigma_type == "factor") {
 		forbidden_restrictions <- c(
@@ -152,6 +154,8 @@ find_rotation <- function(
 
 	find_rotation_cpp(
 		parameter_transformations = parameter_transformations,
-		restriction_specs = restrictions[lengths(restrictions) > 0]
+		restriction_specs = restrictions[lengths(restrictions) > 0],
+		solver_option = solver,
+		randomized_max_attempts = randomized_max_attempts
 	)
 }

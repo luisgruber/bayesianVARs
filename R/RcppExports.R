@@ -27,8 +27,8 @@ compute_parameter_transformations <- function(reduced_coefficients, factor_loadi
     .Call(`_bayesianVARs_compute_parameter_transformations`, reduced_coefficients, factor_loadings, U_vecs, logvar_T, include_facload, include_B0_inv_t, include_B0, include_structural_coeff, include_long_run_ir)
 }
 
-find_rotation_cpp <- function(parameter_transformations, restriction_specs, tol = 1e-6) {
-    .Call(`_bayesianVARs_find_rotation_cpp`, parameter_transformations, restriction_specs, tol)
+find_rotation_cpp <- function(parameter_transformations, restriction_specs, solver_option = "randomized", randomized_max_attempts = 100L, tol = 1e-6) {
+    .Call(`_bayesianVARs_find_rotation_cpp`, parameter_transformations, restriction_specs, solver_option, randomized_max_attempts, tol)
 }
 
 irf_cpp <- function(coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahead, rotation_ = NULL) {

@@ -76,15 +76,17 @@ BEGIN_RCPP
 END_RCPP
 }
 // find_rotation_cpp
-arma::cube find_rotation_cpp(const arma::field<arma::cube>& parameter_transformations, const arma::field<Rcpp::NumericMatrix>& restriction_specs, const double tol);
-RcppExport SEXP _bayesianVARs_find_rotation_cpp(SEXP parameter_transformationsSEXP, SEXP restriction_specsSEXP, SEXP tolSEXP) {
+arma::cube find_rotation_cpp(const arma::field<arma::cube>& parameter_transformations, const arma::field<Rcpp::NumericMatrix>& restriction_specs, const std::string& solver_option, const arma::uword randomized_max_attempts, const double tol);
+RcppExport SEXP _bayesianVARs_find_rotation_cpp(SEXP parameter_transformationsSEXP, SEXP restriction_specsSEXP, SEXP solver_optionSEXP, SEXP randomized_max_attemptsSEXP, SEXP tolSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::field<arma::cube>& >::type parameter_transformations(parameter_transformationsSEXP);
     Rcpp::traits::input_parameter< const arma::field<Rcpp::NumericMatrix>& >::type restriction_specs(restriction_specsSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type solver_option(solver_optionSEXP);
+    Rcpp::traits::input_parameter< const arma::uword >::type randomized_max_attempts(randomized_max_attemptsSEXP);
     Rcpp::traits::input_parameter< const double >::type tol(tolSEXP);
-    rcpp_result_gen = Rcpp::wrap(find_rotation_cpp(parameter_transformations, restriction_specs, tol));
+    rcpp_result_gen = Rcpp::wrap(find_rotation_cpp(parameter_transformations, restriction_specs, solver_option, randomized_max_attempts, tol));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -230,7 +232,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 21},
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
     {"_bayesianVARs_compute_parameter_transformations", (DL_FUNC) &_bayesianVARs_compute_parameter_transformations, 9},
-    {"_bayesianVARs_find_rotation_cpp", (DL_FUNC) &_bayesianVARs_find_rotation_cpp, 3},
+    {"_bayesianVARs_find_rotation_cpp", (DL_FUNC) &_bayesianVARs_find_rotation_cpp, 5},
     {"_bayesianVARs_irf_cpp", (DL_FUNC) &_bayesianVARs_irf_cpp, 7},
     {"_bayesianVARs_irf_from_true_parameters", (DL_FUNC) &_bayesianVARs_irf_from_true_parameters, 3},
     {"_bayesianVARs_sample_PHI_cholesky", (DL_FUNC) &_bayesianVARs_sample_PHI_cholesky, 7},
