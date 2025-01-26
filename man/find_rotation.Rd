@@ -11,7 +11,8 @@ find_rotation(
   restrictions_B0 = NULL,
   restrictions_structural_coeff = NULL,
   restrictions_long_run_ir = NULL,
-  tolerance = 0
+  solver = "randomized",
+  randomized_max_attempts = 100
 )
 }
 \arguments{

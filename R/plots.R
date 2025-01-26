@@ -628,13 +628,16 @@ plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NUL
 plot.bayesianVARs_irf <- function(
 	x,
 	vars = "all",
+	type = "quantiles",
 	quantiles = c(0.05,0.25,0.5,0.75,0.95),
+	ensemble_max = 100,
 	true_irf = NULL,
 	...
 ) {
   n_ahead <- dim(x)[3]
   n_shocks <- ncol(x)
   var_names <- rownames(x)
+  n_posterior_samples <- dim(x)[4]
 
   if(length(vars)==1L & any(vars == "all")){
     vars <- 1:ncol(x)
@@ -658,32 +661,43 @@ plot.bayesianVARs_irf <- function(
   nr_quantiles <- length(quantiles)
   nr_intervals <- floor(nr_quantiles/2)
   even <- nr_quantiles%%2 == 0
+  alpha_upper <- 0.4
+  alpha_lower <- 0.2
+  alphas <- seq(alpha_lower, alpha_upper, length.out = nr_intervals)
+  if (nr_intervals==1) {
+    alphas <- alpha_upper
+  }
+  
+  col_ensemble <- adjustcolor("red", alpha.f=0.1)
+  ensemble_samples <- seq_len(min(ensemble_max, n_posterior_samples))
 
   # dimensions: quantiles x vars x shocks x time
-  pred_quants <- apply(x, MARGIN=1:3, FUN=quantile, quantiles)
+  pred_quants <- c()
+  if (type == "quantiles") {
+	  pred_quants <- apply(x, MARGIN=1:3, FUN=quantile, quantiles)
+  }
 
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar), add = TRUE)
   par(mfrow=c(length(vars), n_shocks), mar=c(2,2,2,1), mgp=c(2,.5,0))
   for(j in seq_along(vars)){
   for(i in seq_len(n_shocks)) {
-    ylim <- range(pred_quants[,vars[j],i,])
+  	ylim <- c(0,0)
     if (!is.null(true_irf)) {
-    	ylim <- range(ylim, true_irf[j,i,])
+    	ylim <- range(true_irf[j,i,])
+    }
+    if (type == "quantiles") {
+    	ylim <- range(ylim, pred_quants[,vars[j],i,])
+    } else {
+    	ylim <- range(ylim, x[j,i,,ensemble_samples])
     }
     plot(t, rep(0, n_ahead), type="n", xlab="", ylab="", xaxt="n", ylim=ylim)
 	abline(h=0, lty=2)
     axis(side=1, at = t, labels = dates[t])
     mtext(var_names[j], side = 3)
-
-    if(nr_intervals>0){
+	
+    if(type=="quantiles" && nr_intervals>0){
       for(r in seq.int(nr_intervals)){
-        alpha_upper <- 0.4
-        alpha_lower <- 0.2
-        alphas <- seq(alpha_lower, alpha_upper, length.out = nr_intervals)
-        if(nr_intervals==1){
-          alphas <- alpha_upper
-        }
         polygon(x = c(t, rev(t)),
                 y = c(pred_quants[r,vars[j],i,], rev(pred_quants[r+1,vars[j],i,])),
                 col = scales::alpha("red", alphas[r]),
@@ -700,6 +714,10 @@ plot.bayesianVARs_irf <- function(
         lines(t, pred_quants[ceiling(length(quantiles)/2),vars[j],i,],
               col = "red", lwd = 2)
       }
+    } else {
+    	for (r in ensemble_samples) {
+    		lines(t, x[j,i,,r], col=col_ensemble)
+    	}
     }
     if (!is.null(true_irf)) {
     	lines(t, true_irf[j,i,], col="black", lwd=2, lty=6)
