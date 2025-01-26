@@ -628,9 +628,8 @@ plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NUL
 plot.bayesianVARs_irf <- function(
 	x,
 	vars = "all",
-	type = "quantiles",
 	quantiles = c(0.05,0.25,0.5,0.75,0.95),
-	ensemble_max = 100,
+	hair_alpha = 0.1,
 	true_irf = NULL,
 	...
 ) {
@@ -638,6 +637,10 @@ plot.bayesianVARs_irf <- function(
   n_shocks <- ncol(x)
   var_names <- rownames(x)
   n_posterior_samples <- dim(x)[4]
+  
+  do_plot_hairs <- !is.null(attr(x, "hair_order"))
+  hair_color <- adjustcolor("red", alpha.f=hair_alpha)
+  hair_order <- head(attr(x, "hair_order"), n=1+max(quantiles)*n_posterior_samples)
 
   if(length(vars)==1L & any(vars == "all")){
     vars <- 1:ncol(x)
@@ -667,13 +670,10 @@ plot.bayesianVARs_irf <- function(
   if (nr_intervals==1) {
     alphas <- alpha_upper
   }
-  
-  col_ensemble <- adjustcolor("red", alpha.f=0.1)
-  ensemble_samples <- seq_len(min(ensemble_max, n_posterior_samples))
 
   # dimensions: quantiles x vars x shocks x time
   pred_quants <- c()
-  if (type == "quantiles") {
+  if (!do_plot_hairs) {
 	  pred_quants <- apply(x, MARGIN=1:3, FUN=quantile, quantiles)
   }
 
@@ -686,17 +686,17 @@ plot.bayesianVARs_irf <- function(
     if (!is.null(true_irf)) {
     	ylim <- range(true_irf[j,i,])
     }
-    if (type == "quantiles") {
-    	ylim <- range(ylim, pred_quants[,vars[j],i,])
+    if (do_plot_hairs) {
+    	ylim <- range(ylim, x[j,i,,hair_order])
     } else {
-    	ylim <- range(ylim, x[j,i,,ensemble_samples])
+    	ylim <- range(ylim, pred_quants[,vars[j],i,])
     }
     plot(t, rep(0, n_ahead), type="n", xlab="", ylab="", xaxt="n", ylim=ylim)
 	abline(h=0, lty=2)
     axis(side=1, at = t, labels = dates[t])
     mtext(var_names[j], side = 3)
 	
-    if(type=="quantiles" && nr_intervals>0){
+    if(!do_plot_hairs && nr_intervals>0){
       for(r in seq.int(nr_intervals)){
         polygon(x = c(t, rev(t)),
                 y = c(pred_quants[r,vars[j],i,], rev(pred_quants[r+1,vars[j],i,])),
@@ -715,9 +715,10 @@ plot.bayesianVARs_irf <- function(
               col = "red", lwd = 2)
       }
     } else {
-    	for (r in ensemble_samples) {
-    		lines(t, x[j,i,,r], col=col_ensemble)
+    	for (r in hair_order) {
+    		lines(t, x[j,i,,r], col=hair_color)
     	}
+    	lines(t, x[j,i,,hair_order[1]], col="red", lwd=2)
     }
     if (!is.null(true_irf)) {
     	lines(t, true_irf[j,i,], col="black", lwd=2, lty=6)

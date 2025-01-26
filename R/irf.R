@@ -19,7 +19,7 @@
 #' plot(irf(mod))
 #'
 #' @export
-irf <- function(x, ahead=8, rotation=NULL, shocks=NULL) {
+irf <- function(x, ahead=8, rotation=NULL, shocks=NULL, hairy=FALSE) {
 	n_variables <- ncol(x$PHI)
 	n_posterior_draws <- dim(x$PHI)[3];
 	
@@ -32,7 +32,7 @@ irf <- function(x, ahead=8, rotation=NULL, shocks=NULL) {
 	}
 	n_shocks <- ncol(shocks)
 
-	ret <- unlist(irf_cpp(
+	ret <- irf_cpp(
 		x$PHI,
 		x$facload,
 		x$U,
@@ -40,10 +40,19 @@ irf <- function(x, ahead=8, rotation=NULL, shocks=NULL) {
 		shocks=shocks,
 		ahead,
 		rotation
-	))
+	)
+	
+	hair_order <- NULL
+	if (hairy) {
+		hair_order <- irf_bayes_optimal_order(ret) + 1 #R indices are one based!
+		dim(hair_order) <- NULL
+	}
+	
+	ret <- unlist(ret)
 	dim(ret) <- c(n_variables, n_shocks, 1+ahead, n_posterior_draws)
 	dimnames(ret) <- list(colnames(x$Y), paste("shock",1:n_shocks), paste0("t=",0:ahead))
 	class(ret) <- "bayesianVARs_irf"
+	attr(ret, "hair_order") <- hair_order
 	ret
 }
 

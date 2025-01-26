@@ -464,6 +464,20 @@ arma::field<arma::cube> irf_cpp(
 }
 
 // [[Rcpp::export]]
+arma::ivec irf_bayes_optimal_order(arma::field<arma::cube>& irf) {
+	const uword n_posterior_draws = irf.n_elem;
+	vec losses(n_posterior_draws, fill::zeros);
+	for (uword r = 0; r < n_posterior_draws; r++) {
+		for (uword r_other = 0; r_other < r; r_other++) {
+			const double loss = accu(abs(irf(r) - irf(r_other)));
+			losses(r) += loss;
+			losses(r_other) += loss;
+		}
+	}
+	return conv_to<ivec>::from(sort_index(losses, "ascend"));
+}
+
+// [[Rcpp::export]]
 arma::cube irf_from_true_parameters(
 	arma::mat true_structural_matrix,
 	arma::mat true_reduced_coeff,

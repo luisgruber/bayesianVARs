@@ -35,6 +35,10 @@ irf_cpp <- function(coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahe
     .Call(`_bayesianVARs_irf_cpp`, coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahead, rotation_)
 }
 
+irf_bayes_optimal_order <- function(irf) {
+    .Call(`_bayesianVARs_irf_bayes_optimal_order`, irf)
+}
+
 irf_from_true_parameters <- function(true_structural_matrix, true_reduced_coeff, ahead) {
     .Call(`_bayesianVARs_irf_from_true_parameters`, true_structural_matrix, true_reduced_coeff, ahead)
 }

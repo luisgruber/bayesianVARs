@@ -107,6 +107,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// irf_bayes_optimal_order
+arma::ivec irf_bayes_optimal_order(arma::field<arma::cube>& irf);
+RcppExport SEXP _bayesianVARs_irf_bayes_optimal_order(SEXP irfSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::field<arma::cube>& >::type irf(irfSEXP);
+    rcpp_result_gen = Rcpp::wrap(irf_bayes_optimal_order(irf));
+    return rcpp_result_gen;
+END_RCPP
+}
 // irf_from_true_parameters
 arma::cube irf_from_true_parameters(arma::mat true_structural_matrix, arma::mat true_reduced_coeff, arma::uword ahead);
 RcppExport SEXP _bayesianVARs_irf_from_true_parameters(SEXP true_structural_matrixSEXP, SEXP true_reduced_coeffSEXP, SEXP aheadSEXP) {
@@ -234,6 +245,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bayesianVARs_compute_parameter_transformations", (DL_FUNC) &_bayesianVARs_compute_parameter_transformations, 9},
     {"_bayesianVARs_find_rotation_cpp", (DL_FUNC) &_bayesianVARs_find_rotation_cpp, 5},
     {"_bayesianVARs_irf_cpp", (DL_FUNC) &_bayesianVARs_irf_cpp, 7},
+    {"_bayesianVARs_irf_bayes_optimal_order", (DL_FUNC) &_bayesianVARs_irf_bayes_optimal_order, 1},
     {"_bayesianVARs_irf_from_true_parameters", (DL_FUNC) &_bayesianVARs_irf_from_true_parameters, 3},
     {"_bayesianVARs_sample_PHI_cholesky", (DL_FUNC) &_bayesianVARs_sample_PHI_cholesky, 7},
     {"_bayesianVARs_dmvnrm_arma_fast", (DL_FUNC) &_bayesianVARs_dmvnrm_arma_fast, 4},
