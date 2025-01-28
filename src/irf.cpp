@@ -272,13 +272,14 @@ class RandomizedSolver : public Solver {
 	private:
 		mat zero_restrictions;
 		mat sign_restrictions;
+		const uword dim_x;
 		const double tol;
 		const uword max_attempts;
 	public:
 	RandomizedSolver(const uword dim_x, const uword max_attempts, const double tol) :
 		zero_restrictions(mat(0, dim_x)),
 		sign_restrictions(mat(0, dim_x)),
-		tol(tol), max_attempts(max_attempts)
+		dim_x(dim_x), tol(tol), max_attempts(max_attempts)
 	{}
 	
 	void add_constraints(mat& constraints, int constr_type, double rhs) override {
@@ -291,7 +292,12 @@ class RandomizedSolver : public Solver {
 		else throw std::domain_error("Constraint type not implemented");
 	};
 	virtual vec solve() override {
-		const mat zero_restrictions_solution_space = null(zero_restrictions, tol);
+		mat zero_restrictions_solution_space;
+		if (zero_restrictions.n_rows == 0) {
+			zero_restrictions_solution_space = eye(dim_x, dim_x);
+		} else {
+			zero_restrictions_solution_space = null(zero_restrictions, tol);
+		}
 		for (uword i = 0; i < max_attempts; i++) {
 			// draw random unit-length vector
 			vec v(zero_restrictions_solution_space.n_cols);
