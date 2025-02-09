@@ -718,7 +718,7 @@ plot.bayesianVARs_irf <- function(
     	for (r in hair_order) {
     		lines(t, x[j,i,,r], col=hair_color)
     	}
-    	lines(t, x[j,i,,hair_order[1]], col="red", lwd=2)
+    	lines(t, x[j,i,,hair_order[1]], col="black", lwd=2)
     }
     if (!is.null(true_irf)) {
     	lines(t, true_irf[j,i,], col="black", lwd=2, lty=6)

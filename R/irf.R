@@ -19,7 +19,7 @@
 #' plot(irf(mod))
 #'
 #' @export
-irf <- function(x, ahead=8, rotation=NULL, shocks=NULL, hairy=FALSE) {
+irf <- function(x, ahead=8, rotation=NULL, shocks=NULL, hairy=FALSE, t = nrow(x$logvar)) {
 	n_variables <- ncol(x$PHI)
 	n_posterior_draws <- dim(x$PHI)[3];
 	
@@ -36,7 +36,7 @@ irf <- function(x, ahead=8, rotation=NULL, shocks=NULL, hairy=FALSE) {
 		x$PHI,
 		x$facload,
 		x$U,
-		x$logvar[nrow(x$logvar),,], #most recent log volatility
+		x$logvar[t,,],
 		shocks=shocks,
 		ahead,
 		rotation
@@ -116,6 +116,7 @@ find_rotation <- function(
 	restrictions_structural_coeff = NULL,
 	restrictions_long_run_ir = NULL,
 	
+	t = nrow(x$logvar),
 	solver = "randomized",
 	randomized_max_attempts = 100
 ) {
@@ -141,7 +142,7 @@ find_rotation <- function(
 		x$PHI,
 		x$facload,
 		x$U,
-		x$logvar[nrow(x$logvar),,], #most recent log volatility,
+		x$logvar[t,,], #most recent log volatility,
 		include_facload = !is.null(restrictions_facload),
 		include_B0_inv_t = !is.null(restrictions_B0_inv_t),
 		include_B0 = !is.null(restrictions_B0),
