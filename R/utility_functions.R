@@ -319,7 +319,7 @@ fitted.bayesianVARs_bvar <- function(object, error_term = TRUE, ...){
 #' @export
 residuals.bayesianVARs_bvar <- function(object) {
 	yh <- fitted(object)
-	yh$fitted - rep(object$Y, mod$config$draws)
+	yh$fitted - rep(object$Y, object$config$draws)
 }
 
 # Functions for prior configuration ---------------------------------------

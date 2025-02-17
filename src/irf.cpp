@@ -37,16 +37,17 @@ Rcpp::List compute_parameter_transformations (
 	const arma::cube& factor_loadings, //rows: variables, columns: factors, slices: draws
 	const arma::mat& U_vecs, //rows: entries of a (variables x variables)-upper triagonal matrix with ones on the diagonals, cols: draws
 	const arma::mat& logvar_T, //cols: draws
-	
-	const bool include_facload = false,
-	const bool include_B0_inv_t = false,
-	const bool include_B0 = false,
-	const bool include_structural_coeff = false,
-	const bool include_long_run_ir = false
+	const Rcpp::List& restrictions
 ) {
 	const uword n_variables = reduced_coefficients.n_cols;
 	const uword n_posterior_draws = reduced_coefficients.n_slices;
 	const uword n_factors = factor_loadings.n_cols;
+	
+	const bool include_facload = restrictions.containsElementNamed("facload");
+	const bool include_B0_inv_t = restrictions.containsElementNamed("B0_inv_t");
+	const bool include_B0 = restrictions.containsElementNamed("B0");
+	const bool include_structural_coeff = restrictions.containsElementNamed("structural_coeff");
+	const bool include_long_run_ir = restrictions.containsElementNamed("restrictions_long_run_ir");
 	
 	Rcpp::List ret = Rcpp::List::create();
 	

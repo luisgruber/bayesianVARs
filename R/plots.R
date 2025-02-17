@@ -629,7 +629,7 @@ plot.bayesianVARs_irf <- function(
 	x,
 	vars = "all",
 	quantiles = c(0.05,0.25,0.5,0.75,0.95),
-	hair_alpha = 0.1,
+	default_hair_color = adjustcolor("red", alpha.f=0.01),
 	true_irf = NULL,
 	...
 ) {
@@ -639,9 +639,8 @@ plot.bayesianVARs_irf <- function(
   n_posterior_samples <- dim(x)[4]
   
   do_plot_hairs <- !is.null(attr(x, "hair_order"))
-  hair_color <- adjustcolor("red", alpha.f=hair_alpha)
   hair_order <- head(attr(x, "hair_order"), n=1+max(quantiles)*n_posterior_samples)
-
+  
   if(length(vars)==1L & any(vars == "all")){
     vars <- 1:ncol(x)
   }else if(is.character(vars)){
@@ -674,7 +673,7 @@ plot.bayesianVARs_irf <- function(
   # dimensions: quantiles x vars x shocks x time
   pred_quants <- c()
   if (!do_plot_hairs) {
-	  pred_quants <- apply(x, MARGIN=1:3, FUN=quantile, quantiles)
+	  pred_quants <- apply(x, MARGIN=1:3, FUN=quantile, quantiles, na.rm=TRUE)
   }
 
   oldpar <- par(no.readonly = TRUE)
@@ -687,9 +686,9 @@ plot.bayesianVARs_irf <- function(
     	ylim <- range(true_irf[j,i,])
     }
     if (do_plot_hairs) {
-    	ylim <- range(ylim, x[j,i,,hair_order])
+    	ylim <- range(ylim, x[j,i,,hair_order], finite=TRUE)
     } else {
-    	ylim <- range(ylim, pred_quants[,vars[j],i,])
+    	ylim <- range(ylim, pred_quants[,vars[j],i,], finite=TRUE)
     }
     plot(t, rep(0, n_ahead), type="n", xlab="", ylab="", xaxt="n", ylim=ylim)
 	abline(h=0, lty=2)
@@ -716,6 +715,10 @@ plot.bayesianVARs_irf <- function(
       }
     } else {
     	for (r in hair_order) {
+    		hair_color <- attr(x, "hair_color")[r]
+		    if (is.null(hair_color)) {
+			  hair_color <- default_hair_color
+		    }
     		lines(t, x[j,i,,r], col=hair_color)
     	}
     	lines(t, x[j,i,,hair_order[1]], col="black", lwd=2)

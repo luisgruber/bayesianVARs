@@ -1,59 +1,7 @@
-#' Impulse response functions
-#'
-#' Effect of a shock on the factors or variables over time
-#' 
-#' If a factor model was used, then the number of shocks is equal to the number
-#' of factors.
-#'
-#' If the Cholesky model was used, then the number of shocks is equal to the
-#' number of variables / time series.
-#'
-#' @param x An object of type `bayesianVARs_bvar`.
-#'
-#' @return Returns a `bayesianVARs_irf` object
-#'
-#' @examples
-#' train_data <- 100 * usmacro_growth[,c("GDPC1", "PCECC96", "GPDIC1", "AWHMAN", "GDPCTPI", "CES2000000008x", "FEDFUNDS", "GS10", "EXUSUKx", "S&P 500")]
-#' prior_sigma <- specify_prior_sigma(data=train_data, type="cholesky")
-#' mod <- bvar(train_data, lags=2L, draws=2000, prior_sigma=prior_sigma) 
-#' plot(irf(mod))
-#'
-#' @export
-irf <- function(x, ahead=8, rotation=NULL, shocks=NULL, hairy=FALSE, t = nrow(x$logvar)) {
-	n_variables <- ncol(x$PHI)
-	n_posterior_draws <- dim(x$PHI)[3];
-	
-	if (is.null(shocks)) {
-		shocks <- diag(
-			if (x$sigma_type == "factor") ncol(x$facload)
-			else if (x$sigma_type == "cholesky") ncol(x$Y)
-			else stop("unknown model")
-		)
-	}
-	n_shocks <- ncol(shocks)
-
-	ret <- irf_cpp(
-		x$PHI,
-		x$facload,
-		x$U,
-		x$logvar[t,,],
-		shocks=shocks,
-		ahead,
-		rotation
-	)
-	
-	hair_order <- NULL
-	if (hairy) {
-		hair_order <- irf_bayes_optimal_order(ret) + 1 #R indices are one based!
-		dim(hair_order) <- NULL
-	}
-	
-	ret <- unlist(ret)
-	dim(ret) <- c(n_variables, n_shocks, 1+ahead, n_posterior_draws)
-	dimnames(ret) <- list(colnames(x$Y), paste("shock",1:n_shocks), paste0("t=",0:ahead))
-	class(ret) <- "bayesianVARs_irf"
-	attr(ret, "hair_order") <- hair_order
-	ret
+dim_shocks <- function(x) {
+	if (x$sigma_type == "factor") ncol(x$facload)
+	else if (x$sigma_type == "cholesky") ncol(x$Y)
+	else stop("unknown model")
 }
 
 mspe_decomposition <- function(ir) {
@@ -82,43 +30,13 @@ mspe_decomposition <- function(ir) {
 #'	\item{A negative number:}{The sign of this entry should be negative.}
 #' }
 #'
-#' @examples
-#' train_data <- 100 * usmacro_growth[,c("GDPC1", "GPDICTPI", "GS1", "M2REAL", "CPIAUCSL")]
-#' prior_sigma <- specify_prior_sigma(data=train_data, type="cholesky")
-#' x <- bvar(train_data, lags=2L, draws=10000, prior_sigma=prior_sigma)
-#' 
-#' restrictions_B0 <- cbind(
-#' 	c(1, 0, 0, 0, 0),
-#' 	c(NA, 1, 0, 0, 0),
-#' 	c(NA, 0, NA, NA, NA),
-#' 	c(NA, NA, NA, NA, NA),
-#' 	c(NA, NA, NA, NA, NA)
-#' )
-#' 
-#' restrictions_IR_inf <- cbind(
-#' 	c(NA, NA, NA, NA, NA),
-#' 	c(NA, NA, NA, NA, NA),
-#' 	c(0, NA, NA, NA, NA),
-#' 	c(NA, NA, NA, NA, NA),
-#' 	c(NA, NA, NA, NA, NA)
-#' )
-#' 
-#' rotation <- find_rotation(x,
-#' 	restrictions_B0 = restrictions_B0,
-#' 	restrictions_long_run_ir = restrictions_IR_inf
-#' )
-#' plot(irf(x, rotation=rotation))
-find_rotation <- function(
+specify_structural_restrictions <- function(
 	x,
 	restrictions_facload = NULL,
 	restrictions_B0_inv_t = NULL,
 	restrictions_B0 = NULL,
 	restrictions_structural_coeff = NULL,
-	restrictions_long_run_ir = NULL,
-	
-	t = nrow(x$logvar),
-	solver = "randomized",
-	randomized_max_attempts = 100
+	restrictions_long_run_ir = NULL
 ) {
 	if (x$sigma_type == "factor") {
 		forbidden_restrictions <- c(
@@ -137,35 +55,142 @@ find_rotation <- function(
 	else {
 		stop("Unkown model type")
 	}
-	
-	parameter_transformations <- compute_parameter_transformations(
-		x$PHI,
-		x$facload,
-		x$U,
-		x$logvar[t,,], #most recent log volatility,
-		include_facload = !is.null(restrictions_facload),
-		include_B0_inv_t = !is.null(restrictions_B0_inv_t),
-		include_B0 = !is.null(restrictions_B0),
-		include_structural_coeff = !is.null(restrictions_structural_coeff),
-		include_long_run_ir = !is.null(restrictions_long_run_ir)
-	)
 	# order must match the output of `compute_parameter_transformations`!
-	restrictions <- list(
+	list(
 		"facload" = restrictions_facload,
 		"B0_inv_t" = restrictions_B0_inv_t,
 		"B0" = restrictions_B0,
 	    "structural_coeff" = restrictions_structural_coeff,
 	    "restrictions_long_run_ir" = restrictions_long_run_ir
 	)
-	
-	if (all(lengths(parameter_transformations) == 0) || all(lengths(restrictions) == 0)) {
-		stop("None of the restrictions apply to this model")
-	}
+}
 
-	find_rotation_cpp(
-		parameter_transformations = parameter_transformations,
-		restriction_specs = restrictions[lengths(restrictions) > 0],
-		solver_option = solver,
-		randomized_max_attempts = randomized_max_attempts
+find_rotation <- function(
+	x,
+	structural_restrictions,
+	t = nrow(x$logvar),
+	
+	solver = "randomized",
+	randomized_max_attempts = 100
+) {
+	if (all(lengths(structural_restrictions) == 0)) {
+		stop("No restrictions specified")
+	}
+	structural_restrictions <- structural_restrictions[lengths(structural_restrictions) > 0]
+    
+	n_shocks <- dim_shocks(x)
+	n_posterior_draws <- dim(x$PHI)[3]
+	rotation_store <- array(dim=c(n_shocks,n_shocks,n_posterior_draws,length(t)))
+	for (i in seq_along(t)) {
+		parameter_transformations <- compute_parameter_transformations(
+			x$PHI,
+			x$facload,
+			x$U,
+			x$logvar[t[i],,],
+			structural_restrictions
+		)
+	
+		rotation_store[,,,i] <- find_rotation_cpp(
+			parameter_transformations = parameter_transformations,
+			restriction_specs = structural_restrictions,
+			solver_option = solver,
+			randomized_max_attempts = randomized_max_attempts
+		)
+	}
+	if (length(t) == 1) {
+		dim(rotation_store) <- c(n_shocks, n_shocks, n_posterior_draws)
+	}
+	
+	rotation_store
+}
+
+#' Impulse response functions
+#'
+#' Effect of a shock on the factors or variables over time
+#' 
+#' If a factor model was used, then the number of shocks is equal to the number
+#' of factors.
+#'
+#' If the Cholesky model was used, then the number of shocks is equal to the
+#' number of variables / time series.
+#'
+#' @param x An object of type `bayesianVARs_bvar`.
+#'
+#' @return Returns a `bayesianVARs_irf` object
+#'
+#' @examples
+#' train_data <- 100 * usmacro_growth[,c("GDPC1", "PCECC96", "GPDIC1", "AWHMAN", "GDPCTPI", "CES2000000008x", "FEDFUNDS", "GS10", "EXUSUKx", "S&P 500")]
+#' prior_sigma <- specify_prior_sigma(data=train_data, type="cholesky")
+#' mod <- bvar(train_data, lags=2L, draws=2000, prior_sigma=prior_sigma) 
+#' plot(irf(mod))
+#'
+#' @export
+irf <- function(x, ahead=8, structural_restrictions=NULL, shocks=NULL, hairy=FALSE, t = nrow(x$logvar), ...) {
+	n_variables <- ncol(x$PHI)
+	n_posterior_draws <- dim(x$PHI)[3]
+	
+	if (is.null(shocks)) {
+		shocks <- diag(dim_shocks(x))
+	}
+	n_shocks <- ncol(shocks)
+	
+	if (length(t) != 1 || t > nrow(x$logvar)) {
+		stop("t must be a single valid timepoint")
+	}
+	
+	rotation <- NULL
+	if (!is.null(structural_restrictions)) {
+		rotation <- find_rotation(x, structural_restrictions, t=t, ...)
+	}
+	
+	ret <- irf_cpp(
+		x$PHI,
+		x$facload,
+		x$U,
+		x$logvar[t,,],
+		shocks=shocks,
+		ahead,
+		rotation
 	)
+	
+	hair_order <- NULL
+	if (hairy) {
+		hair_order <- irf_bayes_optimal_order(ret) + 1 #R indices are one based!
+		dim(hair_order) <- NULL
+	}
+	
+	ret <- unlist(ret)
+	dim(ret) <- c(n_variables, n_shocks, 1+ahead, n_posterior_draws)
+	dimnames(ret) <- list(colnames(x$Y), paste("shock",1:n_shocks), paste0("t=",0:ahead))
+	class(ret) <- "bayesianVARs_irf"
+	attr(ret, "hair_order") <- hair_order
+	ret
+}
+
+estimate_structural_shocks <- function(x, structural_restrictions, ...) {
+	n_shocks <- dim_shocks(x)
+	n_posterior_draws <- dim(x$PHI)[3]
+	
+	reduced_shocks <- residuals(x)
+	
+	structural_shocks_dim <- dim(reduced_shocks)
+	structural_shocks_dim[2] <- n_shocks
+	structural_shocks_dimnames <- dimnames(reduced_shocks)
+	structural_shocks_dimnames[2] <- NULL
+	structural_shocks <- array(dim=structural_shocks_dim, dimnames=structural_shocks_dimnames)
+	for (t in seq_len(nrow(reduced_shocks))) {
+		rot <- find_rotation(x, structural_restrictions, t=t, ...)
+		B0 <- compute_parameter_transformations(
+			x$PHI,
+			x$facload,
+			x$U,
+			x$logvar[t,,],
+			list("B0" = TRUE)
+		)[["B0"]]
+		for (r in seq_len(n_posterior_draws)) {
+			structural_shocks[t,,r] <- reduced_shocks[t,,r] %*% B0[,,r] %*% rot[,,r]
+		}
+	}
+	
+	structural_shocks
 }
