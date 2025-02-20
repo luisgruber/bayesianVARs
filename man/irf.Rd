@@ -4,7 +4,15 @@
 \alias{irf}
 \title{Impulse response functions}
 \usage{
-irf(x, ahead = 8, rotation = NULL, shocks = NULL)
+irf(
+  x,
+  ahead = 8,
+  structural_restrictions = NULL,
+  shocks = NULL,
+  hairy = FALSE,
+  t = nrow(x$logvar),
+  ...
+)
 }
 \arguments{
 \item{x}{An object of type \code{bayesianVARs_bvar}.}
