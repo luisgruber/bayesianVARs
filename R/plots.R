@@ -642,17 +642,17 @@ plot.bayesianVARs_irf <- function(
   hair_order <- head(attr(x, "hair_order"), n=1+max(quantiles)*n_posterior_samples)
   
   if(length(vars)==1L & any(vars == "all")){
-    vars <- 1:ncol(x)
+    vars <- seq_along(var_names)
   }else if(is.character(vars)){
-    if(any(base::isFALSE(vars %in% colnames(x)))){
-      stop("Elements of 'vars' must coincide with 'colnames(x)'!")
+    if(any(vars %in% var_names == FALSE)){
+      stop("Elements of 'vars' must coincide with 'rownames(x)'!")
     }else{
-      vars <- which(colnames(x) %in% vars)
+      vars <- which(var_names %in% vars)
     }
   }else if(is.numeric(vars)){
     vars <- as.integer(vars)
-    if(any(vars > ncol(x))){
-      stop("'max(vars)' must be at most 'ncol(x)'!")
+    if(any(vars > length(var_names))){
+      stop(paste("'max(vars)' must be at most", length(var_names)))
     }
   }
   
@@ -693,7 +693,7 @@ plot.bayesianVARs_irf <- function(
     plot(t, rep(0, n_ahead), type="n", xlab="", ylab="", xaxt="n", ylim=ylim)
 	abline(h=0, lty=2)
     axis(side=1, at = t, labels = dates[t])
-    mtext(var_names[j], side = 3)
+    mtext(var_names[vars[j]], side = 3)
 	
     if(!do_plot_hairs && nr_intervals>0){
       for(r in seq.int(nr_intervals)){
