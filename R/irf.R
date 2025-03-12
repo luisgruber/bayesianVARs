@@ -135,7 +135,7 @@ irf <- function(x, ahead=8, structural_restrictions=NULL, shocks=NULL, hairy=FAL
 	n_shocks <- ncol(shocks)
 	
 	if (length(t) != 1 || t > nrow(x$logvar)) {
-		stop("t must be a single valid timepoint")
+		stop("t must be a single valid timepoint. This needs sv_keep = \"all\" when calling bvar.")
 	}
 	
 	rotation <- NULL
