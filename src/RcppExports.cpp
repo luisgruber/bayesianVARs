@@ -72,7 +72,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // find_rotation_cpp
-arma::cube find_rotation_cpp(const arma::field<arma::cube>& parameter_transformations, const arma::field<Rcpp::NumericMatrix>& restriction_specs, const std::string& solver_option, const arma::uword randomized_max_attempts, const double tol);
+Rcpp::List find_rotation_cpp(const arma::field<arma::cube>& parameter_transformations, const arma::field<Rcpp::NumericMatrix>& restriction_specs, const std::string& solver_option, const arma::uword randomized_max_attempts, const double tol);
 RcppExport SEXP _bayesianVARs_find_rotation_cpp(SEXP parameter_transformationsSEXP, SEXP restriction_specsSEXP, SEXP solver_optionSEXP, SEXP randomized_max_attemptsSEXP, SEXP tolSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;

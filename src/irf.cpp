@@ -275,12 +275,11 @@ class RandomizedSolver : public Solver {
 		mat sign_restrictions;
 		const uword dim_x;
 		const double tol;
-		const uword max_attempts;
 	public:
-	RandomizedSolver(const uword dim_x, const uword max_attempts, const double tol) :
+	RandomizedSolver(const uword dim_x, const double tol) :
 		zero_restrictions(mat(0, dim_x)),
 		sign_restrictions(mat(0, dim_x)),
-		dim_x(dim_x), tol(tol), max_attempts(max_attempts)
+		dim_x(dim_x), tol(tol)
 	{}
 	
 	void add_constraints(mat& constraints, int constr_type, double rhs) override {
@@ -299,17 +298,22 @@ class RandomizedSolver : public Solver {
 		} else {
 			zero_restrictions_solution_space = null(zero_restrictions, tol);
 		}
-		for (uword i = 0; i < max_attempts; i++) {
-			// draw random unit-length vector
-			vec v(zero_restrictions_solution_space.n_cols);
-    		v.imbue(R::norm_rand);
-    		v = normalise(v);
-    		
-    		const vec x_candidate = zero_restrictions_solution_space*v;
-    		if (all(sign_restrictions * x_candidate >= 0-tol))
-    			return x_candidate;
+
+		// draw random unit-length vector
+		// here we are not allowed to draw until we find a vector that
+		// satisfies the sign restrictions!
+		// see https://doi.org/10.3982/ECTA14468 -> Ctrl+F "tempting"
+		vec v(zero_restrictions_solution_space.n_cols);
+		v.imbue(R::norm_rand);
+		v = normalise(v);
+		
+		const vec x_candidate = zero_restrictions_solution_space*v;
+		if (all(sign_restrictions * x_candidate >= 0-tol)) {
+			return x_candidate;
+		} else {
+			return zeros(dim_x);
 		}
-		throw std::runtime_error("Max attempts reached while searching for solution");
+		
 	};
 	virtual void recycle() override {
 		zero_restrictions = mat(0, zero_restrictions.n_cols);
@@ -322,25 +326,29 @@ class RandomizedSolver : public Solver {
 };
 
 // [[Rcpp::export]]
-arma::cube find_rotation_cpp(
+Rcpp::List find_rotation_cpp(
 	const arma::field<arma::cube>& parameter_transformations, //each field element: rows: transformation size, cols: variables, slices: draws
 	const arma::field<Rcpp::NumericMatrix>& restriction_specs, //each field element: rows: transformation size, cols: variables
 	const std::string& solver_option = "randomized", // "randomized" or "lp"
 	const arma::uword randomized_max_attempts = 100, // ignored when solver is "lp"
 	const double tol = 1e-6
 ) {
-	//algorithm from RUBIO-RAMÍREZ ET AL. (doi: 10.1111/j.1467-937X.2009.00578.x)
 	if (restriction_specs.n_elem != parameter_transformations.n_elem) {
 		throw std::logic_error("Number of restrictions does not match number of parameter transformations.");
 	}
 
 	const uword n_variables = parameter_transformations(0).n_cols;
 	const uword n_posterior_draws = parameter_transformations(0).n_slices;
+	
+	// rotation at index i belongs to sample with one-based-index rotation_sample_map[i]
+	// if the sample is rejected, rotation_sample_map[i] is set to zero
+	// treat values of the slice where rotation_sample_map is zero as undefined
+	uvec rotation_sample_map (n_posterior_draws, fill::zeros);
 	cube rotation(n_variables, n_variables, n_posterior_draws, fill::none);
 
 	std::unique_ptr<Solver> solver;
 	if (solver_option == "randomized") {
-		solver.reset(new RandomizedSolver(n_variables, randomized_max_attempts, tol));
+		solver.reset(new RandomizedSolver(n_variables, tol));
 	}
 	else if (solver_option == "lp") {
 		solver.reset(new LPSolver(n_variables));
@@ -369,6 +377,7 @@ arma::cube find_rotation_cpp(
 	uvec col_order = sort_index(2 * n_zero_restrictions + n_sign_restrictions, "descend");
 	for (uword r = 0; r < n_posterior_draws; r++) {
 		if (r % 512 == 0) Rcpp::checkUserInterrupt();
+		bool reject_draw = false;
 		for (uword j_index = 0; j_index < n_variables; solver->recycle(), j_index++) {
 			const uword j = col_order[j_index];
 			
@@ -393,16 +402,21 @@ arma::cube find_rotation_cpp(
 			const vec p_j = solver->solve().clean(tol);
 			if (p_j.is_zero()) {
 				//zero was the optimal solution
-				Rcerr << "Cannot satisfy restrictions for posterior sample: #" << r
-					<< ", column:" << j+1
-					<< " (" << j_index+1 << "-th in order of rank)" << endl;
-				solver->print();
-				throw std::logic_error("Could not satisfy restrictions");
+				//reject this draw.
+				reject_draw = true;
+				break;
 			}
 			rotation.slice(r).col(j) = normalise(p_j);
 		}
+		if (!reject_draw) {
+			rotation_sample_map[r] = r+1;
+		}
 	}
-	return rotation;
+	
+	Rcpp::List ret = Rcpp::List::create();
+	ret["rotation"] = rotation;
+	ret["rotation_sample_map"] = rotation_sample_map;
+	return ret;
 }
 
 inline void shift_and_insert(
