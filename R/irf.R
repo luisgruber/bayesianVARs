@@ -71,42 +71,30 @@ find_rotation <- function(
 	t = nrow(x$logvar),
 	
 	solver = "randomized",
-	randomized_max_attempts = 100
+	randomized_max_rotations_per_sample = 2
 ) {
+	stopifnot(length(t) == 1)
+	stopifnot(solver %in% c("randomized", "lp"))
+	stopifnot(randomized_max_rotations_per_sample > 0)
 	if (all(lengths(structural_restrictions) == 0)) {
 		stop("No restrictions specified")
 	}
 	structural_restrictions <- structural_restrictions[lengths(structural_restrictions) > 0]
-    
-	n_shocks <- dim_shocks(x)
-	n_posterior_draws <- dim(x$PHI)[3]
-	rotation_sample_maps <- array(dim=c(n_posterior_draws, length(t)))
-	rotation_store <- array(dim=c(n_shocks,n_shocks,n_posterior_draws,length(t)))
-	for (i in seq_along(t)) {
-		parameter_transformations <- compute_parameter_transformations(
-			x$PHI,
-			x$facload,
-			x$U,
-			x$logvar[t[i],,],
-			structural_restrictions
-		)
-		
-		rotation <- find_rotation_cpp(
-			parameter_transformations = parameter_transformations,
-			restriction_specs = structural_restrictions,
-			solver_option = solver,
-			randomized_max_attempts = randomized_max_attempts
-		)
-		
-		rotation_sample_maps[,i] <- rotation$rotation_sample_map
-		rotation_store[,,,i] <- rotation$rotation
-	}
-	if (length(t) == 1) {
-		dim(rotation_sample_maps) <- c(n_posterior_draws)
-		dim(rotation_store) <- c(n_shocks, n_shocks, n_posterior_draws)
-	}
+    	
+	parameter_transformations <- compute_parameter_transformations(
+		x$PHI,
+		x$facload,
+		x$U,
+		x$logvar[t,,],
+		structural_restrictions
+	)
 	
-	list(rotations=rotation_store, rotation_sample_maps=rotation_sample_maps)
+	find_rotation_cpp(
+		parameter_transformations = parameter_transformations,
+		restriction_specs = structural_restrictions,
+		solver_option = solver,
+		randomized_max_rotations_per_sample = randomized_max_rotations_per_sample
+	)
 }
 
 #' Impulse response functions
@@ -144,28 +132,28 @@ irf <- function(x, ahead=8, structural_restrictions=NULL, shocks=NULL, hairy=FAL
 	}
 	
 	rotation <- NULL
-	good_sample_indices <- 1:n_posterior_draws
+	rotation_sample_map <- 1:n_posterior_draws
 	if (!is.null(structural_restrictions)) {
-		r <- find_rotation(x, structural_restrictions, t=t, ...)
-		good_sample_indices <- r$rotation_sample_map[r$rotation_sample_map>0]
-		rotation <- r$rotations[,,r$rotation_sample_map>0]
+		result <- find_rotation(x, structural_restrictions, t=t, ...)
+		rotation <- result$rotation
+		rotation_sample_map <- result$rotation_sample_map
 	}
 	
 	factor_loadings <- x$facload
 	if (length(factor_loadings) > 0) {
-		factor_loadings <- factor_loadings[,,good_sample_indices]
+		factor_loadings <- factor_loadings[,,rotation_sample_map]
 	}
 	
 	U_vecs <- x$U
 	if (length(U_vecs) > 0) {
-		U_vecs <- U_vecs[,good_sample_indices]
+		U_vecs <- U_vecs[,rotation_sample_map]
 	}
 	
 	ret <- irf_cpp(
-		coefficients=x$PHI[,,good_sample_indices],
+		coefficients=x$PHI[,,rotation_sample_map],
 		factor_loadings=factor_loadings,
 		U_vecs=U_vecs,
-		logvar_t=x$logvar[t,,good_sample_indices],
+		logvar_t=x$logvar[t,,rotation_sample_map],
 		shocks=shocks,
 		ahead=ahead,
 		rotation_=rotation
@@ -178,7 +166,7 @@ irf <- function(x, ahead=8, structural_restrictions=NULL, shocks=NULL, hairy=FAL
 	}
 	
 	ret <- unlist(ret)
-	dim(ret) <- c(n_variables, n_shocks, 1+ahead, length(good_sample_indices))
+	dim(ret) <- c(n_variables, n_shocks, 1+ahead, length(rotation_sample_map))
 	dimnames(ret) <- list(colnames(x$Y), paste("shock",1:n_shocks), paste0("t=",0:ahead))
 	class(ret) <- "bayesianVARs_irf"
 	attr(ret, "hair_order") <- hair_order

@@ -72,17 +72,17 @@ BEGIN_RCPP
 END_RCPP
 }
 // find_rotation_cpp
-Rcpp::List find_rotation_cpp(const arma::field<arma::cube>& parameter_transformations, const arma::field<Rcpp::NumericMatrix>& restriction_specs, const std::string& solver_option, const arma::uword randomized_max_attempts, const double tol);
-RcppExport SEXP _bayesianVARs_find_rotation_cpp(SEXP parameter_transformationsSEXP, SEXP restriction_specsSEXP, SEXP solver_optionSEXP, SEXP randomized_max_attemptsSEXP, SEXP tolSEXP) {
+Rcpp::List find_rotation_cpp(const arma::field<arma::cube>& parameter_transformations, const arma::field<Rcpp::NumericMatrix>& restriction_specs, const std::string& solver_option, const arma::uword randomized_max_rotations_per_sample, const double tol);
+RcppExport SEXP _bayesianVARs_find_rotation_cpp(SEXP parameter_transformationsSEXP, SEXP restriction_specsSEXP, SEXP solver_optionSEXP, SEXP randomized_max_rotations_per_sampleSEXP, SEXP tolSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::field<arma::cube>& >::type parameter_transformations(parameter_transformationsSEXP);
     Rcpp::traits::input_parameter< const arma::field<Rcpp::NumericMatrix>& >::type restriction_specs(restriction_specsSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type solver_option(solver_optionSEXP);
-    Rcpp::traits::input_parameter< const arma::uword >::type randomized_max_attempts(randomized_max_attemptsSEXP);
+    Rcpp::traits::input_parameter< const arma::uword >::type randomized_max_rotations_per_sample(randomized_max_rotations_per_sampleSEXP);
     Rcpp::traits::input_parameter< const double >::type tol(tolSEXP);
-    rcpp_result_gen = Rcpp::wrap(find_rotation_cpp(parameter_transformations, restriction_specs, solver_option, randomized_max_attempts, tol));
+    rcpp_result_gen = Rcpp::wrap(find_rotation_cpp(parameter_transformations, restriction_specs, solver_option, randomized_max_rotations_per_sample, tol));
     return rcpp_result_gen;
 END_RCPP
 }

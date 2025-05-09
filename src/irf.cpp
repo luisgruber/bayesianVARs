@@ -1,4 +1,5 @@
 #include <memory>
+#include <list>
 #include <lp_lib.h>
 #include "utilities_cpp.h"
 
@@ -273,13 +274,15 @@ class RandomizedSolver : public Solver {
 	private:
 		mat zero_restrictions;
 		mat sign_restrictions;
-		const uword dim_x;
+		const vec zero;
+		const uword n_shocks;
 		const double tol;
 	public:
-	RandomizedSolver(const uword dim_x, const double tol) :
-		zero_restrictions(mat(0, dim_x)),
-		sign_restrictions(mat(0, dim_x)),
-		dim_x(dim_x), tol(tol)
+	RandomizedSolver(const uword n_shocks, const double tol) :
+		zero_restrictions(mat(0, n_shocks)),
+		sign_restrictions(mat(0, n_shocks)),
+		zero(arma::zeros(n_shocks)),
+		n_shocks(n_shocks), tol(tol)
 	{}
 	
 	void add_constraints(mat& constraints, int constr_type, double rhs) override {
@@ -294,7 +297,7 @@ class RandomizedSolver : public Solver {
 	virtual vec solve() override {
 		mat zero_restrictions_solution_space;
 		if (zero_restrictions.n_rows == 0) {
-			zero_restrictions_solution_space = eye(dim_x, dim_x);
+			zero_restrictions_solution_space = eye(n_shocks, n_shocks);
 		} else {
 			zero_restrictions_solution_space = null(zero_restrictions, tol);
 		}
@@ -303,15 +306,15 @@ class RandomizedSolver : public Solver {
 		// here we are not allowed to draw until we find a vector that
 		// satisfies the sign restrictions!
 		// see https://doi.org/10.3982/ECTA14468 -> Ctrl+F "tempting"
-		vec v(zero_restrictions_solution_space.n_cols);
-		v.imbue(R::norm_rand);
-		v = normalise(v);
+		vec y(zero_restrictions_solution_space.n_cols);
+		y.imbue(R::norm_rand);
+		y = normalise(y);
 		
-		const vec x_candidate = zero_restrictions_solution_space*v;
-		if (all(sign_restrictions * x_candidate >= 0-tol)) {
-			return x_candidate;
+		const vec q_candidate = zero_restrictions_solution_space*y;
+		if (all(sign_restrictions * q_candidate >= 0-tol)) {
+			return q_candidate;
 		} else {
-			return zeros(dim_x);
+			return zero;
 		}
 		
 	};
@@ -330,7 +333,7 @@ Rcpp::List find_rotation_cpp(
 	const arma::field<arma::cube>& parameter_transformations, //each field element: rows: transformation size, cols: variables, slices: draws
 	const arma::field<Rcpp::NumericMatrix>& restriction_specs, //each field element: rows: transformation size, cols: variables
 	const std::string& solver_option = "randomized", // "randomized" or "lp"
-	const arma::uword randomized_max_attempts = 100, // ignored when solver is "lp"
+	const arma::uword randomized_max_rotations_per_sample = 2, // ignored when solver is "lp"
 	const double tol = 1e-6
 ) {
 	if (restriction_specs.n_elem != parameter_transformations.n_elem) {
@@ -343,14 +346,18 @@ Rcpp::List find_rotation_cpp(
 	// rotation at index i belongs to sample with one-based-index rotation_sample_map[i]
 	// if the sample is rejected, rotation_sample_map[i] is set to zero
 	// treat values of the slice where rotation_sample_map is zero as undefined
-	uvec rotation_sample_map (n_posterior_draws, fill::zeros);
-	cube rotation(n_variables, n_variables, n_posterior_draws, fill::none);
+	std::list<uword> rotation_sample_map;
+	std::list<mat> rotations;
+	//cube rotation(n_variables, n_variables, n_posterior_draws, fill::none);
 
 	std::unique_ptr<Solver> solver;
+	uword max_rotations_per_sample = 0;
 	if (solver_option == "randomized") {
+		max_rotations_per_sample = randomized_max_rotations_per_sample;
 		solver.reset(new RandomizedSolver(n_variables, tol));
 	}
 	else if (solver_option == "lp") {
+		max_rotations_per_sample = 1;
 		solver.reset(new LPSolver(n_variables));
 	}
 	else throw std::domain_error("Unknown solver option");
@@ -370,19 +377,22 @@ Rcpp::List find_rotation_cpp(
 			n_sign_restrictions(j) += sign_restrictions(i, j).n_rows; //rank = n_rows by construction!
 		}
 	}
-	
+		
 	//iterate over columns in order or descending rank.
 	//since each column must be orthogonal to the ones that came before,
 	//we start with the column with the most restrictions	
 	uvec col_order = sort_index(2 * n_zero_restrictions + n_sign_restrictions, "descend");
+	
 	for (uword r = 0; r < n_posterior_draws; r++) {
-		if (r % 512 == 0) Rcpp::checkUserInterrupt();
+		if (r % 100 == 0) Rcpp::checkUserInterrupt();
+		for (uword attempt = 0; attempt < max_rotations_per_sample; attempt++) {
+		mat rotation(n_variables, n_variables, fill::none);
 		bool reject_draw = false;
 		for (uword j_index = 0; j_index < n_variables; solver->recycle(), j_index++) {
 			const uword j = col_order[j_index];
 			
 			// the column j of the rotation matrix must be orthogonal to columns that came before
-			mat previous_columns = rotation.slice(r).cols(col_order.head(j_index)).t();
+			mat previous_columns = rotation.cols(col_order.head(j_index)).t();
 			solver->add_constraints(previous_columns, EQ, 0);
 			
 			if (n_zero_restrictions(j) > 0) {
@@ -406,15 +416,26 @@ Rcpp::List find_rotation_cpp(
 				reject_draw = true;
 				break;
 			}
-			rotation.slice(r).col(j) = normalise(p_j);
+			rotation.col(j) = normalise(p_j);
 		}
 		if (!reject_draw) {
-			rotation_sample_map[r] = r+1;
+			rotation_sample_map.push_back(r+1); //one-based index because R
+			rotations.push_back(rotation);
+		}
+		}
+	}
+	
+	// convert `rotations` to a cube
+	cube is_it_about_my_cube(n_variables, n_variables, rotations.size());
+	{
+		uword i = 0;
+		for (mat rot : rotations) {
+			is_it_about_my_cube.slice(i++) = rot;
 		}
 	}
 	
 	Rcpp::List ret = Rcpp::List::create();
-	ret["rotation"] = rotation;
+	ret["rotation"] = is_it_about_my_cube;
 	ret["rotation_sample_map"] = rotation_sample_map;
 	return ret;
 }
