@@ -313,10 +313,13 @@ class RandomizedSolver : public Solver {
 		const vec q_candidate = zero_restrictions_solution_space*y;
 		if (all(sign_restrictions * q_candidate >= 0-tol)) {
 			return q_candidate;
-		} else {
-			return zero;
 		}
-		
+		else if (sign_restrictions.n_rows == 1) {
+			//if there is exactly one sign restriction and it is not satisfied
+			//switching the sign will satisfy the sign restriction
+			return -q_candidate;
+		}
+		else return zero;
 	};
 	virtual void recycle() override {
 		zero_restrictions = mat(0, zero_restrictions.n_cols);
