@@ -138,6 +138,12 @@ irf <- function(x, ahead=8, structural_restrictions=NULL, shocks=NULL, hairy=FAL
 		rotation <- result$rotation
 		rotation_sample_map <- result$rotation_sample_map
 	}
+	if (length(rotation_sample_map) == 0) {
+		stop("The restrictions could not be satisfied")
+	}
+	if (length(rotation_sample_map) < x$config$draws * 0.25) {
+		warning(paste("There are", length(rotation_sample_map), "samples remaining for IRF calculation"))
+	}
 	
 	factor_loadings <- x$facload
 	if (length(factor_loadings) > 0) {

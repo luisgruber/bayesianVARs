@@ -391,7 +391,7 @@ Rcpp::List find_rotation_cpp(
 		for (uword attempt = 0; attempt < max_rotations_per_sample; attempt++) {
 		mat rotation(n_variables, n_variables, fill::none);
 		bool reject_draw = false;
-		for (uword j_index = 0; j_index < n_variables; solver->recycle(), j_index++) {
+		for (uword j_index = 0; j_index < n_variables; j_index++) {
 			const uword j = col_order[j_index];
 			
 			// the column j of the rotation matrix must be orthogonal to columns that came before
@@ -413,6 +413,7 @@ Rcpp::List find_rotation_cpp(
 			}
 			
 			const vec p_j = solver->solve().clean(tol);
+			solver->recycle();
 			if (p_j.is_zero()) {
 				//zero was the optimal solution
 				//reject this draw.
@@ -513,6 +514,7 @@ arma::ivec irf_bayes_optimal_order(arma::field<arma::cube>& irf) {
 	const uword n_posterior_draws = irf.n_elem;
 	vec losses(n_posterior_draws, fill::zeros);
 	for (uword r = 0; r < n_posterior_draws; r++) {
+		if (r % 100 == 0) Rcpp::checkUserInterrupt();
 		for (uword r_other = 0; r_other < r; r_other++) {
 			const double loss = accu(abs(irf(r) - irf(r_other)));
 			losses(r) += loss;
