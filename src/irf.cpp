@@ -52,16 +52,30 @@ Rcpp::List compute_parameter_transformations (
 	
 	Rcpp::List ret = Rcpp::List::create();
 	
-	if (include_facload) {
-		if (factor_loadings.n_elem == 0)
-			throw std::logic_error("facload can only be included for the factor model");
+	// parameter transformations available for the factor model
+	if (factor_loadings.n_elem > 0) {
+		if (!(include_facload || include_long_run_ir)) return ret;
 		cube factor_loadings_T (factor_loadings);
 		for (uword r = 0; r < n_posterior_draws; r++) {
 			factor_loadings_T.slice(r).each_row() %= exp(logvar_T.col(r).head(n_factors)/2).t();
 		}
-		ret.push_back(factor_loadings_T, "facload");
+		if (include_facload) ret.push_back(factor_loadings_T, "facload");
+		
+		if(!include_long_run_ir) return ret;
+		cube IR_inf(n_variables, n_factors, n_posterior_draws, fill::none);
+		mat I = eye(n_variables, n_variables);
+		for (uword r = 0; r < n_posterior_draws; r++) {
+			mat sum_of_lags(n_variables, n_variables);
+			for (uword l = 0; l + n_variables < reduced_coefficients.n_rows; l += n_variables) {
+				sum_of_lags += reduced_coefficients.slice(r).rows(l, l + n_variables - 1);
+			}
+			IR_inf.slice(r) = inv((I - sum_of_lags).t()) * factor_loadings_T.slice(r);
+		}
+		ret.push_back(IR_inf, "IR_inf");
+		return ret;
 	}
-
+	
+	// parameter transformations available for the Cholesky model
 	if (!(include_B0_inv_t || include_B0 || include_structural_coeff || include_long_run_ir)) return ret;
 	const cube B0_inv_t = Sigma_chol_t_draws(
 		n_variables,

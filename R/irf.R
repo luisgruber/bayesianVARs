@@ -42,8 +42,7 @@ specify_structural_restrictions <- function(
 		forbidden_restrictions <- c(
 			!is.null(restrictions_B0_inv_t),
 			!is.null(restrictions_B0),
-			!is.null(restrictions_structural_coeff),
-			!is.null(restrictions_long_run_ir)
+			!is.null(restrictions_structural_coeff)
 		)
 		if (any(forbidden_restrictions))
 			stop("For factor models, only the factor loadings can be restricted")
@@ -147,7 +146,7 @@ irf <- function(x, ahead=8, structural_restrictions=NULL, shocks=NULL, hairy=FAL
 	
 	factor_loadings <- x$facload
 	if (length(factor_loadings) > 0) {
-		factor_loadings <- factor_loadings[,,rotation_sample_map]
+		factor_loadings <- factor_loadings[,,rotation_sample_map, drop=FALSE]
 	}
 	
 	U_vecs <- x$U
@@ -156,7 +155,7 @@ irf <- function(x, ahead=8, structural_restrictions=NULL, shocks=NULL, hairy=FAL
 	}
 	
 	ret <- irf_cpp(
-		coefficients=x$PHI[,,rotation_sample_map],
+		coefficients=x$PHI[,,rotation_sample_map, drop=FALSE],
 		factor_loadings=factor_loadings,
 		U_vecs=U_vecs,
 		logvar_t=x$logvar[t,,rotation_sample_map],
