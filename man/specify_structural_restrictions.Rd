@@ -2,7 +2,7 @@
 % Please edit documentation in R/irf.R
 \name{specify_structural_restrictions}
 \alias{specify_structural_restrictions}
-\title{Identifying restrictions for the structural parameters}
+\title{Set identifying restrictions for the structural VAR parameters.}
 \usage{
 specify_structural_restrictions(
   x,
@@ -14,14 +14,45 @@ specify_structural_restrictions(
 )
 }
 \arguments{
-\item{restrictions_*}{A matrix. The entries have following meaning
+\item{restrictions_facload}{an M times r matrix of restrictions on the factor loadings.
+This is equivalent to the instantaneous effects of the factor shocks.
+Can only be used, if the factor decomposition for sigma was specified.}
+
+\item{restrictions_B0_inv_t}{an M times M matrix of restrictions on the instantaneous
+effects of the structural shocks. Columns correspond to shocks, rows to variables.
+Can only be used, if the cholesky decomposition for sigma was specified.}
+
+\item{restrictions_B0}{an M times M matrix of restrictions on the structural matrix.
+Can only be used, if the cholesky decomposition for sigma was specified.}
+
+\item{restrictions_structural_coeff}{a matrix of restrictions on the structural VAR coefficients.
+Its size should match the dimensions of \code{x$PHI}.
+Can only be used, if the cholesky decomposition for sigma was specified.}
+
+\item{restrictions_long_run_ir}{a matrix of restrictions on the long run impulse responses.
+The long run impulse responses are the sum of the impulse responses summed over all time horizons.
+Restrictions on the long run impulse responses can be specified for both the factor and the
+cholesky decomposition of sigma. In the case of a factor decomposition its size is expected to be
+M times r. In the case of a cholesky decomposition the size must be M times M.}
+}
+\description{
+Set identifying restrictions for the structural VAR parameters.
+}
+\details{
+All \code{restrictions_*} entries have following meaning
 \describe{
 \item{NA:}{an unrestricted entry.}
 \item{0:}{The entry at this position is restricted to be zero (i.e. an exclusion restriction).}
 \item{A positive number:}{The sign of this entry should be positive.}
 \item{A negative number:}{The sign of this entry should be negative.}
-}}
 }
-\description{
-Identifying restrictions for the structural parameters
+
+The structural VAR(p) model is of the following form: \eqn{\boldsymbol{y}^\prime_t \boldsymbol{B}_0
+= \boldsymbol{x}^\prime_t\boldsymbol{Phi} \boldsymbol{B}_0 + \boldsymbol{omega}^\prime_t}
+}
+\seealso{
+\code{\link{irf}}, \code{\link{extract_B0}}, \code{\link{specify_prior_sigma}}
+}
+\author{
+Stefan Haan \email{sthaan@edu.aau.at}
 }
