@@ -51,7 +51,7 @@ mspe_decomposition <- function(ir) {
 #'	\item{A negative number:}{The sign of this entry should be negative.}
 #' }
 #'
-#' The structural VAR(p) model is of the following form: \eqn{\boldsymbol{y}^\prime_t \boldsymbol{B}_0
+#' The structural VAR(p) model is of the following form: \deqn{\boldsymbol{y}^\prime_t \boldsymbol{B}_0
 #' = \boldsymbol{x}^\prime_t\boldsymbol{Phi} \boldsymbol{B}_0 + \boldsymbol{omega}^\prime_t}
 #'
 #' @seealso [`irf`], [`extract_B0`], [`specify_prior_sigma`]
@@ -145,6 +145,14 @@ find_rotation <- function(
 #' @param hairy set to \code{TRUE} in order to plot each path seperately.
 #' To show valid quantiles, an Bayes optimal order of the posterior samples will be calculated which can take a long time
 #' even for moderately many samples. Default: \code{FALSE}.
+#' @param ... Following expert arguments can be specified:
+#' \describe{
+#'  \item{solver:}{\code{"randomized"} or \code{"lp"}. If some columns have more than one sign restriction, \code{"lp"}
+#'  might find a solution, even if \code{"randomized"} is unable to. However \code{"lp"} can produce artifically narrow confidence bands
+#'  which do not properly reflect the uncertainty in the identification scheme. Default: \code{"randomized"}}
+#'  \item{randomized_max_rotations_per_sample:}{if using the \code{"randomized"} solver, how many rotations are drawn for each sample of
+#'  the reduced form parameters in \code{x}. Default: \code{2}.}
+#' }
 #'
 #' @return Returns a `bayesianVARs_irf` object.
 #'
@@ -172,9 +180,14 @@ find_rotation <- function(
 #'```
 #'
 #' @export
-#' @seealso [`specify_structural_restrictions`]
+#' @seealso [`specify_structural_restrictions`], [`extract_B0`]
+#' @references Arias, J. and Rubio-Ramírez, J. and Waggoner, D. (2014).
+#'  Inference Based on SVARs Identified with Sign and Zero Restrictions: Theory and Applications.
+#'  \emph{FRB Atlanta Working Paper Series}, \doi{10.2139/ssrn.2580264}.
+#'
 #' @author Stefan Haan \email{sthaan@edu.aau.at}
-irf <- function(x, ahead=8, structural_restrictions=NULL, shocks=NULL, hairy=FALSE, t = nrow(x$logvar), ...) {
+irf <- function(x, ahead=8, structural_restrictions=NULL, shocks=NULL, hairy=FALSE, ...) {
+	t = nrow(x$logvar)
 	n_variables <- ncol(x$PHI)
 	n_posterior_draws <- dim(x$PHI)[3]
 	
