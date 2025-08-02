@@ -140,8 +140,8 @@ find_rotation <- function(
 #' Note that the orthogonal IRFs depend on the ordering of the variables and do not necessarily
 #' correspond to shocks with a meaningful interpretation.
 #'
-#' @param shocks an matrix with M rows, where M is the VAR dimension. Each column specifies a shock.
-#' Default: \code{diag(M)}, will calculate the IRFs to M structural shocks of one standard deviation.
+#' @param shocks an matrix with r rows, where r is the number of shocks (see 'Details'). Each column specifies a shock.
+#' Default: \code{diag(r)}, will calculate the responses to all structural (or factor) shocks of one standard deviation.
 #' @param hairy set to \code{TRUE} in order to plot each path seperately.
 #' To show valid quantiles, an Bayes optimal order of the posterior samples will be calculated which can take a long time
 #' even for moderately many samples. Default: \code{FALSE}.
@@ -191,8 +191,14 @@ irf <- function(x, ahead=8, structural_restrictions=NULL, shocks=NULL, hairy=FAL
 	n_variables <- ncol(x$PHI)
 	n_posterior_draws <- dim(x$PHI)[3]
 	
+	r <- dim_shocks(x)
 	if (is.null(shocks)) {
-		shocks <- diag(dim_shocks(x))
+		shocks <- diag(r)
+	}
+	else {
+	  if (nrow(shocks) != r) {
+	    stop(paste("'shocks' must be a matrix with", r, "rows."))
+	  }
 	}
 	n_shocks <- ncol(shocks)
 	

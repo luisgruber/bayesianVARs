@@ -24,8 +24,8 @@ If not specified, the orthogonal IRFs based on the Cholesky decomposition will b
 Note that the orthogonal IRFs depend on the ordering of the variables and do not necessarily
 correspond to shocks with a meaningful interpretation.}
 
-\item{shocks}{an matrix with M rows, where M is the VAR dimension. Each column specifies a shock.
-Default: \code{diag(M)}, will calculate the IRFs to M structural shocks of one standard deviation.}
+\item{shocks}{an matrix with r rows, where r is the number of shocks (see 'Details'). Each column specifies a shock.
+Default: \code{diag(r)}, will calculate the responses to all structural (or factor) shocks of one standard deviation.}
 
 \item{hairy}{set to \code{TRUE} in order to plot each path seperately.
 To show valid quantiles, an Bayes optimal order of the posterior samples will be calculated which can take a long time
