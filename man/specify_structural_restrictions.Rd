@@ -47,7 +47,7 @@ All \code{restrictions_*} entries have following meaning
 \item{A negative number:}{The sign of this entry should be negative.}
 }
 
-The structural VAR(p) model is of the following form: \eqn{\boldsymbol{y}^\prime_t \boldsymbol{B}_0
+The structural VAR(p) model is of the following form: \deqn{\boldsymbol{y}^\prime_t \boldsymbol{B}_0
 = \boldsymbol{x}^\prime_t\boldsymbol{Phi} \boldsymbol{B}_0 + \boldsymbol{omega}^\prime_t}
 }
 \seealso{

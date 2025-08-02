@@ -624,7 +624,36 @@ plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NUL
   invisible(x)
 }
 
+
+#' Impulse Responses Plot
+#'
+#' Visualization of the impulse responses.
+#' Responses are plotted on a grid, where rows correspond to variables
+#' and columns correspond to shocks.
+#'
+#' @param x An object of type `bayesianVARs_irf` obtained via
+#'   [`irf`].
+#' @param vars character vector containing the names of the variables to be
+#'   visualized. The default is `"all"` indicating that all variables are
+#'   visualized.
+#' @param quantiles numeric vector indicating which quantiles to plot. If
+#' \code{hairy=TRUE} was specified when calling [`irf`], a proportion of \code{max(quantiles)} IRFs will be plotted.
+#' Specify \code{0} to plot a point-estimate only. If \code{hairy=FALSE} was specified (the default),
+#' point-wise quantiles will be plotted. Note that the curve of point-wise medians is not necessarily
+#' in the set of IRFs (see Inoue 2022).
+#' @param default_hair_color the color of the IRF samples, if \code{hairy=TRUE} was specified.
+#' @param true_irf If the true IRFs are known (because the data was simulated) they can be plotted alongside
+#' the estimates, such that the quality of the estimates may be judged. \code{true_irf} should be a numeric array
+#' with dimensions variables, shocks and time, in that order.
+#' @param ... Currently ignored!
+#'
+#' @references Inoue, A. and Kilian, L. (2022).
+#'  Joint Bayesian inference about impulse responses in VAR models.
+#'  \emph{Journal of Econometrics}, \doi{10.1016/j.jeconom.2021.05.010}.
+#'
 #' @export
+#' @seealso [`irf`]
+#' @author Stefan Haan \email{sthaan@edu.aau.at}
 plot.bayesianVARs_irf <- function(
 	x,
 	vars = "all",
@@ -673,7 +702,7 @@ plot.bayesianVARs_irf <- function(
   # dimensions: quantiles x vars x shocks x time
   pred_quants <- c()
   if (!do_plot_hairs) {
-	  pred_quants <- apply(x, MARGIN=1:3, FUN=quantile, quantiles, na.rm=TRUE)
+    pred_quants <- apply(x, MARGIN=1:3, FUN=quantile, quantiles, na.rm=TRUE)
   }
 
   oldpar <- par(no.readonly = TRUE)
@@ -691,7 +720,7 @@ plot.bayesianVARs_irf <- function(
     	ylim <- range(ylim, pred_quants[,vars[j],i,], finite=TRUE)
     }
     plot(t, rep(0, n_ahead), type="n", xlab="", ylab="", xaxt="n", ylim=ylim)
-	abline(h=0, lty=2)
+    abline(h=0, lty=2)
     axis(side=1, at = t, labels = dates[t])
     mtext(var_names[vars[j]], side = 3)
 	
