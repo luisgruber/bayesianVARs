@@ -240,6 +240,18 @@ irf <- function(x, ahead=8, structural_restrictions=NULL, shocks=NULL, hairy=FAL
 	ret
 }
 
+#' @export
+print.bayesianVARs_irf <- function(x) {
+	d <- dim(x)
+	cat(
+		"Impulse responses of",
+		d[1], "variables to",
+		d[2], "shocks over",
+		d[3], "periods. \n"
+	)
+}
+
+
 #' Retrieve the structural parameter \eqn{\boldsymbol{B}_0} samples from an IRF object.
 #'
 #' @param x a `bayesianVARs_irf` object
