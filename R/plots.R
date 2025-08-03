@@ -676,7 +676,7 @@ plot.bayesianVARs_irf <- function(
     if(any(vars %in% var_names == FALSE)){
       stop("Elements of 'vars' must coincide with 'rownames(x)'!")
     }else{
-      vars <- which(var_names %in% vars)
+      vars <- match(vars, var_names)
     }
   }else if(is.numeric(vars)){
     vars <- as.integer(vars)
@@ -708,7 +708,7 @@ plot.bayesianVARs_irf <- function(
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar), add = TRUE)
   par(mfrow=c(length(vars), n_shocks), mar=c(2,2,2,1), mgp=c(2,.5,0))
-  for(j in seq_along(vars)){
+  for(j in vars){
   for(i in seq_len(n_shocks)) {
   	ylim <- c(0,0)
     if (!is.null(true_irf)) {
@@ -717,29 +717,29 @@ plot.bayesianVARs_irf <- function(
     if (do_plot_hairs) {
     	ylim <- range(ylim, x[j,i,,hair_order], finite=TRUE)
     } else {
-    	ylim <- range(ylim, pred_quants[,vars[j],i,], finite=TRUE)
+      ylim <- range(ylim, pred_quants[,j,i,], finite=TRUE)
     }
     plot(t, rep(0, n_ahead), type="n", xlab="", ylab="", xaxt="n", ylim=ylim)
     abline(h=0, lty=2)
     axis(side=1, at = t, labels = dates[t])
-    mtext(var_names[vars[j]], side = 3)
+    mtext(var_names[j], side = 3)
 	
     if(!do_plot_hairs && nr_intervals>0){
       for(r in seq.int(nr_intervals)){
         polygon(x = c(t, rev(t)),
-                y = c(pred_quants[r,vars[j],i,], rev(pred_quants[r+1,vars[j],i,])),
+                y = c(pred_quants[r,j,i,], rev(pred_quants[r+1,j,i,])),
                 col = scales::alpha("red", alphas[r]),
                 border = NA)
         if(length(quantiles)>2){
           polygon(x = c(t, rev(t)),
-                  y = c(pred_quants[nrow(pred_quants)+1-r,vars[j],i,],
-                        rev(pred_quants[nrow(pred_quants)-r,vars[j],i,])),
+                  y = c(pred_quants[nrow(pred_quants)+1-r,j,i,],
+                        rev(pred_quants[nrow(pred_quants)-r,j,i,])),
                   col = scales::alpha("red", alphas[r]),
                   border = NA)
         }
       }
       if(!even){
-        lines(t, pred_quants[ceiling(length(quantiles)/2),vars[j],i,],
+        lines(t, pred_quants[ceiling(length(quantiles)/2),j,i,],
               col = "red", lwd = 2)
       }
     } else {
