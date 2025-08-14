@@ -482,6 +482,7 @@ arma::field<arma::cube> irf_cpp(
 	const uword n_variables = coefficients.n_cols;
 	const uword n_posterior_draws = coefficients.n_slices;
 	const bool is_factor_model = factor_loadings.n_cols > 0;
+	const bool is_cholesky_model = U_vecs.n_cols > 0;
 	const uvec upper_indices = trimatu_ind(size(n_variables, n_variables), 1);
 	cube rotation;
 	if (rotation_.isNotNull()) {
@@ -499,13 +500,16 @@ arma::field<arma::cube> irf_cpp(
 			rotated_shocks.each_col() %= sqrt_V_t;
 			irf.slice(0) = factor_loadings.slice(r) * rotated_shocks;
 		}
-		else {
-		    mat U(n_variables, n_variables, fill::eye);
+		else if (is_cholesky_model) {
+		  mat U(n_variables, n_variables, fill::eye);
 			U(upper_indices) = U_vecs.col(r);
 
 			vec sqrt_D_t = exp(logvar_t.col(r) / 2.0);
 			rotated_shocks.each_col() %= sqrt_D_t;
 			irf.slice(0) = solve(trimatl(U.t()), rotated_shocks);
+		}
+		else {
+		  irf.slice(0) = rotated_shocks;
 		}
 		
 		// compute how the shocks propagate using the reduced form coeffs
