@@ -36,8 +36,9 @@ burnin}
 
 \item{prior_intercept}{Either \code{prior_intercept=FALSE} and no constant
 term (intercept) will be included. Or a numeric vector of length \eqn{M}
-indicating the (fixed) prior standard deviations on the constant term. A single number
-will be recycled accordingly. Default is \code{prior_intercept=10}.}
+indicating the (fixed) prior standard deviations on the constant term. A
+single number will be recycled accordingly. Default is
+\code{prior_intercept=10}.}
 
 \item{prior_phi}{\code{bayesianVARs_prior_phi} object specifying prior for the
 reduced form VAR coefficients. Best use constructor
@@ -107,13 +108,13 @@ and latent variables and returns the posterior draws.
 \details{
 The VAR(p) model is of the following form: \eqn{ \boldsymbol{y}^\prime_t = \boldsymbol{\iota}^\prime +
 \boldsymbol{x}^\prime_t\boldsymbol{\Phi} + \boldsymbol{\epsilon}^\prime_t}, where
-\eqn{\boldsymbol{y}_t} is a \eqn{M}-dimensional vector of dependent variables and
-\eqn{\boldsymbol{\epsilon}_t} is the error term of the same dimension.
-\eqn{\boldsymbol{x}_t} is a \eqn{K=pM}-dimensional vector containing lagged/past
-values of the dependent variables \eqn{\boldsymbol{y}_{t-l}} for \eqn{l=1,\dots,p}
-and \eqn{\boldsymbol{\iota}} is a constant term (intercept) of dimension
-\eqn{M\times 1}. The reduced-form coefficient matrix \eqn{\boldsymbol{\Phi}} is of
-dimension \eqn{K \times M}.
+\eqn{\boldsymbol{y}_t} is a \eqn{M}-dimensional vector of dependent variables
+and \eqn{\boldsymbol{\epsilon}_t} is the error term of the same dimension.
+\eqn{\boldsymbol{x}_t} is a \eqn{K=pM}-dimensional vector containing
+lagged/past values of the dependent variables \eqn{\boldsymbol{y}_{t-l}} for
+\eqn{l=1,\dots,p} and \eqn{\boldsymbol{\iota}} is a constant term (intercept)
+of dimension \eqn{M\times 1}. The reduced-form coefficient matrix
+\eqn{\boldsymbol{\Phi}} is of dimension \eqn{K \times M}.
 
 \code{bvar} offers two different specifications for the errors: The user can
 choose between a factor stochastic volatility structure or a cholesky
@@ -124,15 +125,16 @@ multivariate normal distribution with zero mean and variance-covariance matrix
 cholesky specification \eqn{\boldsymbol{\Sigma}_t = \boldsymbol{U}^{\prime -1} \boldsymbol{D}_t
 \boldsymbol{U}^{-1}}, where \eqn{\boldsymbol{U}^{-1}} is upper unitriangular (with ones on
 the diagonal). The diagonal matrix \eqn{\boldsymbol{D}_t} depends upon latent
-log-variances, i.e. \eqn{\boldsymbol{D}_t=diag(exp(h_{1t}),\dots, exp(h_{Mt})}. The
-log-variances follow a priori independent autoregressive processes
-\eqn{h_{it}\sim N(\mu_i + \phi_i(h_{i,t-1}-\mu_i),\sigma_i^2)} for
+log-variances, i.e. \eqn{\boldsymbol{D}_t=diag(exp(h_{1t}),\dots,
+exp(h_{Mt})}. The log-variances follow a priori independent autoregressive
+processes \eqn{h_{it}\sim N(\mu_i + \phi_i(h_{i,t-1}-\mu_i),\sigma_i^2)} for
 \eqn{i=1,\dots,M}. In case of the factor structure,
 \eqn{\boldsymbol{\Sigma}_t = \boldsymbol{\Lambda} \boldsymbol{V}_t \boldsymbol{\Lambda}^\prime +
 \boldsymbol{G}_t}. The diagonal matrices \eqn{\boldsymbol{V}_t} and
 \eqn{\boldsymbol{G}_t} depend upon latent log-variances, i.e.
 \eqn{\boldsymbol{G}_t=diag(exp(h_{1t}),\dots, exp(h_{Mt})} and
-\eqn{\boldsymbol{V}_t=diag(exp(h_{M+1,t}),\dots, exp(h_{M+r,t})}. The log-variances
+\eqn{\boldsymbol{V}_t=diag(exp(h_{M+1,t}),\dots, exp(h_{M+r,t})}. The
+log-variances
 follow a priori independent autoregressive processes \eqn{h_{it}\sim N(\mu_i +
 \phi_i(h_{i,t-1}-\mu_i),\sigma_i^2)} for \eqn{i=1,\dots,M} and
 \eqn{h_{M+j,t}\sim N(\phi_ih_{M+j,t-1},\sigma_{M+j}^2)} for \eqn{j=1,\dots,r}.
@@ -142,16 +144,16 @@ follow a priori independent autoregressive processes \eqn{h_{it}\sim N(\mu_i +
 coefficients assuming a \strong{factor structure for the errors}, the equation
 per equation algorithm in Kastner & Huber (2020) is implemented. All
 parameters and latent variables associated with the factor-structure are
-sampled using package \code{\link[factorstochvol]{factorstochvol-package}}'s function \code{update_fsv}
-callable on the C-level only.
+sampled using package \code{\link[factorstochvol]{factorstochvol-package}}'s
+function \code{update_fsv} callable on the C-level only.
 
 To sample efficiently the reduced-form VAR coefficients, assuming a
 \strong{cholesky-structure for the errors}, the corrected triangular algorithm in
 Carriero et al. (2021) is implemented. The SV parameters and latent
 variables are sampled using package \code{\link[stochvol]{stochvol}}'s
 \code{\link[stochvol]{update_fast_sv}} function. The precision parameters,
-i.e. the free off-diagonal elements in \eqn{\boldsymbol{U}}, are sampled as in
-Cogley and Sargent (2005).
+i.e. the free off-diagonal elements in \eqn{\boldsymbol{U}}, are sampled as
+in Cogley and Sargent (2005).
 }
 
 \examples{
@@ -169,9 +171,9 @@ summary(mod)
 
 }
 \references{
-Gruber, L. and Kastner, G. (2023). Forecasting macroeconomic data
-with Bayesian VARs: Sparse or dense? It depends!
-\href{https://arxiv.org/abs/2206.04902}{arXiv:2206.04902}.
+Gruber, L. and Kastner, G. (2025). Forecasting macroeconomic data
+with Bayesian VARs: Sparse or dense? It depends! \emph{International Journal
+of Forecasting}. \doi{10.1016/j.ijforecast.2025.02.001}.
 
 Kastner, G. and Huber, F. Sparse (2020). Bayesian vector
 autoregressions in huge dimensions. \emph{Journal of Forecasting}.

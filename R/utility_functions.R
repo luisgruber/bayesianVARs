@@ -1419,9 +1419,9 @@ specify_prior_sigma <- function(data=NULL,
 #'  \code{prior="R2D2"}, `prior="NG"` or \code{prior="SSVS"}.
 #'@param ... Do not use!
 #'
-#'@references  Gruber, L. and Kastner, G. (2023). Forecasting macroeconomic data
-#'  with Bayesian VARs: Sparse or dense? It depends!
-#'  \href{https://arxiv.org/abs/2206.04902}{arXiv:2206.04902}.
+#'@references  Gruber, L. and Kastner, G. (2025). Forecasting macroeconomic data
+#'  with Bayesian VARs: Sparse or dense? It depends! \emph{International Journal
+#'  of Forecasting}. \doi{10.1016/j.ijforecast.2025.02.001}.
 #'
 #'@return A `baysianVARs_prior_phi`-object.
 #'@export
