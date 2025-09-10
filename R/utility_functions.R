@@ -47,6 +47,8 @@ print.bayesianVARs_bvar <- function(x, ...) {
 #'
 #' @param object A `bayesianVARs_bvar` object obtained via [`bvar()`].
 #' @param quantiles numeric vector which quantiles to compute.
+#' @param digits Single integer indicating the number of decimal places to be
+#'   used for rounding the summary statistics. Negative values are not allowed.
 #' @param ... Currently ignored!
 #'
 #' @return An object of type `summary.bayesianVARs_bvar`.
@@ -61,28 +63,41 @@ print.bayesianVARs_bvar <- function(x, ...) {
 #'
 #' # Summary
 #' sum <- summary(mod)
-summary.bayesianVARs_bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.75, 0.975),...){
-  PHImedian <- apply(object$PHI, 1:2, stats::median)
-  PHIquantiles <- apply(object$PHI, 1:2, stats::quantile, quantiles)
-  PHIiqr <- apply(object$PHI, 1:2, stats::IQR)
-  if(object$sigma_type == "cholesky"){
-    Umedian <- Uiqr <- diag(1, nrow = ncol(object$Y))
-    colnames(Umedian) <- rownames(Umedian) <-
-      colnames(Uiqr) <- rownames(Uiqr) <- colnames(object$Y)
-    Umedian[upper.tri(Umedian)] <- apply(object$U, 1, stats::median)
-    Uquantiles <- apply(object$U, 1, stats::quantile, quantiles)
-    Uiqr[upper.tri(Uiqr)] <- apply(object$U, 1, stats::IQR)
-  }
+summary.bayesianVARs_bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.75, 0.975),
+                                      digits = 3L, ...){
+  digits <- as.integer(digits)
+  if(digits<0) stop("'digits' must be an integer greater than or equal to zero!")
+  PHImedian <- round(apply(object$PHI, 1:2, stats::median), digits = digits)
+  PHIquantiles <- round(apply(object$PHI, 1:2, stats::quantile, quantiles), digits = digits)
+  PHIiqr <- round(apply(object$PHI, 1:2, stats::IQR), digits = digits)
 
   out <- list(PHImedian = PHImedian,
               PHIquantiles = PHIquantiles,
               PHIiqr = PHIiqr
   )
+
   if(object$sigma_type == "cholesky"){
+    Umedian <- Uiqr <- diag(1, nrow = ncol(object$Y))
+    colnames(Umedian) <- rownames(Umedian) <-
+      colnames(Uiqr) <- rownames(Uiqr) <- colnames(object$Y)
+    Umedian[upper.tri(Umedian)] <- round(apply(object$U, 1, stats::median), digits = digits)
+    Uquantiles <- round(apply(object$U, 1, stats::quantile, quantiles), digits = digits)
+    Uiqr[upper.tri(Uiqr)] <- round(apply(object$U, 1, stats::IQR), digits = digits)
+
     out$Umedian <- Umedian
     out$Uquantiles <- Uquantiles
     out$Uiqr <- Uiqr
+  }else if(object[["sigma_type"]] == "factor"){
+    factors <- dim(object$facload)[2]
+    out[["facloadmedian"]] <- round(apply(object[["facload"]], 1:2, stats::median), digits = digits)
+    rownames(out[["facloadmedian"]]) <- colnames(object$Y)
+    colnames(out[["facloadmedian"]]) <- paste0("factor", 1:factors)
+    out[["facloadquantiles"]] <- round(apply(object[["facload"]], 1:2, stats::quantile, quantiles), digits = digits)
+    out[["facloadiqr"]] <- round(apply(object[["facload"]], 1:2, stats::IQR), digits = digits)
+    rownames(out[["facloadiqr"]]) <- colnames(object$Y)
+    colnames(out[["facloadiqr"]]) <- paste0("factor", 1:factors)
   }
+
   out$sigma_type <- object$sigma_type
 
   class(out) <- "summary.bayesianVARs_bvar"
@@ -120,6 +135,12 @@ print.summary.bayesianVARs_bvar <- function(x, ...){
     print(as.table(x$Umedian - diag(nrow(x$Umedian))), digits = digits, zero.print = "-")
     cat("\nPosterior interquartile range of contemporaneous coefficients:\n")
     print(as.table(x$Uiqr- diag(nrow(x$Uiqr))), digits = digits, zero.print = "-")
+  }
+  if(x[["sigma_type"]] == "factor"){
+    cat("\nPosterior median of factor loadings:\n")
+    print(x[["facloadmedian"]], digits = digits)
+    cat("\nPosterior interquartile range of factor loadings:\n")
+    print(x[["facloadiqr"]], digits = digits)
   }
   invisible(x)
 }
@@ -1404,9 +1425,9 @@ specify_prior_sigma <- function(data=NULL,
 #'  \code{prior="R2D2"}, `prior="NG"` or \code{prior="SSVS"}.
 #'@param ... Do not use!
 #'
-#'@references  Gruber, L. and Kastner, G. (2023). Forecasting macroeconomic data
-#'  with Bayesian VARs: Sparse or dense? It depends!
-#'  \href{https://arxiv.org/abs/2206.04902}{arXiv:2206.04902}.
+#'@references  Gruber, L. and Kastner, G. (2025). Forecasting macroeconomic data
+#'  with Bayesian VARs: Sparse or dense? It depends! \emph{International Journal
+#'  of Forecasting}. \doi{10.1016/j.ijforecast.2025.02.001}.
 #'
 #'@return A `baysianVARs_prior_phi`-object.
 #'@export
@@ -1731,9 +1752,10 @@ predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TR
   if(stable){
     if(!inherits(object, "bayesianVARs_bvar_stable")){
       cat("'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
-          draws, that do not fulfill the stable criterion.\n")
+          draws that do not fulfill the stable criterion.\n")
+      ndraws <- dim(object$PHI)[3]
       object <- stable_bvar(object, quiet = TRUE)
-      cat("\n",dim(object$PHI)[3],"stable posterior draws remaining for prediction!\n")
+      cat("\n",dim(object$PHI)[3],"/",ndraws," stable posterior draws remaining for prediction!\n", sep = "")
     }
   }
 

@@ -42,9 +42,9 @@ Assuming that the errors feature a factor stochastic volatility structure, follo
 \begin{equation}
 \bm \Sigma_t = \bm \Lambda \bm V_t\bm \Lambda^\prime + \bm Q_t.   
 \end{equation}
-Both $\bm Q_t = \mathrm{diag} (e^{h_{1t}}, \dots, e^{h_{Mt}})$ and $\bm V_t = \mathrm{diag} (e^{h_{M+1,t}}, \dots, e^{h_{M+r,t}})$ are diagonal matrices of dimension $M$ and $r$, respectively, and $\bm \Lambda$ is the $M \times r$ matrix of factor loadings. This is obviously equivalent to introducing $r$ conditionally independent latent factors $\bm f \sim \mathcal N_r(\bm 0, \bm V_t)$ and rewriting the error term in \eqref{eq:var} as 
+Both $\bm Q_t = \mathrm{diag} (e^{h_{1t}}, \dots, e^{h_{Mt}})$ and $\bm V_t = \mathrm{diag} (e^{h_{M+1,t}}, \dots, e^{h_{M+r,t}})$ are diagonal matrices of dimension $M$ and $r$, respectively, and $\bm \Lambda$ is the $M \times r$ matrix of factor loadings. This is obviously equivalent to introducing $r$ conditionally independent latent factors $\bm f_t \sim \mathcal N_r(\bm 0, \bm V_t)$ and rewriting the error term in \eqref{eq:var} as 
 \begin{equation}
-\bm \varepsilon_t^\prime = \bm f^\prime \bm \Lambda^\prime + \bm \eta_t^\prime,    
+\bm \varepsilon_t^\prime = \bm f_t^\prime \bm \Lambda^\prime + \bm \eta_t^\prime,    
 \end{equation}
 where $\bm \eta_t \sim \mathcal{N}_M(\bm 0, \bm Q_t)$. The matrix $\bm Q_t$ contains the idiosyncratic, series specific, variances. The matrix $\bm V_t$ contains the factor specific variances governing the contemporaneous dependencies. The logarithms of the elements in $\bm Q_t$ and $\bm V_t$ follow a priori independent autoregressive processes of order one (AR(1)). More specifically, the evolution of the idiosyncratic log-variance $h_{it} \sim \mathcal{N}(\mu_i + \phi_i(h_{i,t-1} - \mu_i), \sigma^2_i)$,  for $i=1,\dots,M$, is described by the parameters $\mu_{i}$, the level, $\phi_i$, the persistence and $\sigma_i^2$, the variance. The factor-specific log-variance $h_{jt} \sim \mathcal{N}(\phi_jh_{j,t-1}, \sigma^2_j)$, for $j=M+1,\dots,M+r$, is assumed to have mean zero to identify the scaling of the elements of $\bm \Lambda$. Without imposing restrictions on the factor loadings, the VAR with factor stochastic volatility is invariant to the way the variables are ordered.
 

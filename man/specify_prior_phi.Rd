@@ -221,7 +221,7 @@ mod <- bvar(data, lags = 2L, prior_phi = phi_hs_sg, quiet = TRUE)
 }
 }
 \references{
-Gruber, L. and Kastner, G. (2023). Forecasting macroeconomic data
-with Bayesian VARs: Sparse or dense? It depends!
-\href{https://arxiv.org/abs/2206.04902}{arXiv:2206.04902}.
+Gruber, L. and Kastner, G. (2025). Forecasting macroeconomic data
+with Bayesian VARs: Sparse or dense? It depends! \emph{International Journal
+of Forecasting}. \doi{10.1016/j.ijforecast.2025.02.001}.
 }
