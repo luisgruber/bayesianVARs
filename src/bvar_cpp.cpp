@@ -410,16 +410,30 @@ List bvar_cpp(const arma::mat& Y,
 
   const int nsave = std::floor(draws/thin);
 
-  arma::cube logvar_draws(tvp_keep == "all" ? logvar.n_rows : 1, logvar.n_cols, nsave);
-  arma::cube sv_para_draws(sv_para_in.nrow(), sv_para_in.ncol(), nsave);
-  arma::cube PHI_draws(PHI.n_rows, PHI.n_cols,nsave);
-  arma::cube V_prior_draws(V_prior.n_rows, V_prior.n_cols, nsave);
+  Rcpp::NumericVector logvar_draws_rcpp((tvp_keep == "all" ? logvar.n_rows : 1) * logvar.n_cols * nsave);
+  logvar_draws_rcpp.attr("dim") = Rcpp::IntegerVector::create(tvp_keep == "all" ? logvar.n_rows : 1, logvar.n_cols, nsave);
+  arma::cube logvar_draws(logvar_draws_rcpp.begin(), tvp_keep == "all" ? logvar.n_rows : 1, logvar.n_cols, nsave, false);
+  Rcpp::NumericVector  sv_para_draws_rcpp(sv_para_in.nrow()*sv_para_in.ncol()*nsave);
+  sv_para_draws_rcpp.attr("dim") = Rcpp::IntegerVector::create(sv_para_in.nrow(), sv_para_in.ncol(), nsave);
+  arma::cube sv_para_draws(sv_para_draws_rcpp.begin(), sv_para_in.nrow(), sv_para_in.ncol(), nsave, false);
+  Rcpp::NumericVector PHI_draws_rcpp(PHI.n_rows*PHI.n_cols*nsave);
+  PHI_draws_rcpp.attr("dim") = Rcpp::IntegerVector::create(PHI.n_rows, PHI.n_cols,nsave);
+  arma::cube PHI_draws(PHI_draws_rcpp.begin(),PHI.n_rows, PHI.n_cols,nsave, false);
+  Rcpp::NumericVector V_prior_draws_rcpp(V_prior.n_rows * V_prior.n_cols * nsave);
+  V_prior_draws_rcpp.attr("dim") = Rcpp::IntegerVector::create(V_prior.n_rows, V_prior.n_cols, nsave);
+  arma::cube V_prior_draws(V_prior_draws_rcpp.begin(), V_prior.n_rows, V_prior.n_cols, nsave, false);
 
   //arma::cube U_draws(sigma_type=="cholesky" ? nsave : 0, sigma_type=="cholesky" ? U.n_rows : 0, sigma_type=="cholesky" ? U.n_cols : 0);
-  arma::mat U_draws(sigma_type=="cholesky" ? U_upper_indices.n_elem : 0, sigma_type=="cholesky" ? nsave : 0);
+  Rcpp::NumericMatrix U_draws_rcpp(sigma_type=="cholesky" ? U_upper_indices.n_elem : 0, sigma_type=="cholesky" ? nsave : 0);
+  arma::mat U_draws(U_draws_rcpp.begin(), U_draws_rcpp.nrow(), U_draws_rcpp.ncol(), false);
 
-  arma::cube facload_draws(sigma_type=="factor" ? facload.nrow() : 0, sigma_type=="factor" ? facload.ncol() : 0, sigma_type=="factor" ? nsave : 0);
-  arma::cube fac_draws(sigma_type=="factor" ? fac.nrow() : 0, sigma_type=="factor" ? (tvp_keep == "all" ? fac.ncol() : 1) : 0, sigma_type=="factor" ? nsave : 0);
+  Rcpp::NumericVector facload_draws_rcpp((sigma_type=="factor" ? facload.nrow() : 0) *
+    (sigma_type=="factor" ? facload.ncol() : 0) * (sigma_type=="factor" ? nsave : 0));
+  facload_draws_rcpp.attr("dim") = Rcpp::IntegerVector::create(sigma_type=="factor" ? facload.nrow() : 0, sigma_type=="factor" ? facload.ncol() : 0, sigma_type=="factor" ? nsave : 0);
+  arma::cube facload_draws(facload_draws_rcpp.begin(), sigma_type=="factor" ? facload.nrow() : 0, sigma_type=="factor" ? facload.ncol() : 0, sigma_type=="factor" ? nsave : 0, false);
+  Rcpp::NumericVector fac_draws_rcpp((sigma_type=="factor" ? fac.nrow() : 0) * (sigma_type=="factor" ? (tvp_keep == "all" ? fac.ncol() : 1) : 0) * (sigma_type=="factor" ? nsave : 0));
+  fac_draws_rcpp.attr("dim") = Rcpp::IntegerVector::create(sigma_type=="factor" ? fac.nrow() : 0, sigma_type=="factor" ? (tvp_keep == "all" ? fac.ncol() : 1) : 0, sigma_type=="factor" ? nsave : 0);
+  arma::cube fac_draws(fac_draws_rcpp.begin(), sigma_type=="factor" ? fac.nrow() : 0, sigma_type=="factor" ? (tvp_keep == "all" ? fac.ncol() : 1) : 0, sigma_type=="factor" ? nsave : 0, false);
 
   int tvp_keep_start = 0;
   if(tvp_keep == "last") tvp_keep_start += (logvar.n_rows - 1);
@@ -442,7 +456,11 @@ List bvar_cpp(const arma::mat& Y,
   }else if(priorPHI == "HMP"){
     phi_hyperparameter_size += 2; // lambda_1 + lambda_2
   }
-  arma::mat phi_hyperparameter_draws(phi_hyperparameter_size, priorPHI != "normal" ? nsave : 0);
+  Rcpp::NumericMatrix phi_hyperparameter_draws_rcpp(phi_hyperparameter_size,
+                                                    priorPHI != "normal" ? nsave : 0);
+  arma::mat phi_hyperparameter_draws(phi_hyperparameter_draws_rcpp.begin(),
+                                     phi_hyperparameter_draws_rcpp.nrow(),
+                                     phi_hyperparameter_draws_rcpp.ncol(), false);
 
   int u_hyperparameter_size(0);
   if(sigma_type == "cholesky"){
@@ -460,7 +478,10 @@ List bvar_cpp(const arma::mat& Y,
       u_hyperparameter_size += 2+2*n_U;
     }
   }
-  arma::mat u_hyperparameter_draws(sigma_type=="cholesky" ? u_hyperparameter_size : 0, (sigma_type=="cholesky" && priorU != "normal") ? nsave : 0);
+  Rcpp::NumericMatrix u_hyperparameter_draws_rcpp(sigma_type=="cholesky" ? u_hyperparameter_size : 0, (sigma_type=="cholesky" && priorU != "normal") ? nsave : 0);
+  arma::mat u_hyperparameter_draws(u_hyperparameter_draws_rcpp.begin(),
+                                   u_hyperparameter_draws_rcpp.nrow(),
+                                   u_hyperparameter_draws_rcpp.ncol(), false);
 
   //indicator vector needed for DL and R2D2 on U
   arma::uvec ind_U(n_U);
@@ -802,16 +823,16 @@ List bvar_cpp(const arma::mat& Y,
   timer.step("end");
   NumericVector time(timer);
   List out = List::create(
-    Named("PHI") = PHI_draws,
-    Named("U") = U_draws,
-    Named("logvar") = logvar_draws,
-    Named("sv_para") = sv_para_draws,
-    Named("phi_hyperparameter") = phi_hyperparameter_draws,
-    Named("u_hyperparameter") = u_hyperparameter_draws,
+    Named("PHI") = PHI_draws_rcpp,
+    Named("U") = U_draws_rcpp,
+    Named("logvar") = logvar_draws_rcpp,
+    Named("sv_para") = sv_para_draws_rcpp,
+    Named("phi_hyperparameter") = phi_hyperparameter_draws_rcpp,
+    Named("u_hyperparameter") = u_hyperparameter_draws_rcpp,
     Named("bench") = time,
-    Named("V_prior") = V_prior_draws,
-    Named("facload") = facload_draws,
-    Named("fac") = fac_draws
+    Named("V_prior") = V_prior_draws_rcpp,
+    Named("facload") = facload_draws_rcpp,
+    Named("fac") = fac_draws_rcpp
   );
 
   return out;
