@@ -473,7 +473,6 @@ List bvar_cpp(const arma::mat& Y,
   //Progress p(tot, progressbar);
   Timer timer;
   timer.step("start");
-/*
   for(int rep = 0; rep < tot; rep++){
 
     // Check for user interrupts
@@ -800,7 +799,6 @@ List bvar_cpp(const arma::mat& Y,
     }
 
   }
-*/
   timer.step("end");
   NumericVector time(timer);
   List out = List::create(
