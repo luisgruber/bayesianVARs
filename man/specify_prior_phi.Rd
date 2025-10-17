@@ -181,7 +181,7 @@ Configures prior on PHI, the matrix of reduced-form VAR coefficients.
 }
 \details{
 For details concerning prior-elicitation for VARs please see Gruber & Kastner
-(2023).
+(2025).
 
 Currently one can choose between six hierarchical shrinkage priors and a
 normal prior: \code{prior="HS"} stands for the Horseshoe-prior, \verb{prior="R2D2} for
