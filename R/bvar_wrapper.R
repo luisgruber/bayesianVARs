@@ -131,8 +131,7 @@
 #'* `u_hyperparameter`: A matrix containing the posterior draws of the
 #'  hyperparameters of the conditional normal prior on U (if cholesky
 #'  decomposition for sigma is specified).
-#'* `bench`: Numerical indicating the average time it took to generate one
-#'  single draw of the joint posterior distribution of all parameters.
+#'* `bench`: `proc_time` object containing the run time of the sampler.
 #'* `V_prior`: An array containing the posterior draws of the variances of the
 #'  conditional normal prior on the VAR coefficients.
 #'* `facload`: A `bayesianVARs_draws` object, an array, containing draws from the
@@ -566,33 +565,30 @@ bvar <- function(data,
     cat("\nCalling MCMC sampler for a ", prior_sigma[["type"]], "-VAR(",lags,") for ",M, " series of length ", Traw, ".\n", sep = "")
   }
 
-  res <- bvar_cpp(Y,
-                  X,
-                  M,
-                  Tobs,
-                  K,
-                  draws,
-                  burnin,
-                  thin,
-                  sv_keep,
-                  as.integer(intercept),
-                  priorIntercept,
-                  PHI0,
-                  priorPHI_in,
-                  prior_sigma,
-                  startvals,
-                  i_mat,
-                  i_vec,
-                  !quiet,
-                  prior_phi[["PHI_tol"]],
-                  prior_sigma[["cholesky_U_tol"]],
-                  expert[["huge"]]
-                  )
+  bench <- system.time(res <- bvar_cpp(Y,
+                                       X,
+                                       M,
+                                       Tobs,
+                                       K,
+                                       draws,
+                                       burnin,
+                                       thin,
+                                       sv_keep,
+                                       as.integer(intercept),
+                                       priorIntercept,
+                                       PHI0,
+                                       priorPHI_in,
+                                       prior_sigma,
+                                       startvals,
+                                       i_mat,
+                                       i_vec,
+                                       !quiet,
+                                       prior_phi[["PHI_tol"]],
+                                       prior_sigma[["cholesky_U_tol"]],
+                                       expert[["huge"]]
+  ))
 
-  #Rcpp timer is in nanoseconds
-  #conversion to secs per iteration
-  res[["bench"]] <- diff(res[["bench"]])/(10^(9)*(draws+burnin))
-  attributes(res[["bench"]]) <- list("names" = "secs/itr")
+  res[["bench"]] <- bench
   dimnames(res[["PHI"]])[1] <- list(colnames(X))
   dimnames(res[["PHI"]])[2] <- list(colnames(Y))
   phinames <- as.vector((vapply(seq_len(M), function(i) paste0(colnames(Y)[i], "~", colnames(X[,1:(ncol(X)-intercept)])), character(K))))

@@ -77,8 +77,7 @@ hyperparameters of the conditional normal prior on the VAR coefficients.
 \item \code{u_hyperparameter}: A matrix containing the posterior draws of the
 hyperparameters of the conditional normal prior on U (if cholesky
 decomposition for sigma is specified).
-\item \code{bench}: Numerical indicating the average time it took to generate one
-single draw of the joint posterior distribution of all parameters.
+\item \code{bench}: \code{proc_time} object containing the run time of the sampler.
 \item \code{V_prior}: An array containing the posterior draws of the variances of the
 conditional normal prior on the VAR coefficients.
 \item \code{facload}: A \code{bayesianVARs_draws} object, an array, containing draws from the
