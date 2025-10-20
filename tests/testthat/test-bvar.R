@@ -1,3 +1,4 @@
+# To do: test specify_prior_phi regarding a_vec, c_vec, c_rel_a, GT_hyper, GT_vs, global_grouping...
 
 test_that("flat prior cholesky", {
   data <- usmacro_growth[,c("GDPC1","CPIAUCSL","FEDFUNDS")]
