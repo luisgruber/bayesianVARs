@@ -1,14 +1,12 @@
 #include <RcppArmadillo.h>
 #include <factorstochvol.h>
-#include <progress.hpp>
-#include <Rcpp/Benchmark/Timer.h>
+#include <stochvol.h>
 #include "sample_coefficients.h"
-// <stochvol.h> is already included in <factorstochvol.h>
 
 using namespace Rcpp;
 using namespace arma;
 
-//[[Rcpp::export]]
+// [[Rcpp::export]]
 List bvar_cpp(const arma::mat& Y,
               const arma::mat& X,
               const int& M,
@@ -20,9 +18,9 @@ List bvar_cpp(const arma::mat& Y,
               const std::string& tvp_keep,
               const int& intercept,
               const arma::vec priorIntercept,
-              arma::mat& PHI0, // prior mean
+              arma::mat& PHI0,
               const List priorPHI_in,
-              const List priorSigma_in, // priorSigma_in
+              const List priorSigma_in,
               const List Rstartvals_in,
               const arma::imat& i_mat,
               const arma::ivec& i_vec,
@@ -490,10 +488,13 @@ List bvar_cpp(const arma::mat& Y,
   }
   //-----------------------------------SAMPLER--------------------------------//
   const int tot = draws + burnin;
-  // Initialize progressbar
-  //Progress p(tot, progressbar);
-  Timer timer;
-  timer.step("start");
+
+  if(progressbar){
+    //Rprintf("\r %i / %i",
+    //        rep+1, tot);
+    Rprintf("\r###  %i / %i ### (%3.0f%%) ###",
+            0, tot, 100.*0);
+  }
   for(int rep = 0; rep < tot; rep++){
 
     // Check for user interrupts
@@ -811,7 +812,6 @@ List bvar_cpp(const arma::mat& Y,
       }
     }
 
-    //p.increment();
     if(progressbar){
       //Rprintf("\r %i / %i",
       //        rep+1, tot);
@@ -820,8 +820,7 @@ List bvar_cpp(const arma::mat& Y,
     }
 
   }
-  timer.step("end");
-  NumericVector time(timer);
+
   List out = List::create(
     Named("PHI") = PHI_draws_rcpp,
     Named("U") = U_draws_rcpp,
@@ -829,7 +828,6 @@ List bvar_cpp(const arma::mat& Y,
     Named("sv_para") = sv_para_draws_rcpp,
     Named("phi_hyperparameter") = phi_hyperparameter_draws_rcpp,
     Named("u_hyperparameter") = u_hyperparameter_draws_rcpp,
-    Named("bench") = time,
     Named("V_prior") = V_prior_draws_rcpp,
     Named("facload") = facload_draws_rcpp,
     Named("fac") = fac_draws_rcpp
