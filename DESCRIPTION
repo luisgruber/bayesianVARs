@@ -41,7 +41,6 @@ LinkingTo:
     factorstochvol,
     Rcpp,
     RcppArmadillo,
-    RcppProgress,
     stochvol
 VignetteBuilder: 
     knitr
