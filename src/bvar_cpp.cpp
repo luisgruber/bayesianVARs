@@ -210,7 +210,7 @@ List bvar_cpp(const arma::mat& Y,
 
   //----GT on U (GT refers to gamma type priors a la normal gamma or r2d2)
   const double GT_vs_U = priorSigma_in["cholesky_GT_vs"];
-  const double GT_hyper_U = priorSigma_in["cholesky_GT_hyper"];
+  const bool GT_hyper_U = priorSigma_in["cholesky_GT_hyper"];
   const std::string GT_priorkernel_U = priorSigma_in["cholesky_GT_priorkernel"];
   if(priorU == "GT"){
     if(GT_priorkernel_U == "exponential"){
