@@ -279,17 +279,7 @@ bvar <- function(data,
     intercept <- 1L
   }
   PHI0 <- matrix(0, K+intercept, M) # prior mean of intercept is 0
-  if(is.vector(prior_phi[["general_settings"]][["priormean"]])){
-    PHI0[1:M,1:M] <- diag(prior_phi[["general_settings"]][["priormean"]])
-  }
-  if(is.matrix(prior_phi[["general_settings"]][["priormean"]])){
-    PHI0[1:K,] <- prior_phi[["general_settings"]][["priormean"]]
-  }
-
-  # if(!(prior_phi[[""]][["prior"]] %in% c("DL", "HS","NG", "HMP", "SSVS", "normal", "R2D2", "GT"))){
-  #   stop("Argument 'prior_phi$prior' must be one of
-  #          'DL', 'R2D2', 'HS', 'NG', 'SSVS', 'HMP' or 'normal'. \n")
-  # }
+  PHI0[1:K,] <- prior_phi[["general_settings"]][["PHI0"]]
 
   # Initialize PHI --------
 
