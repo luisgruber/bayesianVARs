@@ -230,8 +230,18 @@ bvar <- function(data,
 
 # Input checks ------------------------------------------------------------
 
-  if(prior_phi[["M"]] != M) stop(paste0("\nObject 'prior_phi' is specified for ", prior_phi[["M"]], "time series. 'data', however, consists of ", M, "time series!\n"))
-  if(prior_phi[["lags"]] != lags) stop("\nLag-length 'lags' does not coincide with lag-length specified in object 'prior_phi'!\n")
+  if(!inherits(prior_phi, "bayesianVARs_prior_phi")){
+    stop("\nArgument 'prior_phi' must be of class 'bayesianVARs_prior_phi'. Please use helper function 'specify_prior_phi()'!\n")
+  }
+  if(prior_phi[["general_settings"]][["M"]] != M) stop(paste0("\nObject 'prior_phi' is specified for ", prior_phi[["general_settings"]][["M"]], "time series. 'data', however, consists of ", M, "time series!\n"))
+  if(prior_phi[["general_settings"]][["lags"]] != lags) stop("\nLag-length 'lags' does not coincide with lag-length specified in object 'prior_phi'!\n")
+
+  if(!inherits(prior_sigma, "bayesianVARs_prior_sigma")){
+    stop("\nArgument 'prior_sigma' must be of class 'bayesianVARs_prior_sigma'. Please use helper function 'specify_prior_sigma()'!\n")
+  }
+  if(prior_sigma[["general_settings"]][["M"]] != M){
+    stop(paste0("\n'prior_sigma' is specified for ", prior_sigma[["general_settings"]][["M"]], " timeseries. 'data', however, consits of ",M," timeseries!\n"))
+  }
 
 # Indicator matrix --------------------------------------------------------
 
@@ -240,7 +250,7 @@ bvar <- function(data,
   }else i_intercept <- NULL
 
   # indicator for for coefficients of lagged ys.
-  i_mat <- prior_phi[["i_mat"]]
+  i_mat <- prior_phi[["general_settings"]][["i_mat"]]
   # add indicator for intercept
   i_mat <- rbind(i_mat, i_intercept)
   mode(i_mat) <- "integer"
@@ -253,7 +263,7 @@ bvar <- function(data,
     if(any(prior_intercept == TRUE)){
       stop(paste0("\nArgument 'prior_intercept' must be one of 'FALSE', a single numeric greater than 0, or a vector of length M.\n"))
     }
-    intercept <- 0
+    intercept <- 0L
     priorIntercept <- vector("numeric")
   }else{
     prior_intercept <- prior_intercept^2 # transform to variances
@@ -265,19 +275,17 @@ bvar <- function(data,
       stop(paste0("\nArgument 'prior_intercept' must be one of 'FALSE', a single numeric greater than 0, or a vector of length ", M, ".\n"))
     }
 
-    intercept <- 1
+    intercept <- 1L
   }
   PHI0 <- matrix(0, K+intercept, M) # prior mean of intercept is 0
-  PHI0[1:K,] <- prior_phi[["PHI0"]] # prior mean of VAR coefficients is specified with specify_prior_phi()
-
-  if(!(prior_phi[["prior"]] %in% c("DL", "HS","NG", "HMP", "SSVS", "normal", "R2D2", "GT"))){
-    stop("Argument 'prior_phi$prior' must be one of
-           'DL', 'R2D2', 'HS', 'NG', 'SSVS', 'HMP' or 'normal'. \n")
-  }
+  PHI0[1:K,] <- prior_phi[["general_settings"]][["PHI0"]]
 
   # Initialize PHI --------
 
-  if(prior_phi[["prior"]] == "SSVS" | !exists("PHI", startvals) | (!exists("U", startvals) & prior_sigma[["type"]] == "cholesky")){
+  if(prior_phi[["prior_phi_cpp"]][["prior"]] == "SSVS" | !exists("PHI", startvals) | (!exists("U", startvals) & prior_sigma[["prior_sigma_cpp"]][["type"]] == "cholesky")){
+    # Note: if startvals are provided and if(!prior_phi[["general_settings"]][["SSVS_semiautomatic"]]) then
+    # the following computations are redundant
+
     # Posterior mean of a flat conjugate Normal inverse Wishart prior
     # exists even when OLS estimate does not exist (in situations where Tobs < K)
     # N(0, 10^3) on PHI, and invWish(I, M+2) on Sigma
@@ -293,256 +301,62 @@ bvar <- function(data,
     L_flat <- backsolve(L_inv, diag(M))
   }
 
-# To do: move everything to helper function
-  # creating placeholders (for cpp, maybe move to cpp code)
-  priorPHI_in <- list()
-  priorPHI_in[["prior"]] <- prior_phi[["prior"]]
+  # "empirical" prior settings
+  if(prior_phi[["prior_phi_cpp"]][["prior"]] == "SSVS"){
 
-  #GL priors
-  priorPHI_in[["n_groups"]] <- 1L
-  priorPHI_in[["groups"]] <- 1L
-  priorPHI_in[["GL_tol"]] <- double(1L)
-  priorPHI_in[["a"]] <- double(1L)
-  priorPHI_in[["b"]] <- double(1L)
-  priorPHI_in[["c"]] <- double(1L)
-  priorPHI_in[["GT_vs"]] <- double(1L)
-  priorPHI_in[["GT_priorkernel"]] <- character(1L)
-  priorPHI_in[["a_vec"]] <- double(1L)
-  priorPHI_in[["a_weight"]] <- double(1L)
-  priorPHI_in[["norm_consts"]] <- double(1L)
-  priorPHI_in[["c_vec"]] <- double(1L)
-  priorPHI_in[["c_rel_a"]] <- logical(1L)
-
-  #DL
-  priorPHI_in[["prep2"]] <- matrix(0)
-  priorPHI_in[["prep1"]] <- double(1L)
-  priorPHI_in[["DL_hyper"]] <- logical(1L)
-  priorPHI_in[["DL_plus"]] <- logical(1L)
-  #GT (Normal Gamma and R2D2 belong to GT)
-  priorPHI_in[["GT_hyper"]] <- logical(1L)
-  #SSVS
-  priorPHI_in[["SSVS_tau0"]] <- double(1L)
-  priorPHI_in[["SSVS_tau1"]] <- double(1L)
-  priorPHI_in[["SSVS_s_a"]] <- double(1L)
-  priorPHI_in[["SSVS_s_b"]] <- double(1L)
-  priorPHI_in[["SSVS_p"]] <- double(1L)
-  priorPHI_in[["SSVS_hyper"]] <- logical(1L)
-  #HM
-  priorPHI_in[["lambda_1"]] <- double(1L)
-  priorPHI_in[["lambda_2"]] <- double(1L)
-  priorPHI_in[["V_i_prep"]] <- double(1L)
-
-  # prior specification for PHI
-
-  if(prior_phi[["prior"]] == "R2D2" | prior_phi[["prior"]] == "DL" |
-     prior_phi[["prior"]] == "DL_h" | prior_phi[["prior"]] == "SSVS" |
-     prior_phi[["prior"]] == "HS" | prior_phi[["prior"]] == "NG" | prior_phi[["prior"]] == "GT"){
-
-    groups <- unique(i_vec[i_vec!=0])
-    n_groups <- length(groups)
-    priorPHI_in[["n_groups"]] <- n_groups
-    priorPHI_in[["groups"]] <- groups
-
-  }
-
-  if(prior_phi[["prior"]] == "GT"){
-
-    priorPHI_in[["GT_priorkernel"]] <- prior_phi[["GT_priorkernel"]]
-    priorPHI_in[["GL_tol"]] <- prior_phi[["GL_tol"]]
-    priorPHI_in[["GT_vs"]] <- prior_phi[["GT_vs"]]
-    priorPHI_in[["b"]] <- rep_len(prior_phi[["b"]], n_groups)
-
-    if(is.matrix(prior_phi[["a"]])){
-      if(ncol(prior_phi[["a"]])==2){
-        priorPHI_in[["GT_hyper"]] <- TRUE
-        priorPHI_in[["a_vec"]] <- prior_phi[["a"]][,1]
-        priorPHI_in[["a_weight"]] <- prior_phi[["a"]][,2]
-        priorPHI_in[["norm_consts"]] <- lgamma(priorPHI_in[["a_vec"]])
-        priorPHI_in[["a"]] <- sample(priorPHI_in[["a_vec"]], n_groups, replace = TRUE, prob = priorPHI_in[["a_weight"]]) # initialize a
-      }else if(ncol(prior_phi[["a"]])>2){
-        stop("The easiest way to specify 'R2D2_a', 'NG_a' or 'GT_a' is a single postive number!")
-      }else{
-        prior_phi[["a"]] <- as.vector(prior_phi[["a"]])
-      }
-    }
-    if(is.null(dim(prior_phi[["a"]]))){
-      priorPHI_in[["GT_hyper"]] <- FALSE
-      priorPHI_in[["a"]] <- rep_len(prior_phi[["a"]], n_groups)
-    }
-
-    if(is.character(prior_phi[["c"]])){
-      priorPHI_in[["c_rel_a"]] <- TRUE # then c is always proportion of a (e.g. for R2D2 c=0.5a)
-      mya <- priorPHI_in[["a"]]
-      myc <- gsub("a","mya", prior_phi[["c"]])
-      priorPHI_in[["c"]] <- eval(str2lang(myc))
-      if(base::isTRUE(priorPHI_in[["GT_hyper"]])){
-        myc2 <- gsub("a","priorPHI_in$a_vec", prior_phi[["c"]])
-        priorPHI_in[["c_vec"]] <- eval(str2lang(myc2))
-      }
-    }else if(is.numeric(prior_phi[["c"]])){
-      priorPHI_in[["c_rel_a"]] <- FALSE
-      priorPHI_in[["c"]] <- rep_len(prior_phi[["c"]], n_groups)
-    }
-
-
-  }else if(prior_phi[["prior"]] == "DL"){
-
-    priorPHI_in[["GL_tol"]] <- prior_phi[["GL_tol"]]
-
-    if(all(is.numeric(prior_phi[["a"]]))&is.null(dim(prior_phi[["a"]]))){
-      DL_hyper <- FALSE
-    }else if(is.matrix(prior_phi[["a"]])){
-      DL_hyper <- TRUE
-    }else if(any(c("1/K", "1/n") %in% prior_phi[["a"]]) &
-             length(prior_phi[["a"]]) == 1){
-      DL_hyper <- FALSE
-      if(prior_phi[["a"]] == "1/K") {
-        priorPHI_in[["a"]] <- rep(1/K, n_groups)
-      }else if(prior_phi[["a"]] == "1/n") {
-        priorPHI_in[["a"]] <- rep(1/n, n_groups)
-      }
-    }else{
-      stop("Something went wrong specifying DL_a!")
-    }
-    priorPHI_in[["DL_hyper"]] <- DL_hyper
-    if(DL_hyper){
-      if(is.matrix(prior_phi[["a"]])){
-        priorPHI_in[["a_vec"]] <- prior_phi[["a"]][,1]
-        priorPHI_in[["a_weight"]] <- prior_phi[["a"]][,2]
-        priorPHI_in[["norm_consts"]] <- lgamma(priorPHI_in[["a_vec"]])
-        priorPHI_in[["a"]] <- rep_len(priorPHI_in[["a_vec"]][1], n_groups) #initial value
-      }else{
-        grid <- 1000
-        priorPHI_in[["a_vec"]] <- seq(1/(n),1/2,length.out = grid)
-        # prep1 &prep2: some preparations for the evaluation of the
-        # Dirichlet-density
-        priorPHI_in[["prep1"]] <- priorPHI_in[["a_vec"]]-1
-        prep2 <- matrix(NA, n_groups, grid)
-        ii <- 1
-        for(j in groups){
-          n_tmp <- length(which(i_vec == j))
-          # normalizing constant of symmetric Dirichlet density in logs
-          prep2[ii,] <- lgamma(n_tmp*priorPHI_in[["a_vec"]]) - n_tmp*lgamma(priorPHI_in[["a_vec"]])
-          ii <- ii + 1
-        }
-        priorPHI_in[["prep2"]] <- prep2
-        priorPHI_in[["a"]] <- rep_len(1/2, n_groups) #initial value
-        priorPHI_in[["a_weight"]] <- rep(1,grid)
-        priorPHI_in[["norm_consts"]] <- lgamma(priorPHI_in[["a_vec"]])
-      }
-
-    }else if(!DL_hyper){
-      if(all(is.numeric(prior_phi[["a"]]))){
-        priorPHI_in[["a"]] <- rep_len(prior_phi[["a"]], n_groups)
-      }
-    }
-
-    if(!exists("DL_plus", prior_phi) || base::isFALSE(prior_phi[["DL_plus"]])){
-      priorPHI_in[["DL_plus"]] <- FALSE
-      priorPHI_in[["b"]] <- rep_len(0, n_groups)
-      priorPHI_in[["c"]] <- rep_len(0, n_groups)
-    }else if(prior_phi[["DL_plus"]]){
-      priorPHI_in[["DL_plus"]] <- TRUE
-      if(!exists("DL_b", prior_phi)){
-        priorPHI_in[["b"]] <- rep_len(0.5, n_groups)
-      }else{
-        priorPHI_in[["b"]] <- rep_len(prior_phi[["DL_b"]], n_groups)
-      }
-      if(!exists("DL_c", prior_phi)){
-        priorPHI_in[["c"]] <- 0.5*priorPHI_in[["a"]]
-        if(DL_hyper){
-          priorPHI_in[["c_vec"]] <- 0.5*priorPHI_in[["a_vec"]]
-          priorPHI_in[["c_rel_a"]] <- TRUE
-        }
-      }else{
-        if(!is.numeric(prior_phi[["DL_c"]])){
-          stop("If you specify DL_c for model DL_plus, then it must be numeric!")
-        }
-        priorPHI_in[["c"]] <- rep_len(prior_phi[["DL_c"]], n_groups)
-        priorPHI_in[["c_rel_a"]] <- FALSE
-
-      }
-    }else{
-      stop("Never heard of DL_plus?")
-    }
-
-  }else if(prior_phi[["prior"]] == "SSVS"){
-    priorPHI_in[["SSVS_hyper"]] <- prior_phi[["SSVS_hyper"]]
-    priorPHI_in[["SSVS_p"]] <- rep_len(prior_phi[["SSVS_p"]],n)
-    if(prior_phi[["semiautomatic"]]) {
-      # shape parameters of beta hyperprior on prior-inclusion-probability
-      priorPHI_in[["SSVS_s_a"]] <- prior_phi[["SSVS_s_a"]]
-      priorPHI_in[["SSVS_s_b"]] <- prior_phi[["SSVS_s_b"]]
+    if(prior_phi[["general_settings"]][["SSVS_semiautomatic"]]) {
 
       # standard errors of flat phi posterior estimates
       sigma_phi <- sqrt(diag(Sigma_flat %x% V_post_flat))
       # select all, except those of intercept
       sigma_phi <- sigma_phi[which(i_vec!=0)]
       if(length(sigma_phi)!=lags*M^2){
-        stop(length(sigma_phi))
+        stop(paste0(length(sigma_phi), " length(sigma_phi)!= lags*M^2"))
       }
 
       # scale tau with variances
-      priorPHI_in[["SSVS_tau0"]] <- prior_phi[["SSVS_c0"]]*sigma_phi
-      priorPHI_in[["SSVS_tau1"]] <- prior_phi[["SSVS_c1"]]*sigma_phi
-    }else{
-      priorPHI_in[["SSVS_tau0"]] <- rep_len(prior_phi[["SSVS_c0"]], n)
-      priorPHI_in[["SSVS_tau1"]] <- rep_len(prior_phi[["SSVS_c1"]], n)
+      prior_phi[["prior_phi_cpp"]][["SSVS_tau0"]] <- prior_phi[["prior_phi_cpp"]][["SSVS_tau0"]]*sigma_phi
+      prior_phi[["prior_phi_cpp"]][["SSVS_tau1"]] <- prior_phi[["prior_phi_cpp"]][["SSVS_tau1"]]*sigma_phi
     }
 
-  }else if(prior_phi[["prior"]] == "normal"){
-
-    priorPHI_in[["V_i"]] <- rep_len(prior_phi[["V_i"]], n)
-
-  }else if(prior_phi[["prior"]] == "HMP"){
-
-    priorPHI_in[["lambda_1"]] <- prior_phi[["lambda_1"]]
-    priorPHI_in[["lambda_2"]] <- prior_phi[["lambda_2"]]
+  }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HMP"){
     sigma_sq <- MP_sigma_sq(data, 6)
-
     # prepare prior variances down to lambdas
-    priorPHI_in[["V_i_prep"]] <- MP_V_prior_prep(sigma_sq, (K+intercept), M, intercept>0)
+    prior_phi[["prior_phi_cpp"]][["V_i_prep"]] <- MP_V_prior_prep(sigma_sq, (K+intercept), M, intercept>0)
   }
-
 
 # Sigma -------------------------------------------------------------------
 
-
-  if(!inherits(prior_sigma, "bayesianVARs_prior_sigma")){
-    stop("\nArgument 'prior_sigma' must be of class 'bayesianVARs_prior_sigma'. Please use helper function 'specify_prior_sigma()'!\n")
-  }
-  if(prior_sigma[["M"]] != M){
-    stop(paste0("\n'prior_sigma' is specified for ", prior_sigma[["M"]], " timeseries. 'data', however, consits of ",M," timeseries!\n"))
-  }
+  # everything is done within specify_prior_sigma()
 
 # startvals ---------------------------------------------------------------
 
-  # Note to myself: for prior_sigma$type=="factor", result does not depend on starting value of PHI
+  # Note to myself: for prior_sigma$prior_sigma_cpp$type=="factor", result does not depend on starting value of PHI
   startvals[["PHI"]] <- if(exists("PHI", startvals)) startvals[["PHI"]] else PHI_flat
-  startvals[["U"]] <- if(!prior_sigma[["type"]]=="cholesky") matrix(0,1,1) else if(exists("U", startvals)) startvals[["U"]] else L_flat
+  startvals[["U"]] <- if(!prior_sigma[["prior_sigma_cpp"]][["type"]]=="cholesky") matrix(0,1,1) else if(exists("U", startvals)) startvals[["U"]] else L_flat
   startvals[["sv_para"]] <- matrix(0,1,1)
   startvals[["sv_logvar"]] <- matrix(0,1,1)
   startvals[["sv_logvar0"]] <- numeric(1L)
   startvals[["factor_startval"]] <- list(facload = matrix(0,1,1), fac = matrix(0,1,1), tau2 = matrix(0,1,1))
 
-  if(prior_sigma[["type"]] == "cholesky"){
+  if(prior_sigma[["prior_sigma_cpp"]][["type"]] == "cholesky"){
     startvals[["sv_para"]] <- matrix(data= c(rep(-10,M), rep(0.9,M), rep(0.2,M)), #, rep(-10,M)
                                          nrow = 3, ncol = M, byrow = TRUE)
     startvals[["sv_logvar0"]] <- rep(-10,M)
     startvals[["sv_logvar"]] <- matrix(rep(-10, Tobs*M), Tobs,M)
-  }else if(prior_sigma[["type"]] == "factor"){
-    startfacload <- matrix(rnorm(M*prior_sigma[["factor_factors"]], sd = .5)^2, nrow=M, ncol=prior_sigma[["factor_factors"]])
-    startfac <- matrix(rnorm(prior_sigma[["factor_factors"]]*Tobs, 0, sd=.1), nrow=prior_sigma[["factor_factors"]])
-    startpara <- rbind(mu = c(rep(-3, M) + rnorm(M), rep(0, prior_sigma[["factor_factors"]])),
-                      phi = c(rep(.8, M), rep(.8, prior_sigma[["factor_factors"]])) + pmin(rnorm(M + prior_sigma[["factor_factors"]], sd=.06), .095),
-                      sigma = rep(.1, M + prior_sigma[["factor_factors"]]) + rgamma(M + prior_sigma[["factor_factors"]], 1, 10))
-    startlogvar <- matrix(startpara["mu",][1] + rnorm(Tobs*(M + prior_sigma[["factor_factors"]])), Tobs, M + prior_sigma[["factor_factors"]])
-    startlogvar[,M+which(prior_sigma[["sv_heteroscedastic"]][-c(1:M)]==FALSE)] <- 0 # !!! important, needed for factorstochvol: if factor is assumed to be homoscedastic, the corresponding column in logvar has to be 0!!!
-    startlogvar0 <- startpara["mu",][1] + rnorm(M + prior_sigma[["factor_factors"]])
-    starttau2 <- if(!prior_sigma[["factor_ngprior"]]){ # if prior is 'normal'
-      prior_sigma[["factor_starttau2"]]
+  }else if(prior_sigma[["prior_sigma_cpp"]][["type"]] == "factor"){
+    startfacload <- matrix(rnorm(M*prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], sd = .5)^2, nrow=M, ncol=prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+    startfac <- matrix(rnorm(prior_sigma[["prior_sigma_cpp"]][["factor_factors"]]*Tobs, 0, sd=.1), nrow=prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+    startpara <- rbind(mu = c(rep(-3, M) + rnorm(M), rep(0, prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])),
+                      phi = c(rep(.8, M), rep(.8, prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])) + pmin(rnorm(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], sd=.06), .095),
+                      sigma = rep(.1, M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]]) + rgamma(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], 1, 10))
+    startlogvar <- matrix(startpara["mu",][1] + rnorm(Tobs*(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])), Tobs, M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+    startlogvar[,M+which(prior_sigma[["prior_sigma_cpp"]][["sv_heteroscedastic"]][-c(1:M)]==FALSE)] <- 0 # !!! important, needed for factorstochvol: if factor is assumed to be homoscedastic, the corresponding column in logvar has to be 0!!!
+    startlogvar0 <- startpara["mu",][1] + rnorm(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+    starttau2 <- if(!prior_sigma[["prior_sigma_cpp"]][["factor_ngprior"]]){ # if prior is 'normal'
+      prior_sigma[["general_settings"]][["factor_starttau2"]]
     }else{
-      matrix(1, nrow = M, ncol = prior_sigma[["factor_factors"]])
+      matrix(1, nrow = M, ncol = prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
     }
     startvals[["factor_startval"]] <- list(facload = startfacload,
                                           fac = startfac,
@@ -562,7 +376,7 @@ bvar <- function(data,
   }
 
   if(!quiet){
-    cat("\nCalling MCMC sampler for a ", prior_sigma[["type"]], "-VAR(",lags,") for ",M, " series of length ", Traw, ".\n", sep = "")
+    cat("\nCalling MCMC sampler for a ", prior_sigma[["prior_sigma_cpp"]][["type"]], "-VAR(",lags,") for ",M, " series of length ", Traw, ".\n", sep = "")
   }
 
   bench <- system.time(res <- bvar_cpp(Y,
@@ -574,17 +388,17 @@ bvar <- function(data,
                                        burnin,
                                        thin,
                                        sv_keep,
-                                       as.integer(intercept),
+                                       intercept,
                                        priorIntercept,
                                        PHI0,
-                                       priorPHI_in,
-                                       prior_sigma,
+                                       prior_phi[["prior_phi_cpp"]],
+                                       prior_sigma[["prior_sigma_cpp"]],
                                        startvals,
                                        i_mat,
                                        i_vec,
                                        !quiet,
-                                       prior_phi[["PHI_tol"]],
-                                       prior_sigma[["cholesky_U_tol"]],
+                                       prior_phi[["general_settings"]][["PHI_tol"]],
+                                       prior_sigma[["general_settings"]][["cholesky_U_tol"]],
                                        expert[["huge"]]
   ))
 
@@ -592,30 +406,30 @@ bvar <- function(data,
   dimnames(res[["PHI"]])[1] <- list(colnames(X))
   dimnames(res[["PHI"]])[2] <- list(colnames(Y))
   phinames <- as.vector((vapply(seq_len(M), function(i) paste0(colnames(Y)[i], "~", colnames(X[,1:(ncol(X)-intercept)])), character(K))))
-  if(prior_phi[["prior"]] %in% c("DL","DL_h", "GT")){
+  if(prior_phi[["prior_phi_cpp"]][["prior"]] %in% c("DL","DL_h", "GT")){
 
-    rownames(res[["phi_hyperparameter"]]) <- c(paste0("a",1:priorPHI_in[["n_groups"]]),
-                                          paste0("xi",1:priorPHI_in[["n_groups"]]),
+    rownames(res[["phi_hyperparameter"]]) <- c(paste0("a",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
+                                          paste0("xi",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
                                           paste0("lambda: ", phinames),
                                           paste0("psi: ", phinames))
 
-  }else if(prior_phi[["prior"]] == "HS"){
+  }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HS"){
 
-    rownames(res[["phi_hyperparameter"]]) <- c(paste0("zeta", 1:priorPHI_in[["n_groups"]]),
-                                          paste0("varpi", 1:priorPHI_in[["n_groups"]]),
+    rownames(res[["phi_hyperparameter"]]) <- c(paste0("zeta", 1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
+                                          paste0("varpi", 1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
                                           paste0("theta: ", phinames),
                                           paste0("nu: ", phinames))
-  }else if(prior_phi[["prior"]] == "SSVS"){
+  }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "SSVS"){
 
     rownames(res[["phi_hyperparameter"]]) <- c(paste0("gamma: ", phinames), paste0("p_i: ", phinames))#
 
-  }else if(prior_phi[["prior"]] == "HMP"){
+  }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HMP"){
 
     rownames(res[["phi_hyperparameter"]]) <- c("lambda_1", "lambda_2")
 
   }
 
-  if(prior_sigma[["type"]]=="cholesky"){
+  if(prior_sigma[["prior_sigma_cpp"]][["type"]]=="cholesky"){
     lnames <- rep(as.character(NA), (M^2-M)/2)
     ii <- 1
     for(j in 2:M){
@@ -624,21 +438,21 @@ bvar <- function(data,
       ii <- ii+j-1
     }
     rownames(res[["U"]]) <- lnames
-    if(prior_sigma[["cholesky_U_prior"]] %in% c("DL","DL_h", "GT")){
+    if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] %in% c("DL", "GT")){
 
       rownames(res[["u_hyperparameter"]]) <- c("a",
                                           "xi",
                                           paste0("lambda: ", lnames),
                                           paste0("psi: ", lnames))
 
-    }else if(prior_sigma[["cholesky_U_prior"]] == "HS"){
+    }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "HS"){
       rownames(res[["u_hyperparameter"]]) <- c("zeta",
                                           "varpi",
                                           paste0("theta: ", lnames),
                                           paste0("nu: ", lnames))
-    }else if(prior_sigma[["cholesky_U_prior"]] == "SSVS"){
+    }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "SSVS"){
       rownames(res[["u_hyperparameter"]]) <- c(paste0("gamma: ", lnames), paste0("p_i: ", lnames))
-    }else if(prior_sigma[["cholesky_U_prior"]] == "HMP"){
+    }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "HMP"){
       rownames(res[["u_hyperparameter"]]) <- c("lambda_3")
     }
 
@@ -648,10 +462,10 @@ bvar <- function(data,
   res[["X"]] <- X
   res[["lags"]] <- lags
   res[["intercept"]] <- ifelse(intercept>0, TRUE, FALSE)
-  res[["heteroscedastic"]] <- prior_sigma[["sv_heteroscedastic"]]
+  res[["heteroscedastic"]] <- prior_sigma[["prior_sigma_cpp"]][["sv_heteroscedastic"]]
   res[["Yraw"]] <- Y_tmp
   res[["Traw"]] <- Traw
-  res[["sigma_type"]] <- prior_sigma[["type"]]
+  res[["sigma_type"]] <- prior_sigma[["prior_sigma_cpp"]][["type"]]
   res[["datamat"]] <- data.frame(cbind(Y, X))
   res[["config"]] <- list(draws = draws, burnin = burnin, thin = thin,
                      sv_keep = sv_keep)
