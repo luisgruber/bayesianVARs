@@ -17,80 +17,80 @@ keep <- "last"
 res <- list(bvar(y,draws = draws, burnin = burnin,quiet=TRUE))
 for(thin in thin_values){
   #for(keep in sv_keep){
-    for(lags in lag_values){
-      for(intercept in intercept_values){
-        myintercept <- if(intercept==0) FALSE else intercept
-        for(prior in PHI_priors){
-          if(prior == "normal"){
-            prior_phi <- specify_prior_phi(data = y, lags = lags, prior = prior, normal_sds = 10)
-            res <- c(res, list(bvar(y , lags = lags, prior_intercept = myintercept,
-                                    draws = draws, burnin = burnin, thin = thin,
-                                    prior_phi = prior_phi,
-                                    sv_keep = keep,
-                                    quiet = TRUE)))
-          }else if(prior == "HMP"){
-            prior_phi <- specify_prior_phi(data = y, lags = lags, prior = prior)
-            res <- c(res, list(bvar(y , lags = lags, prior_intercept = myintercept,
-                                    draws = draws, burnin = burnin, thin = thin,
-                                    prior_phi = prior_phi,
-                                    sv_keep = keep,
-                                    quiet = TRUE)))
-          }else if(prior == "SSVS" || prior == "NG" || prior == "DL" ||
-                   prior == "R2D2" || prior == "HS"){
-            for(group in semi_groups){
-              if(prior == "SSVS"){
-                for(ssvs_p in c(0.5, 1)){
-                  if(ssvs_p == 1){
-                    ssvs_p = c(1,1)
-                  }
-                  prior_phi <- specify_prior_phi(data = y, lags = lags, prior = prior,
+  for(lags in lag_values){
+    for(intercept in intercept_values){
+      myintercept <- if(intercept==0) FALSE else intercept
+      for(prior in PHI_priors){
+        if(prior == "normal"){
+          prior_phi <- specify_prior_phi(data = y, lags = lags, prior = prior, normal_sds = 10)
+          res <- c(res, list(bvar(y , lags = lags, prior_intercept = myintercept,
+                                  draws = draws, burnin = burnin, thin = thin,
+                                  prior_phi = prior_phi,
+                                  sv_keep = keep,
+                                  quiet = TRUE)))
+        }else if(prior == "HMP"){
+          prior_phi <- specify_prior_phi(data = y, lags = lags, prior = prior)
+          res <- c(res, list(bvar(y , lags = lags, prior_intercept = myintercept,
+                                  draws = draws, burnin = burnin, thin = thin,
+                                  prior_phi = prior_phi,
+                                  sv_keep = keep,
+                                  quiet = TRUE)))
+        }else if(prior == "SSVS" || prior == "NG" || prior == "DL" ||
+                 prior == "R2D2" || prior == "HS"){
+          for(group in semi_groups){
+            if(prior == "SSVS"){
+              for(ssvs_p in c(0.5, 1)){
+                if(ssvs_p == 1){
+                  ssvs_p = c(1,1)
+                }
+                prior_phi <- specify_prior_phi(data = y, lags = lags, prior = prior,
                                                global_grouping = group,
                                                SSVS_p = ssvs_p)
-                  res <- c(res, list(bvar(y , lags = lags, prior_intercept = myintercept,
-                                          draws = draws, burnin = burnin, thin = thin,
-                                          prior_phi = prior_phi,
-                                          sv_keep = keep,
-                                          quiet = TRUE)))
-                }
-              }else if(prior == "NG" || prior == "DL" || prior == "R2D2" ){
-                for(a_shrink in c(0.5,1)){
-                  if(a_shrink==1){
-                    a_shrink <- cbind(seq(0.1,1,by=.1), rep(1/10,10))
-                  }
-                  if(prior == "NG"){
-                    prior_phi <- specify_prior_phi(data = y, lags = lags, prior = prior,
-                                                 global_grouping = group,
-                                                 NG_a = a_shrink)
-                  }else if(prior == "R2D2"){
-                    prior_phi <- specify_prior_phi(data = y, lags = lags, prior = prior,
-                                                 global_grouping = group,
-                                                 R2D2_a = a_shrink)
-                  }else if(prior == "DL"){
-                    prior_phi <- specify_prior_phi(data = y, lags = lags, prior = prior,
-                                                 global_grouping = group,
-                                                 DL_a = a_shrink)
-                  }
-                  res <- c(res, list(bvar(y , lags = lags, prior_intercept = myintercept,
-                                          draws = draws, burnin = burnin, thin = thin,
-                                          prior_phi = prior_phi,
-                                          sv_keep = keep,
-                                          quiet = TRUE)))
-                }
-
-              }else if(prior == "HS"){
-                prior_phi <- specify_prior_phi(data = y, lags = lags, prior = prior,
-                                             global_grouping = group)
                 res <- c(res, list(bvar(y , lags = lags, prior_intercept = myintercept,
                                         draws = draws, burnin = burnin, thin = thin,
                                         prior_phi = prior_phi,
                                         sv_keep = keep,
                                         quiet = TRUE)))
               }
+            }else if(prior == "NG" || prior == "DL" || prior == "R2D2" ){
+              for(a_shrink in c(0.5,1)){
+                if(a_shrink==1){
+                  a_shrink <- cbind(seq(0.1,1,by=.1), rep(1/10,10))
+                }
+                if(prior == "NG"){
+                  prior_phi <- specify_prior_phi(data = y, lags = lags, prior = prior,
+                                                 global_grouping = group,
+                                                 NG_a = a_shrink)
+                }else if(prior == "R2D2"){
+                  prior_phi <- specify_prior_phi(data = y, lags = lags, prior = prior,
+                                                 global_grouping = group,
+                                                 R2D2_a = a_shrink)
+                }else if(prior == "DL"){
+                  prior_phi <- specify_prior_phi(data = y, lags = lags, prior = prior,
+                                                 global_grouping = group,
+                                                 DL_a = a_shrink)
+                }
+                res <- c(res, list(bvar(y , lags = lags, prior_intercept = myintercept,
+                                        draws = draws, burnin = burnin, thin = thin,
+                                        prior_phi = prior_phi,
+                                        sv_keep = keep,
+                                        quiet = TRUE)))
+              }
+
+            }else if(prior == "HS"){
+              prior_phi <- specify_prior_phi(data = y, lags = lags, prior = prior,
+                                             global_grouping = group)
+              res <- c(res, list(bvar(y , lags = lags, prior_intercept = myintercept,
+                                      draws = draws, burnin = burnin, thin = thin,
+                                      prior_phi = prior_phi,
+                                      sv_keep = keep,
+                                      quiet = TRUE)))
             }
           }
         }
       }
     }
+  }
   #}
 }
 
@@ -106,9 +106,9 @@ for(thin in thin_values){
 
       if(prior == "normal" |prior == "HMP" | prior =="HS"){
         prior_sigma <- specify_prior_sigma(data = y, type = "cholesky",
-                                         cholesky_U_prior = prior,
-                                         cholesky_heteroscedastic = scedastic,
-                                         quiet = TRUE)
+                                           cholesky_U_prior = prior,
+                                           cholesky_heteroscedastic = scedastic,
+                                           quiet = TRUE)
         res <- c(res, list(bvar(y , draws = draws, burnin = burnin, thin = thin,
                                 prior_sigma = prior_sigma,
                                 sv_keep = keep,
@@ -120,22 +120,22 @@ for(thin in thin_values){
           }
           if(prior == "NG"){
             prior_sigma <- specify_prior_sigma(data = y, type = "cholesky",
-                                             cholesky_U_prior = prior,
-                                             cholesky_heteroscedastic = scedastic,
-                                             cholesky_NG_a = a_shrink,
-                                             quiet = TRUE)
+                                               cholesky_U_prior = prior,
+                                               cholesky_heteroscedastic = scedastic,
+                                               cholesky_NG_a = a_shrink,
+                                               quiet = TRUE)
           }else if(prior == "R2D2"){
             prior_sigma <- specify_prior_sigma(data = y, type = "cholesky",
-                                             cholesky_U_prior = prior,
-                                             cholesky_heteroscedastic = scedastic,
-                                             cholesky_R2D2_a = a_shrink,
-                                             quiet = TRUE)
+                                               cholesky_U_prior = prior,
+                                               cholesky_heteroscedastic = scedastic,
+                                               cholesky_R2D2_a = a_shrink,
+                                               quiet = TRUE)
           }else if(prior == "DL"){
             prior_sigma <- specify_prior_sigma(data = y, type = "cholesky",
-                                             cholesky_U_prior = prior,
-                                             cholesky_heteroscedastic = scedastic,
-                                             cholesky_DL_a =  a_shrink,
-                                             quiet = TRUE)
+                                               cholesky_U_prior = prior,
+                                               cholesky_heteroscedastic = scedastic,
+                                               cholesky_DL_a =  a_shrink,
+                                               quiet = TRUE)
           }
         }
         res <- c(res, list(bvar(y ,draws = draws, burnin = burnin, thin = thin,
