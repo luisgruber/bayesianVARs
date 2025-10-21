@@ -145,8 +145,7 @@ hyperparameters of the conditional normal prior on the VAR coefficients.</p></li
 <li><p><code>u_hyperparameter</code>: A matrix containing the posterior draws of the
 hyperparameters of the conditional normal prior on U (if cholesky
 decomposition for sigma is specified).</p></li>
-<li><p><code>bench</code>: Numerical indicating the average time it took to generate one
-single draw of the joint posterior distribution of all parameters.</p></li>
+<li><p><code>bench</code>: <code>proc_time</code> object containing the run time of the sampler.</p></li>
 <li><p><code>V_prior</code>: An array containing the posterior draws of the variances of the
 conditional normal prior on the VAR coefficients.</p></li>
 <li><p><code>facload</code>: A <code>bayesianVARs_draws</code> object, an array, containing draws from the
