@@ -4,6 +4,8 @@ y <- factorstochvol::logret(exrates[1:15, 1:3], demean = TRUE)
 draws <- 27
 burnin <- 10
 
+# Mainly PHI specifications -----------------------------------------------
+
 thin_values <- c(1,3)
 lag_values <- c(1L,2L,3L)
 PHI_priors <- c("normal","HMP", "SSVS", "NG", "DL", "R2D2", "HS") #"HMP"
@@ -93,6 +95,8 @@ for(thin in thin_values){
 }
 
 
+# SIGMA cholesky ----------------------------------------------------------
+
 SIGMA_priors <- c("normal","HMP", "SSVS", "NG", "DL", "R2D2", "HS")
 heteroscedastic <- c(TRUE,FALSE)
 res <- list(bvar(y,draws = draws, burnin = burnin,quiet = TRUE))
@@ -160,9 +164,7 @@ for(thin in thin_values){
 }
 
 
-
-
-
+# SIGMA factor ------------------------------------------------------------
 
 # factors_values <- c(0, 1, 3)
 # restrict_mat <- matrix(FALSE, nrow = NCOL(y), ncol = max(factors_values))
