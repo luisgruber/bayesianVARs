@@ -240,8 +240,8 @@ bvar <- function(data,
   if(!inherits(prior_sigma, "bayesianVARs_prior_sigma")){
     stop("\nArgument 'prior_sigma' must be of class 'bayesianVARs_prior_sigma'. Please use helper function 'specify_prior_sigma()'!\n")
   }
-  if(prior_sigma[["M"]] != M){
-    stop(paste0("\n'prior_sigma' is specified for ", prior_sigma[["M"]], " timeseries. 'data', however, consits of ",M," timeseries!\n"))
+  if(prior_sigma[["general_settings"]][["M"]] != M){
+    stop(paste0("\n'prior_sigma' is specified for ", prior_sigma[["general_settings"]][["M"]], " timeseries. 'data', however, consits of ",M," timeseries!\n"))
   }
 
 # Indicator matrix --------------------------------------------------------
@@ -293,7 +293,7 @@ bvar <- function(data,
 
   # Initialize PHI --------
 
-  if(prior_phi[["prior_phi_cpp"]][["prior"]] == "SSVS" | !exists("PHI", startvals) | (!exists("U", startvals) & prior_sigma[["type"]] == "cholesky")){
+  if(prior_phi[["prior_phi_cpp"]][["prior"]] == "SSVS" | !exists("PHI", startvals) | (!exists("U", startvals) & prior_sigma[["prior_sigma_cpp"]][["type"]] == "cholesky")){
     # Note: if startvals are provided and if(!prior_phi[["general_settings"]][["SSVS_semiautomatic"]]) then
     # the following computations are redundant
 
@@ -342,32 +342,32 @@ bvar <- function(data,
 
 # startvals ---------------------------------------------------------------
 
-  # Note to myself: for prior_sigma$type=="factor", result does not depend on starting value of PHI
+  # Note to myself: for prior_sigma$prior_sigma_cpp$type=="factor", result does not depend on starting value of PHI
   startvals[["PHI"]] <- if(exists("PHI", startvals)) startvals[["PHI"]] else PHI_flat
-  startvals[["U"]] <- if(!prior_sigma[["type"]]=="cholesky") matrix(0,1,1) else if(exists("U", startvals)) startvals[["U"]] else L_flat
+  startvals[["U"]] <- if(!prior_sigma[["prior_sigma_cpp"]][["type"]]=="cholesky") matrix(0,1,1) else if(exists("U", startvals)) startvals[["U"]] else L_flat
   startvals[["sv_para"]] <- matrix(0,1,1)
   startvals[["sv_logvar"]] <- matrix(0,1,1)
   startvals[["sv_logvar0"]] <- numeric(1L)
   startvals[["factor_startval"]] <- list(facload = matrix(0,1,1), fac = matrix(0,1,1), tau2 = matrix(0,1,1))
 
-  if(prior_sigma[["type"]] == "cholesky"){
+  if(prior_sigma[["prior_sigma_cpp"]][["type"]] == "cholesky"){
     startvals[["sv_para"]] <- matrix(data= c(rep(-10,M), rep(0.9,M), rep(0.2,M)), #, rep(-10,M)
                                          nrow = 3, ncol = M, byrow = TRUE)
     startvals[["sv_logvar0"]] <- rep(-10,M)
     startvals[["sv_logvar"]] <- matrix(rep(-10, Tobs*M), Tobs,M)
-  }else if(prior_sigma[["type"]] == "factor"){
-    startfacload <- matrix(rnorm(M*prior_sigma[["factor_factors"]], sd = .5)^2, nrow=M, ncol=prior_sigma[["factor_factors"]])
-    startfac <- matrix(rnorm(prior_sigma[["factor_factors"]]*Tobs, 0, sd=.1), nrow=prior_sigma[["factor_factors"]])
-    startpara <- rbind(mu = c(rep(-3, M) + rnorm(M), rep(0, prior_sigma[["factor_factors"]])),
-                      phi = c(rep(.8, M), rep(.8, prior_sigma[["factor_factors"]])) + pmin(rnorm(M + prior_sigma[["factor_factors"]], sd=.06), .095),
-                      sigma = rep(.1, M + prior_sigma[["factor_factors"]]) + rgamma(M + prior_sigma[["factor_factors"]], 1, 10))
-    startlogvar <- matrix(startpara["mu",][1] + rnorm(Tobs*(M + prior_sigma[["factor_factors"]])), Tobs, M + prior_sigma[["factor_factors"]])
-    startlogvar[,M+which(prior_sigma[["sv_heteroscedastic"]][-c(1:M)]==FALSE)] <- 0 # !!! important, needed for factorstochvol: if factor is assumed to be homoscedastic, the corresponding column in logvar has to be 0!!!
-    startlogvar0 <- startpara["mu",][1] + rnorm(M + prior_sigma[["factor_factors"]])
-    starttau2 <- if(!prior_sigma[["factor_ngprior"]]){ # if prior is 'normal'
-      prior_sigma[["factor_starttau2"]]
+  }else if(prior_sigma[["prior_sigma_cpp"]][["type"]] == "factor"){
+    startfacload <- matrix(rnorm(M*prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], sd = .5)^2, nrow=M, ncol=prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+    startfac <- matrix(rnorm(prior_sigma[["prior_sigma_cpp"]][["factor_factors"]]*Tobs, 0, sd=.1), nrow=prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+    startpara <- rbind(mu = c(rep(-3, M) + rnorm(M), rep(0, prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])),
+                      phi = c(rep(.8, M), rep(.8, prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])) + pmin(rnorm(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], sd=.06), .095),
+                      sigma = rep(.1, M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]]) + rgamma(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], 1, 10))
+    startlogvar <- matrix(startpara["mu",][1] + rnorm(Tobs*(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])), Tobs, M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+    startlogvar[,M+which(prior_sigma[["prior_sigma_cpp"]][["sv_heteroscedastic"]][-c(1:M)]==FALSE)] <- 0 # !!! important, needed for factorstochvol: if factor is assumed to be homoscedastic, the corresponding column in logvar has to be 0!!!
+    startlogvar0 <- startpara["mu",][1] + rnorm(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+    starttau2 <- if(!prior_sigma[["prior_sigma_cpp"]][["factor_ngprior"]]){ # if prior is 'normal'
+      prior_sigma[["general_settings"]][["factor_starttau2"]]
     }else{
-      matrix(1, nrow = M, ncol = prior_sigma[["factor_factors"]])
+      matrix(1, nrow = M, ncol = prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
     }
     startvals[["factor_startval"]] <- list(facload = startfacload,
                                           fac = startfac,
@@ -387,7 +387,7 @@ bvar <- function(data,
   }
 
   if(!quiet){
-    cat("\nCalling MCMC sampler for a ", prior_sigma[["type"]], "-VAR(",lags,") for ",M, " series of length ", Traw, ".\n", sep = "")
+    cat("\nCalling MCMC sampler for a ", prior_sigma[["prior_sigma_cpp"]][["type"]], "-VAR(",lags,") for ",M, " series of length ", Traw, ".\n", sep = "")
   }
 
   res <- bvar_cpp(Y,
@@ -403,13 +403,13 @@ bvar <- function(data,
                   priorIntercept,
                   PHI0,
                   prior_phi[["prior_phi_cpp"]],
-                  prior_sigma,
+                  prior_sigma[["prior_sigma_cpp"]],
                   startvals,
                   i_mat,
                   i_vec,
                   !quiet,
                   prior_phi[["general_settings"]][["PHI_tol"]],
-                  prior_sigma[["cholesky_U_tol"]],
+                  prior_sigma[["general_settings"]][["cholesky_U_tol"]],
                   expert[["huge"]]
                   )
 
@@ -443,7 +443,7 @@ bvar <- function(data,
 
   }
 
-  if(prior_sigma[["type"]]=="cholesky"){
+  if(prior_sigma[["prior_sigma_cpp"]][["type"]]=="cholesky"){
     lnames <- rep(as.character(NA), (M^2-M)/2)
     ii <- 1
     for(j in 2:M){
@@ -452,21 +452,21 @@ bvar <- function(data,
       ii <- ii+j-1
     }
     rownames(res[["U"]]) <- lnames
-    if(prior_sigma[["cholesky_U_prior"]] %in% c("DL","DL_h", "GT")){
+    if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] %in% c("DL", "GT")){
 
       rownames(res[["u_hyperparameter"]]) <- c("a",
                                           "xi",
                                           paste0("lambda: ", lnames),
                                           paste0("psi: ", lnames))
 
-    }else if(prior_sigma[["cholesky_U_prior"]] == "HS"){
+    }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "HS"){
       rownames(res[["u_hyperparameter"]]) <- c("zeta",
                                           "varpi",
                                           paste0("theta: ", lnames),
                                           paste0("nu: ", lnames))
-    }else if(prior_sigma[["cholesky_U_prior"]] == "SSVS"){
+    }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "SSVS"){
       rownames(res[["u_hyperparameter"]]) <- c(paste0("gamma: ", lnames), paste0("p_i: ", lnames))
-    }else if(prior_sigma[["cholesky_U_prior"]] == "HMP"){
+    }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "HMP"){
       rownames(res[["u_hyperparameter"]]) <- c("lambda_3")
     }
 
@@ -476,10 +476,10 @@ bvar <- function(data,
   res[["X"]] <- X
   res[["lags"]] <- lags
   res[["intercept"]] <- ifelse(intercept>0, TRUE, FALSE)
-  res[["heteroscedastic"]] <- prior_sigma[["sv_heteroscedastic"]]
+  res[["heteroscedastic"]] <- prior_sigma[["prior_sigma_cpp"]][["sv_heteroscedastic"]]
   res[["Yraw"]] <- Y_tmp
   res[["Traw"]] <- Traw
-  res[["sigma_type"]] <- prior_sigma[["type"]]
+  res[["sigma_type"]] <- prior_sigma[["prior_sigma_cpp"]][["type"]]
   res[["datamat"]] <- data.frame(cbind(Y, X))
   res[["config"]] <- list(draws = draws, burnin = burnin, thin = thin,
                      sv_keep = sv_keep)

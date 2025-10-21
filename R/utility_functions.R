@@ -339,6 +339,357 @@ fitted.bayesianVARs_bvar <- function(object, error_term = TRUE, ...){
 
 # Functions for prior configuration ---------------------------------------
 
+new_baysesianVARs_prior_sigma_cpp <- function(){
+  # constructor, bvar_cpp.cpp expects a list with following elements
+  out <- list(type = character(1L),
+              cholesky_U_prior = character(1L),
+              cholesky_V_i = numeric(1L),
+              cholesky_a = numeric(1L),
+              cholesky_b = numeric(1L),
+              cholesky_c = numeric(1L),
+              cholesky_GL_tol = numeric(1L),
+              cholesky_a_vec = numeric(1L),
+              cholesky_a_weight = numeric(1L),
+              cholesky_norm_consts = numeric(1L),
+              cholesky_c_vec = numeric(1L),
+              cholesky_c_rel_a = logical(1L),
+              cholesky_DL_hyper = logical(1L),
+              cholesky_DL_plus = logical(1L),
+              cholesky_GT_hyper = logical(1L),
+              cholesky_GT_vs = numeric(1L),
+              cholesky_GT_priorkernel = character(1L),
+              cholesky_SSVS_tau0 = numeric(1L),
+              cholesky_SSVS_tau1 = numeric(1L),
+              cholesky_SSVS_s_a = numeric(1L),
+              cholesky_SSVS_s_b = numeric(1L),
+              cholesky_SSVS_hyper = logical(1L),
+              cholesky_SSVS_p = numeric(1L),
+              cholesky_lambda_3 = numeric(1L),
+              cholesky_priorhomoscedastic = matrix(0, 1, 1),
+              cholesky_sv_offset = numeric(1L),
+              factor_factors = integer(1L),
+              factor_shrinkagepriors = list(a = numeric(1L),
+                                            c = numeric(1L),
+                                            d = numeric(1L)),
+              factor_ngprior = logical(1L),
+              factor_columnwise = logical(1L),
+              factor_facloadtol = numeric(1L),
+              factor_restrinv = matrix(0L, 1, 1),
+              factor_priorhomoskedastic = matrix(0, 1, 1),
+              factor_interweaving = integer(1L),
+              sv_heteroscedastic = numeric(1L),
+              sv_priormu = numeric(1L),
+              sv_priorphi = numeric(1L),
+              sv_priorsigma2 = matrix(0, 1, 1),
+              sv_priorh0 = numeric(1L)
+  )
+  class(out) <- "bayesianVARs_prior_sigma_cpp"
+  out
+}
+
+validate_baysesianVARs_prior_sigma <- function(x){
+  if(!is.list(x)) stop("x must be a list")
+  if(!inherits(x, "bayesianVARs_prior_sigma_cpp")){
+    stop("x must be of class 'bayesianVARs_prior_sigma_cpp'")
+  }
+  if(!exists("type", x)){
+    stop("x must be subsettable with x[['type']]")
+  }else{
+    if(!is.character(x[["type"]])){
+      stop("x[['type']] must be a character vector")
+    }
+  }
+  if(!exists("cholesky_U_prior", x)){
+    stop("x must be subsettable with x[['cholesky_U_prior']]")
+  }else{
+    if(!is.character(x[["cholesky_U_prior"]])){
+      stop("x[['cholesky_U_prior']] must be a character vector")
+    }
+  }
+  if(!exists("cholesky_V_i", x)){
+    stop("x must be subsettable with x[['cholesky_V_i']]")
+  }else{
+    if(!is.numeric(x[["cholesky_V_i"]])){
+      stop("x[['cholesky_V_i']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_a", x)){
+    stop("x must be subsettable with x[['cholesky_a']]")
+  }else{
+    if(!is.numeric(x[["cholesky_a"]])){
+      stop("x[['cholesky_a']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_b", x)){
+    stop("x must be subsettable with x[['cholesky_b']]")
+  }else{
+    if(!is.numeric(x[["cholesky_b"]])){
+      stop("x[['cholesky_b']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_c", x)){
+    stop("x must be subsettable with x[['cholesky_c']]")
+  }else{
+    if(!is.numeric(x[["cholesky_c"]])){
+      stop("x[['cholesky_c']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_GL_tol", x)){
+    stop("x must be subsettable with x[['cholesky_GL_tol']]")
+  }else{
+    if(!is.numeric(x[["cholesky_GL_tol"]])){
+      stop("x[['cholesky_GL_tol']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_a_vec", x)){
+    stop("x must be subsettable with x[['cholesky_a_vec']]")
+  }else{
+    if(!is.numeric(x[["cholesky_a_vec"]])){
+      stop("x[['cholesky_a_vec']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_a_weight", x)){
+    stop("x must be subsettable with x[['cholesky_a_weight']]")
+  }else{
+    if(!is.numeric(x[["cholesky_a_weight"]])){
+      stop("x[['cholesky_a_weight']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_norm_consts", x)){
+    stop("x must be subsettable with x[['cholesky_norm_consts']]")
+  }else{
+    if(!is.numeric(x[["cholesky_norm_consts"]])){
+      stop("x[['cholesky_norm_consts']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_c_vec", x)){
+    stop("x must be subsettable with x[['cholesky_c_vec']]")
+  }else{
+    if(!is.numeric(x[["cholesky_c_vec"]])){
+      stop("x[['cholesky_c_vec']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_c_rel_a", x)){
+    stop("x must be subsettable with x[['cholesky_c_rel_a']]")
+  }else{
+    if(!is.logical(x[["cholesky_c_rel_a"]])){
+      stop("x[['cholesky_c_rel_a']] must be a logical")
+    }
+  }
+  if(!exists("cholesky_DL_hyper", x)){
+    stop("x must be subsettable with x[['cholesky_DL_hyper']]")
+  }else{
+    if(!is.logical(x[["cholesky_DL_hyper"]])){
+      stop("x[['cholesky_DL_hyper']] must be a logical")
+    }
+  }
+  if(!exists("cholesky_DL_plus", x)){
+    stop("x must be subsettable with x[['cholesky_DL_plus']]")
+  }else{
+    if(!is.logical(x[["cholesky_DL_plus"]])){
+      stop("x[['cholesky_DL_plus']] must be a logical")
+    }
+  }
+  if(!exists("cholesky_GT_hyper", x)){
+    stop("x must be subsettable with x[['cholesky_GT_hyper']]")
+  }else{
+    if(!is.logical(x[["cholesky_GT_hyper"]])){
+      stop("x[['cholesky_GT_hyper']] must be a logical")
+    }
+  }
+  if(!exists("cholesky_GT_vs", x)){
+    stop("x must be subsettable with x[['cholesky_GT_vs']]")
+  }else{
+    if(!is.numeric(x[["cholesky_GT_vs"]])){
+      stop("x[['cholesky_GT_vs']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_GT_priorkernel", x)){
+    stop("x must be subsettable with x[['cholesky_GT_priorkernel']]")
+  }else{
+    if(!is.character(x[["cholesky_GT_priorkernel"]])){
+      stop("x[['cholesky_GT_priorkernel']] must be a character")
+    }
+  }
+  if(!exists("cholesky_SSVS_tau0", x)){
+    stop("x must be subsettable with x[['cholesky_SSVS_tau0']]")
+  }else{
+    if(!is.numeric(x[["cholesky_SSVS_tau0"]])){
+      stop("x[['cholesky_SSVS_tau0']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_SSVS_tau1", x)){
+    stop("x must be subsettable with x[['cholesky_SSVS_tau1']]")
+  }else{
+    if(!is.numeric(x[["cholesky_SSVS_tau1"]])){
+      stop("x[['cholesky_SSVS_tau1']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_SSVS_s_a", x)){
+    stop("x must be subsettable with x[['cholesky_SSVS_s_a']]")
+  }else{
+    if(!is.numeric(x[["cholesky_SSVS_s_a"]])){
+      stop("x[['cholesky_SSVS_s_a']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_SSVS_s_b", x)){
+    stop("x must be subsettable with x[['cholesky_SSVS_s_b']]")
+  }else{
+    if(!is.numeric(x[["cholesky_SSVS_s_b"]])){
+      stop("x[['cholesky_SSVS_s_b']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_SSVS_hyper", x)){
+    stop("x must be subsettable with x[['cholesky_SSVS_hyper']]")
+  }else{
+    if(!is.logical(x[["cholesky_SSVS_hyper"]])){
+      stop("x[['cholesky_SSVS_hyper']] must be a logical")
+    }
+  }
+  if(!exists("cholesky_SSVS_p", x)){
+    stop("x must be subsettable with x[['cholesky_SSVS_p']]")
+  }else{
+    if(!is.numeric(x[["cholesky_SSVS_p"]])){
+      stop("x[['cholesky_SSVS_p']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_lambda_3", x)){
+    stop("x must be subsettable with x[['cholesky_lambda_3']]")
+  }else{
+    if(!is.numeric(x[["cholesky_lambda_3"]])){
+      stop("x[['cholesky_lambda_3']] must be a numeric vector")
+    }
+  }
+  if(!exists("cholesky_priorhomoscedastic", x)){
+    stop("x must be subsettable with x[['cholesky_priorhomoscedastic']]")
+  }else{
+    if(!is.numeric(x[["cholesky_priorhomoscedastic"]]) | !is.matrix(x[["cholesky_priorhomoscedastic"]])){
+      stop("x[['cholesky_priorhomoscedastic']] must be a numeric matrix")
+    }
+  }
+  if(!exists("cholesky_sv_offset", x)){
+    stop("x must be subsettable with x[['cholesky_sv_offset']]")
+  }else{
+    if(!is.numeric(x[["cholesky_sv_offset"]])){
+      stop("x[['cholesky_sv_offset']] must be a numeric vector")
+    }
+  }
+  if(!exists("factor_factors", x)){
+    stop("x must be subsettable with x[['factor_factors']]")
+  }else{
+    if(!is.integer(x[["factor_factors"]])){
+      stop("x[['factor_factors']] must be an integer vector")
+    }
+  }
+  if(!exists("factor_shrinkagepriors", x)){
+    stop("x must be subsettable with x[['factor_shrinkagepriors']]")
+  }else{
+    if(!is.list(x[["factor_shrinkagepriors"]])){
+      stop("x[['factor_shrinkagepriors']] must be a list")
+    }else{
+      if(!exists("a", x[["factor_shrinkagepriors"]])){
+        stop("x[['factor_shrinkagepriors']] must be subsettable with x[['factor_shrinkagepriors']][['a']]")
+      }else{
+        if(!is.numeric(x[["factor_shrinkagepriors"]][["a"]])){
+          stop("x[['factor_shrinkagepriors']][['a']] must be a numeric vector")
+        }
+      }
+      if(!exists("c", x[["factor_shrinkagepriors"]])){
+        stop("x[['factor_shrinkagepriors']] must be subsettable with x[['factor_shrinkagepriors']][['c']]")
+      }else{
+        if(!is.numeric(x[["factor_shrinkagepriors"]][["c"]])){
+          stop("x[['factor_shrinkagepriors']][['c']] must be a numeric vector")
+        }
+      }
+      if(!exists("d", x[["factor_shrinkagepriors"]])){
+        stop("x[['factor_shrinkagepriors']] must be subsettable with x[['factor_shrinkagepriors']][['d']]")
+      }else{
+        if(!is.numeric(x[["factor_shrinkagepriors"]][["d"]])){
+          stop("x[['factor_shrinkagepriors']][['d']] must be a numeric vector")
+        }
+      }
+    }
+  }
+  if(!exists("factor_ngprior", x)){
+    stop("x must be subsettable with x[['factor_ngprior']]")
+  }else{
+    if(!is.logical(x[["factor_ngprior"]])){
+      stop("x[['factor_ngprior']] must be a logical")
+    }
+  }
+  if(!exists("factor_columnwise", x)){
+    stop("x must be subsettable with x[['factor_columnwise']]")
+  }else{
+    if(!is.logical(x[["factor_columnwise"]])){
+      stop("x[['factor_columnwise']] must be a logical")
+    }
+  }
+  if(!exists("factor_facloadtol", x)){
+    stop("x must be subsettable with x[['factor_facloadtol']]")
+  }else{
+    if(!is.numeric(x[["factor_facloadtol"]])){
+      stop("x[['factor_facloadtol']] must be a numeric vector")
+    }
+  }
+  if(!exists("factor_restrinv", x)){
+    stop("x must be subsettable with x[['factor_restrinv']]")
+  }else{
+    if(!is.integer(x[["factor_restrinv"]]) | !is.matrix(x[["factor_restrinv"]])){
+      stop("x[['factor_restrinv']] must be an integer matrix")
+    }
+  }
+  if(!exists("factor_priorhomoskedastic", x)){
+    stop("x must be subsettable with x[['factor_priorhomoskedastic']]")
+  }else{
+    if(!is.numeric(x[["factor_priorhomoskedastic"]]) | !is.matrix(x[["factor_priorhomoskedastic"]])){
+      stop("x[['factor_priorhomoskedastic']] must be a numeric matrix")
+    }
+  }
+  if(!exists("factor_interweaving", x)){
+    stop("x must be subsettable with x[['factor_interweaving']]")
+  }else{
+    if(!is.integer(x[["factor_interweaving"]])){
+      stop("x[['factor_interweaving']] must be an integer vector")
+    }
+  }
+  if(!exists("sv_heteroscedastic", x)){
+    stop("x must be subsettable with x[['sv_heteroscedastic']]")
+  }else{
+    if(!is.logical(x[["sv_heteroscedastic"]])){
+      stop("x[['sv_heteroscedastic']] must be a logical vector")
+    }
+  }
+  if(!exists("sv_priormu", x)){
+    stop("x must be subsettable with x[['sv_priormu']]")
+  }else{
+    if(!is.numeric(x[["sv_priormu"]])){
+      stop("x[['sv_priormu']] must be a numeric vector")
+    }
+  }
+  if(!exists("sv_priorphi", x)){
+    stop("x must be subsettable with x[['sv_priorphi']]")
+  }else{
+    if(!is.numeric(x[["sv_priorphi"]])){
+      stop("x[['sv_priorphi']] must be a numeric vector")
+    }
+  }
+  if(!exists("sv_priorsigma2", x)){
+    stop("x must be subsettable with x[['sv_priorsigma2']]")
+  }else{
+    if(!is.numeric(x[["sv_priorsigma2"]]) | !is.matrix(x[["sv_priorsigma2"]])){
+      stop("x[['sv_priorsigma2']] must be a numeric matrix")
+    }
+  }
+  if(!exists("sv_priorh0", x)){
+    stop("x must be subsettable with x[['sv_priorh0']]")
+  }else{
+    if(!is.numeric(x[["sv_priorh0"]])){
+      stop("x[['sv_priorh0']] must be a numeric vector")
+    }
+  }
+  x
+}
+
 #'Specify prior on Sigma
 #'
 #'Configures prior on the variance-covariance of the VAR.
@@ -670,6 +1021,8 @@ specify_prior_sigma <- function(data=NULL,
                                 quiet = FALSE,
                                 ...){
 
+  prior_sigma_cpp <- new_baysesianVARs_prior_sigma_cpp()
+
   if(is.null(data) & !is.numeric(M)){
     stop("\nEither provide 'data', the data for the VAR to be estimated, or 'M', the dimensionality of the data (number of time series)!\n")
   }
@@ -678,6 +1031,8 @@ specify_prior_sigma <- function(data=NULL,
     stop("\nArgument 'M' must be an integer greater or equal to 2.\n")
   }
   M <- as.integer(M)
+  general_settings <- list(M = M, factor_starttau2 =  matrix(as.numeric(NA), 1,1),
+                           cholesky_U_tol = numeric(1L))
 
   if(!is.null(data)){
     if(ncol(data) != M){
@@ -698,56 +1053,7 @@ specify_prior_sigma <- function(data=NULL,
       stop("type must be either 'factor' or 'cholesky'.")
     }
   }else stop("type must be either 'factor' or 'cholesky'.")
-
-  # placeholder for cpp (cpp function expects a list with all the following elements)
-  # (e.g. even if type is specified as cholesky, cpp function requires the 'factor_list')
-  sv_priormu <- sv_priorphi <- sv_priorh0 <- numeric(1L)
-  sv_priorsigma2 <- matrix(as.numeric(NA),1,1)
-  sv_heteroscedastic <- logical(1L)
-  cholesky_list <- list(
-    #cholesky_heteroscedastic = logical(1L),
-    cholesky_priorhomoscedastic = matrix(as.numeric(NA),1,1),
-    cholesky_U_prior = character(1L),
-    cholesky_U_tol = numeric(1L),
-    ## GL priors
-    cholesky_GL_tol = double(1L),
-    cholesky_a = double(1L),
-    cholesky_b = double(1L),
-    cholesky_c = double(1L),
-    cholesky_GT_vs = double(1L),
-    cholesky_GT_priorkernel = character(1L),
-    cholesky_a_vec = double(1L),
-    cholesky_a_weight = double(1L),
-    cholesky_norm_consts = double(1L),
-    cholesky_c_vec = double(1),
-    cholesky_c_rel_a = logical(1L),
-    cholesky_GT_hyper = logical(1),
-    #DL
-    cholesky_DL_hyper = logical(1L),
-    cholesky_DL_plus = logical(1L),
-    #SSVS
-    cholesky_SSVS_tau0 = double(1L),
-    cholesky_SSVS_tau1 = double(1L),
-    cholesky_SSVS_s_a = double(1L),
-    cholesky_SSVS_s_b = double(1L),
-    cholesky_SSVS_hyper = logical(1L),
-    cholesky_SSVS_p = double(1L),
-    #HM
-    cholesky_lambda_3 = double(1L),
-    cholesky_sv_offset = double(1L))
-  factor_list <- list(factor_factors = integer(1L),
-                      factor_restrinv = matrix(1L,1,1),
-                      factor_ngprior = logical(1L),
-                      factor_columnwise = logical(1L),
-                      factor_shrinkagepriors = list(a = double(1L),
-                                                    c = double(1L),
-                                                    d = double(1L)),
-                      factor_facloadtol = numeric(1L),
-                      factor_interweaving = integer(1L),
-                      #factor_heteroskedastic = logical(1L),
-                      factor_priorhomoskedastic = matrix(as.numeric(NA),1,1),
-                      factor_starttau2 = matrix(as.numeric(NA), 1,1)
-  )
+  prior_sigma_cpp[["type"]] <- type
 
   if(type == "factor"){
     if(!quiet){
@@ -758,12 +1064,12 @@ specify_prior_sigma <- function(data=NULL,
     if (!is.numeric(factor_factors) | factor_factors < 0) {
       stop("Argument 'factor_factors' (number of latent factor_factors) must be a single number >= 0.")
     } else {
-      factor_list$factor_factors <- as.integer(factor_factors)
+      prior_sigma_cpp[["factor_factors"]] <- as.integer(factor_factors)
     }
 
     # error checks for factor_interweaving
     if (is.numeric(factor_interweaving) && length(factor_interweaving) == 1) {
-      factor_list$factor_interweaving <- as.integer(factor_interweaving)
+      prior_sigma_cpp[["factor_interweaving"]] <- as.integer(factor_interweaving)
     } else {
       stop("Argument 'factor_interweaving' must contain a single numeric value.")
     }
@@ -786,8 +1092,7 @@ specify_prior_sigma <- function(data=NULL,
       stop("Setting 'factor_interweaving' to either 1 or 2 and restricting the diagonal elements of the factor loading matrix are not allowed at the same time.")
     }
     # factorstochvol sampler interpretes 0 as restricted and 1 as unrestricted
-    factor_list$factor_restrinv <- matrix(as.integer(!restr), nrow = nrow(restr), ncol = ncol(restr))
-
+    prior_sigma_cpp[["factor_restrinv"]] <- matrix(as.integer(!restr), nrow = nrow(restr), ncol = ncol(restr))
 
     # error checks for 'factor_priorfacloadtype'
     if(length(factor_priorfacloadtype)<=3L & is.character(factor_priorfacloadtype)){
@@ -797,14 +1102,13 @@ specify_prior_sigma <- function(data=NULL,
       }
     }else stop("factor_priorfacloadtype must be either 'rowwiseng' or 'colwiseng' or 'normal'.")
     if (factor_priorfacloadtype == "normal") {
-      #factor_pfl <- 1L
-      factor_list$factor_ngprior <- FALSE
+      prior_sigma_cpp[["factor_ngprior"]] <- FALSE
     } else if (factor_priorfacloadtype == "rowwiseng") {
-      factor_list$factor_ngprior <- TRUE
-      factor_list$factor_columnwise <- FALSE
+      prior_sigma_cpp[["factor_ngprior"]] <- TRUE
+      prior_sigma_cpp[["factor_columnwise"]] <- FALSE
     } else if (factor_priorfacloadtype == "colwiseng") {
-      factor_list$factor_ngprior <- TRUE
-      factor_list$factor_columnwise <- TRUE
+      prior_sigma_cpp[["factor_ngprior"]] <- TRUE
+      prior_sigma_cpp[["factor_columnwise"]] <- TRUE
     }
 
     # error checks for 'factor_priorng'
@@ -842,12 +1146,6 @@ specify_prior_sigma <- function(data=NULL,
         dShrink <- rep(dShrink, factor_factors)
       } else if (factor_priorfacloadtype == "dl") {
         stop("'dl'prior for factorloading is not supported by bayesianVARs!")
-        # factor_pfl <- 4L
-        # factor_starttau2 <- matrix(1, nrow = M, ncol = factor_factors)
-        # aShrink <- factor_priorfacload[1,1]
-        # warning("Only first element of 'priorfacload' is used.'")
-        # cShrink <- NA
-        # dShrink <- NA
       }
     } else {
       if (length(factor_priorfacload) != 1) {
@@ -870,30 +1168,25 @@ specify_prior_sigma <- function(data=NULL,
         dShrink <- rep(dShrink, factor_factors)
       } else if (factor_priorfacloadtype == "dl") {
         stop("'dl' prior for factorloading is not supported by bayesianVARs!")
-        # factor_pfl <- 4L
-        # factor_starttau2 <- matrix(1, nrow = M, ncol = factor_factors)
-        # aShrink <- factor_priorfacload
-        # cShrink <- NA
-        # dShrink <- NA
       }
     }
-    factor_list$factor_shrinkagepriors <- list(a = aShrink,
-                                               c = cShrink,
-                                               d = dShrink)
-    factor_list$factor_starttau2 <- factor_starttau2
+    prior_sigma_cpp[["factor_shrinkagepriors"]] <- list(a = aShrink,
+                                                        c = cShrink,
+                                                        d = dShrink)
+    general_settings[["factor_starttau2"]] <- factor_starttau2
 
     # error checks for 'factor_facloadtol'
     if(factor_facloadtol < 0){
       stop("Argument 'factor_facloadtol' (tolerance for the factor loadings) must be >=0.")
     }
-    factor_list$factor_facloadtol <- factor_facloadtol
+    prior_sigma_cpp[["factor_facloadtol"]] <- factor_facloadtol
 
     # error checks for 'factor_priormu'
     if (!is.numeric(factor_priormu) | length(factor_priormu) != 2) {
       stop("Argument 'factor_priormu' (mean and sd for the Gaussian prior for mu) must be numeric and of length 2.")
     }
     if(any(factor_heteroskedastic==TRUE)){
-      sv_priormu <- factor_priormu
+      prior_sigma_cpp[["sv_priormu"]] <- factor_priormu
     }
 
 
@@ -907,7 +1200,7 @@ specify_prior_sigma <- function(data=NULL,
       stop("Argument 'factor_priorphifac' (shape1 and shape2 parameters for the Beta prior for (phi+1)/2) must be numeric and of length 2.")
     }
     if(any(factor_heteroskedastic==TRUE)){
-      sv_priorphi <- c(factor_priorphiidi, factor_priorphifac)
+      prior_sigma_cpp[["sv_priorphi"]] <- c(factor_priorphiidi, factor_priorphifac)
     }
 
     # error checks for 'factor_priorsigmaidi'
@@ -935,7 +1228,7 @@ specify_prior_sigma <- function(data=NULL,
     factor_priorsigma <- c(factor_priorsigmaidi, factor_priorsigmafac)
     # factorstochvol specifies chi-squared prior, stochvol however is parametrized in gamma:
     if(any(factor_heteroskedastic==TRUE)){
-      sv_priorsigma2 <- cbind(0.5,0.5/factor_priorsigma)
+      prior_sigma_cpp[["sv_priorsigma2"]] <- cbind(0.5,0.5/factor_priorsigma)
     }
 
     # error checks for factor_priorh0idi
@@ -956,7 +1249,7 @@ specify_prior_sigma <- function(data=NULL,
     factor_priorh0fac <- as.numeric(factor_priorh0fac)
     if (any(factor_priorh0fac[!remember] < 0)) stop("Argument 'factor_priorh0fac' must not contain negative values.")
 
-    sv_priorh0 <- c(factor_priorh0idi, factor_priorh0fac)
+    prior_sigma_cpp[["sv_priorh0"]] <- c(factor_priorh0idi, factor_priorh0fac)
 
     # Some error checking for factor_heteroskedastic
     if (length(factor_heteroskedastic) == 1) factor_heteroskedastic <- rep(factor_heteroskedastic, M + factor_factors)
@@ -969,7 +1262,7 @@ specify_prior_sigma <- function(data=NULL,
         if(!quiet){
           cat("\nCannot do deep factor_interweaving if (some) factor_factors are homoskedastic. Setting 'factor_interweaving' to 3.\n")
         }
-        factor_list$factor_interweaving <- 3L
+        prior_sigma_cpp[["factor_interweaving"]] <- 3L
       }
     }
 
@@ -988,8 +1281,12 @@ specify_prior_sigma <- function(data=NULL,
         stop("Argument 'factor_priorhomoskedastic' must be a matrix with positive entries and dimension c(M, 2).")
       }
     }
-    sv_heteroscedastic <- factor_heteroskedastic
-    factor_list$factor_priorhomoskedastic <- as.matrix(factor_priorhomoskedastic)
+    prior_sigma_cpp[["sv_heteroscedastic"]] <- factor_heteroskedastic
+    prior_sigma_cpp[["factor_priorhomoskedastic"]] <- as.matrix(factor_priorhomoskedastic)
+    if(mode(prior_sigma_cpp[["factor_priorhomoskedastic"]]) != "numeric"){
+      # if(factor_heteroscedatic) this is by default NA, therefore we have to enforce numeric
+      mode(prior_sigma_cpp[["factor_priorhomoskedastic"]]) <- "numeric"
+    }
 
   }else if(type == "cholesky"){
 
@@ -1003,7 +1300,7 @@ specify_prior_sigma <- function(data=NULL,
     if(!is.logical(cholesky_heteroscedastic) | length(cholesky_heteroscedastic) > 1L){
       stop("Argument 'cholesky_heteroscedastic' must be a single logical.")
     }
-    sv_heteroscedastic <- rep_len(cholesky_heteroscedastic, M)
+    prior_sigma_cpp[["sv_heteroscedastic"]] <- rep_len(cholesky_heteroscedastic, M)
 
     # error checks for cholesky_priormu
     if(!is.numeric(cholesky_priormu) | length(cholesky_priormu) != 2){
@@ -1015,7 +1312,7 @@ specify_prior_sigma <- function(data=NULL,
                       second element must be posistive.")
     }
     if(cholesky_heteroscedastic){
-      sv_priormu <- cholesky_priormu
+      prior_sigma_cpp[["sv_priormu"]] <- cholesky_priormu
     }
 
 
@@ -1024,7 +1321,7 @@ specify_prior_sigma <- function(data=NULL,
       stop("Argument 'cholesky_priorphi' must be a  strictly positive numeric vector of length 2.")
     }
     if(cholesky_heteroscedastic){
-      sv_priorphi <- cholesky_priorphi
+      prior_sigma_cpp[["sv_priorphi"]] <- cholesky_priorphi
     }
 
     # error checks for cholesky_priorsigma2
@@ -1038,7 +1335,7 @@ specify_prior_sigma <- function(data=NULL,
       stop("Argument 'cholesky_priorsigma2' must be either a  strictly positive numeric vector of length 2 or a matrix of dimension 'c(M,2)'.")
     }
     if(cholesky_heteroscedastic){
-      sv_priorsigma2 <- cholesky_priorsigma2
+      prior_sigma_cpp[["sv_priorsigma2"]] <- cholesky_priorsigma2
     }
 
     # error checks for cholesky_priorh0
@@ -1049,7 +1346,7 @@ specify_prior_sigma <- function(data=NULL,
     if(!(length(cholesky_priorh0) == 1 | length(cholesky_priorh0) == M)){
       stop("Argument 'cholesky_priorh0' must be either of length 1 or M.")
     }
-    sv_priorh0 <- rep_len(cholesky_priorh0,M)
+    prior_sigma_cpp[["sv_priorh0"]] <- rep_len(cholesky_priorh0,M)
 
     # error checks for expert_sv_offset
     if(length(expert_sv_offset)>1L){
@@ -1061,7 +1358,7 @@ specify_prior_sigma <- function(data=NULL,
       stop("Argument 'expert_sv_offset' must be greater than zero.")
     }
 
-    cholesky_list$cholesky_sv_offset <- rep_len(expert_sv_offset, M)
+    prior_sigma_cpp[["cholesky_sv_offset"]] <- rep_len(expert_sv_offset, M)
 
     # error checks cholesky_priorhomoscedastic
     if(!cholesky_heteroscedastic){
@@ -1091,20 +1388,20 @@ specify_prior_sigma <- function(data=NULL,
         stop(ph_error)
       }
     }
-    cholesky_list$cholesky_priorhomoscedastic <- as.matrix(cholesky_priorhomoscedastic)
+    prior_sigma_cpp[["cholesky_priorhomoscedastic"]] <- as.matrix(cholesky_priorhomoscedastic)
 
     # error checks for cholesky_U_prior
     cholesky_U_prior <- cholesky_U_prior[1]
     if(!(cholesky_U_prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "NG", "HS"))){
       stop("Argument 'cholesky_U_prior' must be one of 'DL', 'SSVS', 'HMP' or 'normal'. \n")
     }
-    cholesky_list$cholesky_U_prior <- cholesky_U_prior
+    prior_sigma_cpp[["cholesky_U_prior"]] <- cholesky_U_prior
 
     # error checks for 'cholesky_U_tol'
     if(cholesky_U_tol < 0){
-      stop("Argument 'cholesky_U_tol' (tolerance for the factor loadings) must be >=0.")
+      stop("Argument 'cholesky_U_tol' (tolerance for the contemporary coefficients) must be >=0.")
     }
-    cholesky_list$cholesky_U_tol <- cholesky_U_tol
+    general_settings[["cholesky_U_tol"]] <- cholesky_U_tol
 
     if(cholesky_U_prior == "DL"){
       text <- c("Argument 'cholesky_DL_a' must be either a single positive numeric or '1/n'. \n ")
@@ -1115,62 +1412,48 @@ specify_prior_sigma <- function(data=NULL,
         }
       }
 
-      cholesky_list$cholesky_U_prior <- cholesky_U_prior
-      cholesky_list$cholesky_a <- cholesky_DL_a
-      cholesky_list$cholesky_GL_tol <- cholesky_DL_tol
+      prior_sigma_cpp[["cholesky_GL_tol"]] <- cholesky_DL_tol
 
-      if(is.numeric(cholesky_list$cholesky_a) & length(cholesky_list$cholesky_a) == 1L){
-        cholesky_list$cholesky_DL_hyper <- FALSE
-      }else if(is.character(cholesky_list$cholesky_a)) {
-        if(cholesky_list$cholesky_a == "1/n"){
-          cholesky_list$cholesky_a <- 1/n_U
-          cholesky_list$cholesky_DL_hyper <- FALSE
+      if(is.numeric(cholesky_DL_a) & length(cholesky_DL_a) == 1L){
+        prior_sigma_cpp[["cholesky_a"]] <- cholesky_DL_a
+        prior_sigma_cpp[["cholesky_DL_hyper"]] <- FALSE
+      }else if(is.character(cholesky_DL_a)) {
+        if(cholesky_DL_a == "1/n"){
+          prior_sigma_cpp[["cholesky_a"]] <- 1/n_U
+          prior_sigma_cpp[["cholesky_DL_hyper"]] <- FALSE
         }else stop(text)
 
-      }else if(is.matrix(cholesky_list$cholesky_a)){
+      }else if(is.matrix(cholesky_DL_a)){
 
-        if(ncol(cholesky_list$cholesky_a)!=2){
+        if(ncol(cholesky_DL_a)!=2){
           stop("If you specify 'DL_a' as a matrix, the first column represents
              the support points and the second column the weights of a discrete
              hyperprior on 'DL_a' !")
         }
 
-        cholesky_list$cholesky_DL_hyper <- TRUE
-        cholesky_list$cholesky_a_vec <- cholesky_list$cholesky_a[,1]
-        cholesky_list$cholesky_a_weight <- cholesky_list$cholesky_a[,2]
+        prior_sigma_cpp[["cholesky_DL_hyper"]] <- TRUE
+        prior_sigma_cpp[["cholesky_a_vec"]] <- cholesky_DL_a[,1]
+        prior_sigma_cpp[["cholesky_a_weight"]] <- cholesky_DL_a[,2]
         # precompute log normalizing constants of hyperprior
-        cholesky_list$cholesky_norm_consts <- 0.5^cholesky_list$cholesky_a_vec -
-          lgamma(cholesky_list$cholesky_a_vec)
-        cholesky_list$cholesky_a <- cholesky_list$cholesky_a_vec[1] #initial value
+        prior_sigma_cpp[["cholesky_norm_consts"]] <- 0.5^prior_sigma_cpp[["cholesky_a_vec"]] -
+          lgamma(prior_sigma_cpp[["cholesky_a_vec"]])
+        prior_sigma_cpp[["cholesky_a"]] <- prior_sigma_cpp[["cholesky_a_vec"]][1] #initial value
 
       }
-      # else if(cholesky_list$cholesky_a == "hyperprior"){
-      #   stop("'cholesky_a' cannot be 'hyperperior' anymore.")
-      # priorSigma_in$cholesky_DL_hyper <- TRUE
-      #
-      # grid_L <- 1000
-      # priorSigma_in$cholesky_a_vec <- seq(1/(n_U),1/2,length.out = grid_L)
-      # #priorSigma_in$cholesky_prep1 <- priorSigma_in$cholesky_b_vec - 1
-      # #priorSigma_in$cholesky_prep2 <- lgamma(n_U*priorSigma_in$cholesky_b_vec) - n_U*lgamma(priorSigma_in$cholesky_b_vec)
-      # priorSigma_in$cholesky_norm_consts <- 0.5^priorSigma_in$cholesky_a_vec -
-      #   lgamma(priorSigma_in$cholesky_a_vec)
-      # priorSigma_in$cholesky_a_weight <- rep(1,grid_L)
-      # priorSigma_in$cholesky_a <- 1/2 # initial value
-      # }
 
-      if(!exists("cholesky_DL_plus", optionals) || base::isFALSE(optionals$cholesky_DL_plus)){
-        cholesky_list$cholesky_DL_plus <- FALSE
-      }else if(optionals$cholesky_DL_plus){
-        cholesky_list$cholesky_DL_plus <- TRUE
+      if(!exists("cholesky_DL_plus", optionals) || base::isFALSE(optionals[["cholesky_DL_plus"]])){
+        prior_sigma_cpp[["cholesky_DL_plus"]] <- FALSE
+      }else if(optionals[["cholesky_DL_plus"]]){
+        prior_sigma_cpp[["cholesky_DL_plus"]] <- TRUE
         if(!exists("DL_b", optionals)){
-          cholesky_list$cholesky_b <- 0.5
+          prior_sigma_cpp[["cholesky_b"]] <- 0.5
         }else{
-          cholesky_list$cholesky_b <- cholesky_list$cholesky_DL_b
+          prior_sigma_cpp[["cholesky_b"]] <- optionals[["cholesky_DL_b"]]
         }
         if(!exists("DL_c", optionals)){
-          cholesky_list$cholesky_c <- 0.5*cholesky_list$cholesky_a
+          prior_sigma_cpp[["cholesky_c"]] <- 0.5*optionals[["cholesky_a"]]
         }else{
-          cholesky_list$cholesky_c <- cholesky_list$cholesky_DL_c
+          prior_sigma_cpp[["cholesky_c"]] <- optionals[["cholesky_DL_c"]]
         }
       }else{
         stop("Never heard of DL_plus?")
@@ -1178,106 +1461,91 @@ specify_prior_sigma <- function(data=NULL,
 
     }else if(cholesky_U_prior == "R2D2"){
 
-      cholesky_list$cholesky_U_prior <- "GT"
-      cholesky_list$cholesky_b <- cholesky_R2D2_b
-      cholesky_list$cholesky_a <- cholesky_R2D2_a
-      cholesky_list$cholesky_c = "0.5*a"
-      cholesky_list$cholesky_GT_vs <- 1/2
-      cholesky_list$cholesky_GT_priorkernel <- "exponential"
-      cholesky_list$cholesky_GL_tol <- cholesky_R2D2_tol
+      prior_sigma_cpp[["cholesky_U_prior"]] <- "GT"
+      prior_sigma_cpp[["cholesky_a"]] <- cholesky_R2D2_a
+      prior_sigma_cpp[["cholesky_b"]] <- cholesky_R2D2_b
+      prior_sigma_cpp[["cholesky_c"]] <- "0.5*a"
+      prior_sigma_cpp[["cholesky_GT_vs"]] <- 1/2
+      prior_sigma_cpp[["cholesky_GT_priorkernel"]] <- "exponential"
+      prior_sigma_cpp[["cholesky_GL_tol"]] <- cholesky_R2D2_tol
 
     }else if(cholesky_U_prior == "NG"){
 
-      cholesky_list$cholesky_U_prior <- "GT"
-      cholesky_list$cholesky_a <- cholesky_NG_a
-      cholesky_list$cholesky_b <- cholesky_NG_b
-      cholesky_list$cholesky_c <- cholesky_NG_c
-      cholesky_list$cholesky_GT_vs <- 1
-      cholesky_list$cholesky_GT_priorkernel <- "normal"
-      cholesky_list$cholesky_GL_tol <- cholesky_NG_tol
+      prior_sigma_cpp[["cholesky_U_prior"]] <- "GT"
+      prior_sigma_cpp[["cholesky_a"]] <- cholesky_NG_a
+      prior_sigma_cpp[["cholesky_b"]] <- cholesky_NG_b
+      prior_sigma_cpp[["cholesky_c"]] <- cholesky_NG_c
+      prior_sigma_cpp[["cholesky_GT_vs"]] <- 1
+      prior_sigma_cpp[["cholesky_GT_priorkernel"]] <- "normal"
+      prior_sigma_cpp[["cholesky_GL_tol"]] <- cholesky_NG_tol
 
     }else if(cholesky_U_prior == "SSVS"){
       if(!(cholesky_SSVS_c0>0 & cholesky_SSVS_c1>0)){
         stop("'cholesky_SSVS_c0' and 'cholesky_SSVS_c1' must be positive numeric values.")
       }
       if(length(cholesky_SSVS_p)==2L){
-        cholesky_SSVS_sa <- cholesky_SSVS_p[1]
-        cholesky_SSVS_sb <- cholesky_SSVS_p[2]
+        prior_sigma_cpp[["cholesky_SSVS_s_a"]] <- cholesky_SSVS_p[1]
+        prior_sigma_cpp[["cholesky_SSVS_s_b"]] <- cholesky_SSVS_p[2]
         cholesky_SSVS_p <- 0.5 # initial value
         cholesky_SSVS_hyper <- TRUE
       }else if(length(cholesky_SSVS_p)==1L){
-        cholesky_SSVS_p <- cholesky_SSVS_p
-        cholesky_SSVS_sa <- cholesky_SSVS_sb <- NA
         cholesky_SSVS_hyper <- FALSE
       }else{
         stop("cholesky_SSVS_p must be either numeric vector of length 1L or 2L!")
       }
-      cholesky_list$cholesky_U_prior <- cholesky_U_prior
-      # cholesky_list$cholesky_SSVS_c0 <- cholesky_SSVS_c0
-      # cholesky_list$cholesky_SSVS_c1 <- cholesky_SSVS_c1
-      cholesky_list$cholesky_SSVS_tau0 <- rep(cholesky_SSVS_c0, n_U)
-      cholesky_list$cholesky_SSVS_tau1 <- rep(cholesky_SSVS_c1, n_U)
-      cholesky_list$cholesky_SSVS_s_a <- cholesky_SSVS_sa
-      cholesky_list$cholesky_SSVS_s_b <- cholesky_SSVS_sb
-      cholesky_list$cholesky_SSVS_p <- rep_len(cholesky_SSVS_p, n_U)
-      cholesky_list$cholesky_SSVS_hyper <- cholesky_SSVS_hyper
-
+      prior_sigma_cpp[["cholesky_SSVS_tau0"]] <- rep(cholesky_SSVS_c0, n_U)
+      prior_sigma_cpp[["cholesky_SSVS_tau1"]] <- rep(cholesky_SSVS_c1, n_U)
+      prior_sigma_cpp[["cholesky_SSVS_p"]] <- rep_len(cholesky_SSVS_p, n_U)
+      prior_sigma_cpp[["cholesky_SSVS_hyper"]] <- cholesky_SSVS_hyper
 
     }else if(cholesky_U_prior == "normal"){
       if(!(all(cholesky_normal_sds>0))){
         stop("'cholesky_normal_sds' must be positive. \n")
       }
-      cholesky_list$cholesky_U_prior <- cholesky_U_prior
-      cholesky_list$cholesky_V_i <- rep_len(cholesky_normal_sds^2, n_U) # bvar expects variances!
+      prior_sigma_cpp[["cholesky_V_i"]] <- rep_len(cholesky_normal_sds^2, n_U) # bvar expects variances!
 
     }else if(cholesky_U_prior == "HMP"){
 
-      cholesky_list$cholesky_U_prior <- cholesky_U_prior
-      cholesky_list$cholesky_lambda_3 <- cholesky_HMP_lambda3
-
-    }else if(cholesky_U_prior == "HS"){
-
-      cholesky_list$cholesky_U_prior <- cholesky_U_prior
+      prior_sigma_cpp[["cholesky_lambda_3"]] <- cholesky_HMP_lambda3
 
     }
 
-    if(cholesky_list$cholesky_U_prior == "GT"){
+    if(prior_sigma_cpp[["cholesky_U_prior"]] == "GT"){
 
-      if(is.matrix(cholesky_list$cholesky_a)){
-        if(ncol(cholesky_list$cholesky_a)==2){
-          cholesky_list$cholesky_GT_hyper <- TRUE
-          cholesky_list$cholesky_a_vec <- cholesky_list$cholesky_a[,1]
-          cholesky_list$cholesky_a_weight <- cholesky_list$cholesky_a[,2]
-          cholesky_list$cholesky_norm_consts <- lgamma(cholesky_list$cholesky_a_vec)
-          cholesky_list$cholesky_a <- sample(cholesky_list$cholesky_a_vec, 1, replace = TRUE, prob = cholesky_list$cholesky_a_weight) # initialize a
-        }else if(ncol(cholesky_list$cholesky_a)>2){
+      if(is.matrix(prior_sigma_cpp[["cholesky_a"]])){
+        if(ncol(prior_sigma_cpp[["cholesky_a"]])==2){
+          prior_sigma_cpp[["cholesky_GT_hyper"]] <- TRUE
+          prior_sigma_cpp[["cholesky_a_vec"]] <- prior_sigma_cpp[["cholesky_a"]][,1]
+          prior_sigma_cpp[["cholesky_a_weight"]] <- prior_sigma_cpp[["cholesky_a"]][,2]
+          prior_sigma_cpp[["cholesky_norm_consts"]] <- lgamma(prior_sigma_cpp[["cholesky_a_vec"]])
+          prior_sigma_cpp[["cholesky_a"]] <- sample(prior_sigma_cpp[["cholesky_a_vec"]], 1, replace = TRUE, prob = prior_sigma_cpp[["cholesky_a_weight"]]) # initialize a
+        }else if(ncol(prior_sigma_cpp[["cholesky_a"]])>2){
           stop("The easiest way to specify 'R2D2_a', 'NG_a' or 'GT_a' is a single postive number!")
         }else{
-          cholesky_list$cholesky_a <- as.vector(cholesky_list$cholesky_a)
+          prior_sigma_cpp[["cholesky_a"]] <- as.vector(prior_sigma_cpp[["cholesky_a"]])
         }
-      }else if(is.null(dim(cholesky_list$cholesky_a))){
-        cholesky_list$cholesky_GT_hyper <- FALSE
-        cholesky_list$cholesky_a <- cholesky_list$cholesky_a
+      }else if(is.null(dim(prior_sigma_cpp[["cholesky_a"]]))){
+        prior_sigma_cpp[["cholesky_GT_hyper"]] <- FALSE
       }
 
-      if(is.character(cholesky_list$cholesky_c)){
-        cholesky_list$cholesky_c_rel_a <- TRUE # then c is always proportion of a (e.g. for R2D2 c=0.5a)
-        mya <- cholesky_list$cholesky_a
-        myc <- gsub("a","mya", cholesky_list$cholesky_c)
+      if(is.character(prior_sigma_cpp[["cholesky_c"]])){
+        prior_sigma_cpp[["cholesky_c_rel_a"]] <- TRUE # then c is always proportion of a (e.g. for R2D2 c=0.5a)
+        mya <- prior_sigma_cpp[["cholesky_a"]]
+        myc <- gsub("a","mya", prior_sigma_cpp[["cholesky_c"]])
         cholesky_c <- eval(str2lang(myc)) # initial value
-        if(base::isTRUE(cholesky_list$cholesky_GT_hyper)){
-          myc2 <- gsub("a","cholesky_list$cholesky_a_vec", cholesky_list$cholesky_c) #cholesky_list$cholesky_c is still character
-          cholesky_list$cholesky_c_vec <- eval(str2lang(myc2))
+        if(base::isTRUE(prior_sigma_cpp[["cholesky_GT_hyper"]])){
+          myc2 <- gsub("a","prior_sigma_cpp$cholesky_a_vec", prior_sigma_cpp[["cholesky_c"]]) #cholesky_list$cholesky_c is still character
+          prior_sigma_cpp[["cholesky_c_vec"]] <- eval(str2lang(myc2))
         }
-        cholesky_list$cholesky_c <- cholesky_c # initial value to cholesky_list
-      }else if(is.numeric(cholesky_list$cholesky_c)){
-        cholesky_list$cholesky_c_rel_a <- FALSE
+        prior_sigma_cpp[["cholesky_c"]] <- cholesky_c # initial value to cholesky_list
+      }else if(is.numeric(prior_sigma_cpp[["cholesky_c"]])){
+        prior_sigma_cpp[["cholesky_c_rel_a"]] <- FALSE
       }
 
     }
   }
-  sv_list <- list(M=M, sv_priormu = sv_priormu, sv_priorphi = sv_priorphi, sv_priorsigma2 = sv_priorsigma2, sv_priorh0 = sv_priorh0, sv_heteroscedastic = sv_heteroscedastic)
-  out <- c("type"=type, sv_list, factor_list, cholesky_list)
+  prior_sigma_cpp <- validate_baysesianVARs_prior_sigma(prior_sigma_cpp)
+  out <- list(general_settings = general_settings, prior_sigma_cpp = prior_sigma_cpp)
   class(out) <- "bayesianVARs_prior_sigma"
   return(out)
 }
@@ -1317,7 +1585,10 @@ new_baysesianVARs_prior_phi_cpp <- function(){
 }
 
 validate_baysesianVARs_prior_phi_cpp <- function(x){
-  if(!is.list(x)) stop()
+  if(!is.list(x)) stop("x must be a list object")
+  if(!inherits(x, "bayesianVARs_prior_phi_cpp")){
+    stop("x must be of class 'bayesianVARs_prior_phi_cpp'")
+  }
   if(!exists("prior", x)){
     stop("x must be subsettable with x[['prior']]")
   }else{
@@ -1776,17 +2047,22 @@ specify_prior_phi <- function(data = NULL,
     if(is.vector(priormean)){
       if(length(priormean)!=M) stop("\n'length(priormean)' does not equal 'M'.\n")
       priormean <- as.vector(priormean)
+      PHI0 <- matrix(0, K, M)
+      PHI0[1:M, 1:M] <- diag(priormean)
     }
     if(is.matrix(priormean)){
       if(ncol(priormean)!=M) stop("\n'ncol(priormean)' does not equal 'M'!\n")
       if(nrow(priormean)!=K) stop("\n'nrow(priormean)' does not equal 'lags*M'!\n")
+      PHI0 <- priormean
     }
   }else if(length(priormean) == 1L){
     priormean <- rep(priormean, M)
+    PHI0 <- matrix(0, K, M)
+    PHI0[1:M, 1:M] <- diag(priormean)
   }
 
   # grouping_possible <- prior %in% c("DL", "HS", "SSVS", "NG", "R2D2")
-  general_settings <- list(M = M, lags = lags, priormean = priormean, PHI_tol = PHI_tol,
+  general_settings <- list(M = M, lags = lags, PHI0 = PHI0, PHI_tol = PHI_tol,
                            global_grouping = global_grouping, i_mat = i_mat,
                            SSVS_semiautomatic = logical(0L))
 
