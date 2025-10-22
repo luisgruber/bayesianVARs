@@ -14,6 +14,8 @@ specify_structural_restrictions(
 )
 }
 \arguments{
+\item{x}{An object of type \code{bayesianVARs_bvar}.}
+
 \item{restrictions_facload}{an M times r matrix of restrictions on the factor loadings.
 This is equivalent to the instantaneous effects of the factor shocks.
 Can only be used, if the factor decomposition for sigma was specified.}
@@ -48,7 +50,29 @@ All \code{restrictions_*} entries have following meaning
 }
 
 The structural VAR(p) model is of the following form: \deqn{\boldsymbol{y}^\prime_t \boldsymbol{B}_0
-= \boldsymbol{x}^\prime_t\boldsymbol{Phi} \boldsymbol{B}_0 + \boldsymbol{omega}^\prime_t}
+= \boldsymbol{x}^\prime_t\boldsymbol{\Phi} \boldsymbol{B}_0 + \boldsymbol{\omega}^\prime_t}
+}
+\examples{
+train_data <- 100 * usmacro_growth[,c("GDPC1", "GDPCTPI", "GS1", "M2REAL", "CPIAUCSL")]
+prior_sigma <- specify_prior_sigma(M=ncol(train_data), type="cholesky", cholesky_heteroscedastic=FALSE)
+mod <- bvar(train_data, lags=5L, draws=3000, prior_sigma=prior_sigma)
+
+structural_restrictions <- specify_structural_restrictions(
+ mod,
+ restrictions_B0=rbind(
+   c(1 ,NA,0 ,NA,NA),
+   c(0 ,1 ,0 ,NA,NA),
+   c(0 ,NA,1 ,NA,NA),
+   c(0 ,0 ,NA,1 ,NA),
+   c(0 ,0 ,0 ,0 ,1 )
+ )
+)
+irf_structural <- irf(
+ mod, ahead=8,
+ structural_restrictions=structural_restrictions
+)
+plot(irf_structural)
+
 }
 \seealso{
 \code{\link{irf}}, \code{\link{extract_B0}}, \code{\link{specify_prior_sigma}}

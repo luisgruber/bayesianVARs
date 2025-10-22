@@ -14,7 +14,7 @@ irf(
 )
 }
 \arguments{
-\item{x}{An object of type \code{\link{bayesianVARs_bvar}}.}
+\item{x}{An object of type \code{bayesianVARs_bvar}.}
 
 \item{ahead}{maximum number of time horizons.}
 
@@ -54,7 +54,6 @@ If the Cholesky model was used, then the number of shocks is equal to the
 number of variables.
 }
 \examples{
-```{r}
 train_data <- 100 * usmacro_growth[,c("GDPC1", "GDPCTPI", "GS1", "M2REAL", "CPIAUCSL")]
 prior_sigma <- specify_prior_sigma(M=ncol(train_data), type="cholesky", cholesky_heteroscedastic=FALSE)
 mod <- bvar(train_data, lags=5L, draws=3000, prior_sigma=prior_sigma)
@@ -74,7 +73,6 @@ irf_structural <- irf(
  structural_restrictions=structural_restrictions
 )
 plot(irf_structural)
-```
 
 }
 \references{
