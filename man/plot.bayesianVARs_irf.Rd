@@ -8,7 +8,7 @@
   x,
   vars = "all",
   quantiles = c(0.05, 0.25, 0.5, 0.75, 0.95),
-  default_hair_color = adjustcolor("red", alpha.f = 0.01),
+  default_hair_color = "#FF000003",
   true_irf = NULL,
   ...
 )

@@ -57,7 +57,7 @@ mspe_decomposition <- function(ir) {
 #'
 #' @examples
 #'train_data <- 100 * usmacro_growth[,c("GDPC1", "GDPCTPI", "GS1", "M2REAL", "CPIAUCSL")]
-#'prior_sigma <- specify_prior_sigma(M=ncol(train_data), type="cholesky", cholesky_heteroscedastic=FALSE)
+#'prior_sigma <- specify_prior_sigma(train_data, type="cholesky", cholesky_heteroscedastic=FALSE)
 #'mod <- bvar(train_data, lags=5L, draws=3000, prior_sigma=prior_sigma)
 #'
 #'structural_restrictions <- specify_structural_restrictions(
@@ -123,6 +123,11 @@ find_rotation <- function(
 ) {
 	stopifnot(length(t) == 1)
 	stopifnot(solver %in% c("randomized", "lp"))
+	if (solver == "lp") {
+	  if (!requireNamespace("lpSolveAPI", quietly = TRUE)) {
+	    stop("Package \"lpSolveAPI\" is required for LP solver option.")
+	  }
+	}
 	stopifnot(randomized_max_rotations_per_sample > 0)
 	if (all(lengths(structural_restrictions) == 0)) {
 		stop("No restrictions specified")
@@ -181,7 +186,7 @@ find_rotation <- function(
 #'
 #' @examples
 #'train_data <- 100 * usmacro_growth[,c("GDPC1", "GDPCTPI", "GS1", "M2REAL", "CPIAUCSL")]
-#'prior_sigma <- specify_prior_sigma(M=ncol(train_data), type="cholesky", cholesky_heteroscedastic=FALSE)
+#'prior_sigma <- specify_prior_sigma(train_data, type="cholesky", cholesky_heteroscedastic=FALSE)
 #'mod <- bvar(train_data, lags=5L, draws=3000, prior_sigma=prior_sigma)
 #'
 #'structural_restrictions <- specify_structural_restrictions(
@@ -281,7 +286,7 @@ irf <- function(x, ahead=8, structural_restrictions=NULL, shocks=NULL, hairy=FAL
 }
 
 #' @export
-print.bayesianVARs_irf <- function(x) {
+print.bayesianVARs_irf <- function(x, ...) {
 	d <- dim(x)
 	cat(
 		"Impulse responses of",

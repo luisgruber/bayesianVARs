@@ -31,13 +31,13 @@ Imports:
     scales,
     stats,
     stochvol (>= 3.0.3),
-    utils,
-    lpSolveAPI
+    utils
 Suggests:
     coda,
     knitr,
     rmarkdown,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    lpSolveAPI
 LinkingTo: 
     factorstochvol,
     Rcpp,
