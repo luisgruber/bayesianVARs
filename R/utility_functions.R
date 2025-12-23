@@ -337,10 +337,35 @@ fitted.bayesianVARs_bvar <- function(object, error_term = TRUE, ...){
   out
 }
 
+#' Extract Model Residuals
+#'
+#' Extract model residuals, defined as the difference between the observed
+#' time-series and the in-sample predictions of the VAR model. Because
+#' in-sample prediction is subject to uncertainty of the VAR parameter
+#' estimates, this uncertainty carries over to the model residuals.
+#'
+#' @param object A `bayesianVARs_bvar` object estimated via [bvar()].
+#' @param ... Passed to [fitted.bayesianVARs_bvar()].
+#' @return An object of class `bayesianVARs_fitted`.
 #' @export
+#' @seealso [`fitted.bayesianVARs_bvar`]
+#' @examples
+#' # Access a subset of the usmacro_growth dataset
+#' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
+#'
+#' # Estimate a model
+#' mod <- bvar(data, sv_keep = "all", quiet = TRUE)
+#'
+#' resids <- residuals(mod)
+#' plot(resids)
 residuals.bayesianVARs_bvar <- function(object, ...) {
-	yh <- fitted(object)
-	yh$fitted - rep(object$Y, object$config$draws)
+	yh <- fitted(object, ...)
+	out <- list(
+	  fitted = yh$fitted - rep(object$Y, object$config$draws),
+	  Yraw = array(0, dim = dim(object$Yraw), dimnames = dimnames(object$Yraw))
+	)
+	class(out) <- "bayesianVARs_fitted"
+	out
 }
 
 # Functions for prior configuration ---------------------------------------

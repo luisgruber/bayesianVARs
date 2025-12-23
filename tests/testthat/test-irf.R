@@ -22,7 +22,7 @@ choices_sigma_type <- list(
 		restrictions_B0 = restrictions_B0,
   		restrictions_facload = NULL,
   		test_restrictions = function(result) {
-  			B0 <- extract_B0(result)
+  			B0 <- extractB0(result)
   			zeros <- rep(0, dim(B0)[3])
   			for (i in nrow(restrictions_B0)) for (j in ncol(restrictions_B0)) {
   				if (is.na(restrictions_B0[i,j])) {

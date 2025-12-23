@@ -58,7 +58,7 @@ mspe_decomposition <- function(ir) {
 #' @examples
 #'train_data <- 100 * usmacro_growth[,c("GDPC1", "GDPCTPI", "GS1", "M2REAL", "CPIAUCSL")]
 #'prior_sigma <- specify_prior_sigma(train_data, type="cholesky", cholesky_heteroscedastic=FALSE)
-#'mod <- bvar(train_data, lags=5L, draws=3000, prior_sigma=prior_sigma)
+#'mod <- bvar(train_data, lags=5L, prior_sigma=prior_sigma)
 #'
 #'structural_restrictions <- specify_structural_restrictions(
 #'  mod,
@@ -76,7 +76,7 @@ mspe_decomposition <- function(ir) {
 #')
 #'plot(irf_structural)
 #'
-#' @seealso [`irf`], [`extract_B0`], [`specify_prior_sigma`]
+#' @seealso [`irf`], [`extractB0`], [`specify_prior_sigma`]
 #' @author Stefan Haan \email{sthaan@edu.aau.at}
 #' @export
 specify_structural_restrictions <- function(
@@ -187,7 +187,7 @@ find_rotation <- function(
 #' @examples
 #'train_data <- 100 * usmacro_growth[,c("GDPC1", "GDPCTPI", "GS1", "M2REAL", "CPIAUCSL")]
 #'prior_sigma <- specify_prior_sigma(train_data, type="cholesky", cholesky_heteroscedastic=FALSE)
-#'mod <- bvar(train_data, lags=5L, draws=3000, prior_sigma=prior_sigma)
+#'mod <- bvar(train_data, lags=5L, prior_sigma=prior_sigma)
 #'
 #'structural_restrictions <- specify_structural_restrictions(
 #'  mod,
@@ -206,7 +206,7 @@ find_rotation <- function(
 #'plot(irf_structural)
 #'
 #' @export
-#' @seealso [`specify_structural_restrictions`], [`extract_B0`]
+#' @seealso [`specify_structural_restrictions`], [`extractB0`]
 #' @references Arias, J. and Rubio-Ramírez, J. and Waggoner, D. (2014).
 #'  Inference Based on SVARs Identified with Sign and Zero Restrictions: Theory and Applications.
 #'  \emph{FRB Atlanta Working Paper Series}, \doi{10.2139/ssrn.2580264}.
@@ -303,7 +303,40 @@ print.bayesianVARs_irf <- function(x, ...) {
 #' @export
 #' @seealso [`specify_structural_restrictions`]
 #' @author Stefan Haan \email{sthaan@edu.aau.at}
-extract_B0 <- function(x) {
+#' @examples
+#'train_data <- 100 * usmacro_growth[,c("GDPC1", "GDPCTPI", "GS1", "M2REAL", "CPIAUCSL")]
+#'prior_sigma <- specify_prior_sigma(train_data, type="cholesky", cholesky_heteroscedastic=FALSE)
+#'mod <- bvar(train_data, lags=5L, prior_sigma=prior_sigma)
+#'
+#'structural_restrictions <- specify_structural_restrictions(
+#'  mod,
+#'  restrictions_B0=rbind(
+#'    c(1 ,NA,0 ,NA,NA),
+#'    c(0 ,1 ,0 ,NA,NA),
+#'    c(0 ,NA,1 ,NA,NA),
+#'    c(0 ,0 ,NA,1 ,NA),
+#'    c(0 ,0 ,0 ,0 ,1 )
+#'  )
+#')
+#'irf_structural <- irf(
+#'  mod, ahead=8,
+#'  structural_restrictions=structural_restrictions
+#')
+#'
+#'B0 <- extractB0(irf_structural)
+#'
+#'# Visually check that all restrictions on B0 have been satisfied
+#'par(mfrow=c(nrow(B0), ncol(B0)))
+#'for (i in 1:nrow(B0))
+#'for (j in 1:ncol(B0)) {
+#'  hist(
+#'    B0[i,j,],
+#'    xlim=range(0, B0),
+#'    main = paste0("Posterior B0[", i, ",", j,"]")
+#'  )
+#'  abline(v=0, col=2, lwd=2)
+#'}
+extractB0 <- function(x) {
 	if (ncol(x) != nrow(x)) {
 		stop("IRFs must have an equal number of variables and shocks")
 	}
