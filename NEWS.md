@@ -1,5 +1,10 @@
 # bayesianVARs (development version)
 
+* Underlying 'cpp' functions of bvar(), predict() and vcov() now return Rcpp objects instead of arma objects. Efficiency gains only measurable in huge dimensions!
+* new additional unit tests (bayesianVARs/test/testthat)
+* internal restructuring of specify_prior_phi() and specify_prior_sigma(), for users of bayesianVARs nothing changes
+* Updated references in DESCRIPTION, vignette and function documentations.
+
 # bayesianVARs 0.1.5
 
 * Bug fix which makes estimation possible of a VAR with factor stochastic volatility structure on the errors with the restriction that the loadings matrix has zeros above the diagonal. Thanks to Stefan Haan for reporting the bug.

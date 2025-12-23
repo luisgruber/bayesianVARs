@@ -178,7 +178,7 @@ void Sigma_pred_uncond(arma::mat& Sigma_large,
 }
 
 // [[Rcpp::export]]
-arma::cube predh(const arma::mat& logvar_T, const arma::ivec& ahead,
+Rcpp::NumericVector predh(const arma::mat& logvar_T, const arma::ivec& ahead,
                 const int& each, const arma::mat& sv_mu,
                 const arma::mat& sv_phi, const arma::mat& sv_sigma) {
 
@@ -190,7 +190,9 @@ arma::cube predh(const arma::mat& logvar_T, const arma::ivec& ahead,
   arma::mat sigma2_pred(arma::size(sv_mu), arma::fill::zeros);
   arma::mat mu_pred(arma::size(sv_mu));
 
-  arma::cube h_pred(ahead.n_elem, M, nsave);
+  Rcpp::NumericVector h_pred_rcpp(ahead.n_elem * M *nsave);
+  h_pred_rcpp.attr("dim") = Rcpp::Dimension(ahead.n_elem, M, nsave);
+  arma::cube h_pred(h_pred_rcpp.begin(), ahead.n_elem, M, nsave, false);
 
   int counter = 0;
   for(int f=0; f<max_ahead; ++f){
@@ -206,7 +208,7 @@ arma::cube predh(const arma::mat& logvar_T, const arma::ivec& ahead,
       counter++;
     }
   }
-  return h_pred;
+  return h_pred_rcpp;
 }
 
 
@@ -242,10 +244,16 @@ Rcpp::List out_of_sample(const int& each,
   factors += -M;
 
   // storage for predictions
-  arma::cube predictions(simulate_predictive ? ahead_length : 0, simulate_predictive ? M : 0, simulate_predictive ? nsave : 0);
-  arma::mat LPL_draws(LPL ? ahead_length : 0, LPL ? nsave : 0);
-  arma::cube PL_univariate_draws(LPL ? ahead_length : 0,LPL ? M : 0 ,LPL ? nsave : 0);
-  arma::mat LPL_sub_draws(LPL_subset ? ahead_length : 0, LPL_subset ? nsave : 0);
+  Rcpp::NumericVector predictions_rcpp((simulate_predictive ? ahead_length : 0) * (simulate_predictive ? M : 0) * (simulate_predictive ? nsave : 0));
+  predictions_rcpp.attr("dim") = Rcpp::Dimension(simulate_predictive ? ahead_length : 0, simulate_predictive ? M : 0, simulate_predictive ? nsave : 0);
+  arma::cube predictions(predictions_rcpp.begin(), simulate_predictive ? ahead_length : 0, simulate_predictive ? M : 0, simulate_predictive ? nsave : 0, false);
+  Rcpp::NumericMatrix LPL_draws_rcpp(LPL ? ahead_length : 0, LPL ? nsave : 0);
+  arma::mat LPL_draws(LPL_draws_rcpp.begin(), LPL_draws_rcpp.nrow(), LPL_draws_rcpp.ncol(), false);
+  Rcpp::NumericVector PL_univariate_draws_rcpp((LPL ? ahead_length : 0) * (LPL ? M : 0) * (LPL ? nsave : 0));
+  PL_univariate_draws_rcpp.attr("dim") = Rcpp::Dimension(LPL ? ahead_length : 0,LPL ? M : 0 ,LPL ? nsave : 0);
+  arma::cube PL_univariate_draws(PL_univariate_draws_rcpp.begin(), LPL ? ahead_length : 0,LPL ? M : 0 ,LPL ? nsave : 0, false);
+  Rcpp::NumericMatrix LPL_sub_draws_rcpp(LPL_subset ? ahead_length : 0, LPL_subset ? nsave : 0);
+  arma::mat LPL_sub_draws(LPL_sub_draws_rcpp.begin(), LPL_sub_draws_rcpp.nrow(), LPL_sub_draws_rcpp.ncol(), false);
 
   // create objects needed for intermediate storage
   arma::mat PHI_power(PHI.n_rows, PHI.n_cols);
@@ -376,10 +384,10 @@ Rcpp::List out_of_sample(const int& each,
   }
 
   Rcpp::List out = Rcpp::List::create(
-    Named("LPL_draws") = LPL_draws,
-    Named("PL_univariate_draws") = PL_univariate_draws,
-    Named("LPL_sub_draws") = LPL_sub_draws,
-    Named("predictions") = predictions
+    Named("LPL_draws") = LPL_draws_rcpp,
+    Named("PL_univariate_draws") = PL_univariate_draws_rcpp,
+    Named("LPL_sub_draws") = LPL_sub_draws_rcpp,
+    Named("predictions") = predictions_rcpp
   );
   return out;
 }
@@ -428,14 +436,16 @@ arma::cube insample(const arma::mat& X,
 }
 
 // [[Rcpp::export]]
-arma::cube vcov_cpp(const bool& factor, const arma::cube& facload,
+Rcpp::NumericVector vcov_cpp(const bool& factor, const arma::cube& facload,
                           const arma::cube& logvar, const arma::mat& U,
                           const int& M, const int& factors){
 
   const int nsave=logvar.n_slices;
   const int T=logvar.n_rows;
 
-  arma::cube Sigma_draws(T*M, M, nsave);
+  Rcpp::NumericVector Sigma_draws_rcpp(T*M * M * nsave);
+  Sigma_draws_rcpp.attr("dim") = Rcpp::Dimension(T*M, M, nsave);
+  arma::cube Sigma_draws(Sigma_draws_rcpp.begin(), T*M, M, nsave, false);
 
   arma::cube Sigma_array(T, M, M);
   arma::mat Sigma_mat(Sigma_array.memptr(), T*M, M, false);
@@ -460,5 +470,5 @@ arma::cube vcov_cpp(const bool& factor, const arma::cube& facload,
     }
     Sigma_draws.slice(i) = Sigma_mat;
   }
-  return(Sigma_draws);
+  return(Sigma_draws_rcpp);
 }

@@ -159,7 +159,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // predh
-arma::cube predh(const arma::mat& logvar_T, const arma::ivec& ahead, const int& each, const arma::mat& sv_mu, const arma::mat& sv_phi, const arma::mat& sv_sigma);
+Rcpp::NumericVector predh(const arma::mat& logvar_T, const arma::ivec& ahead, const int& each, const arma::mat& sv_mu, const arma::mat& sv_phi, const arma::mat& sv_sigma);
 RcppExport SEXP _bayesianVARs_predh(SEXP logvar_TSEXP, SEXP aheadSEXP, SEXP eachSEXP, SEXP sv_muSEXP, SEXP sv_phiSEXP, SEXP sv_sigmaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -219,7 +219,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // vcov_cpp
-arma::cube vcov_cpp(const bool& factor, const arma::cube& facload, const arma::cube& logvar, const arma::mat& U, const int& M, const int& factors);
+Rcpp::NumericVector vcov_cpp(const bool& factor, const arma::cube& facload, const arma::cube& logvar, const arma::mat& U, const int& M, const int& factors);
 RcppExport SEXP _bayesianVARs_vcov_cpp(SEXP factorSEXP, SEXP facloadSEXP, SEXP logvarSEXP, SEXP USEXP, SEXP MSEXP, SEXP factorsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
