@@ -1,6 +1,6 @@
-# Posterior heatmaps for VAR coefficients or variance-covariance matrices
+# Posterior heatmaps for matrix valued parameters
 
-Posterior heatmaps for VAR coefficients or variance-covariance matrices
+Posterior heatmaps for matrix valued parameters
 
 ## Usage
 
@@ -9,13 +9,19 @@ posterior_heatmap(
   x,
   FUN,
   ...,
+  transpose = FALSE,
   colorbar = TRUE,
+  colorbar_width = 0.1,
+  whitespace_width = 0.25,
   xlabels = NULL,
   ylabels = NULL,
   add_numbers = FALSE,
   zlim = NULL,
   colspace = NULL,
+  border_color = NA,
+  zero_color = NA,
   main = "",
+  detect_lags = FALSE,
   cex.axis = 0.75,
   cex.colbar = 1,
   cex.numbers = 1,
@@ -41,23 +47,36 @@ posterior_heatmap(
 
   optional arguments to `FUN`.
 
+- transpose:
+
+  logical indicating whether to transpose the matrix or not. Default is
+  `FALSE`.
+
 - colorbar:
 
   logical indicating whether to display a colorbar or not. Default is
   `TRUE`.
 
+- colorbar_width:
+
+  numeric. A value between 0 and 1 indicating the proportion of the
+  width of the plot reserved for the colorbar.
+
+- whitespace_width:
+
+  numeric. A value between 0 and 1 indicating the width of the
+  whitespace between the heatmap and the colorbar as proportion of
+  `colorbar_width`.
+
 - xlabels:
 
-  `ylabels=NULL`, the default, indicates that the names of the dependent
-  variables will be displayed. `ylabels=""` indicates that no ylabels
-  will be displayed.
+  `ylabels=NULL`, the default, indicates that `colnames(x)` will be
+  displayed. `ylabels=""` indicates that no ylabels will be displayed.
 
 - ylabels:
 
-  `xlabels=NULL`, the default, indicates that the labels of all
-  covariables (the lagged values of the dependent variables) will be
-  displayed. `xlabels="lags"` indicates that only the lags will be
-  marked. `xlabels=""` indicates that no ylabels are displayed.
+  `xlabels=NULL`, the default, indicates that `rownames(x)` will be
+  displayed. `xlabels=""` indicates that no ylabels are displayed.
 
 - add_numbers:
 
@@ -75,9 +94,25 @@ posterior_heatmap(
 
   Optional argument.
 
+- border_color:
+
+  The color of the rectangles of the heatmap. Default is that no borders
+  are displayed.
+
+- zero_color:
+
+  The color of exact zero elements. By default this is not specified and
+  then will depend on the colspace.
+
 - main:
 
   main title for the plot.
+
+- detect_lags:
+
+  logical. If `class(x)` is "bayesianVARs_coef", then `detect_lags=TRUE`
+  will separate the sub matrices corresponding to the lags with black
+  lines.
 
 - cex.axis:
 
@@ -123,7 +158,7 @@ mod <- bvar(100*data, sv_keep = "all", quiet = TRUE)
 phi_post <- coef(mod)
 
 # Visualize posterior median of VAR coefficients
-posterior_heatmap(phi_post, median)
+posterior_heatmap(phi_post, median, detect_lags = TRUE)
 
 
 # Extract posterior draws of variance-covariance matrices (for each point in time)

@@ -21,8 +21,7 @@
 - [`plot(`*`<bayesianVARs_predict>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/plot.bayesianVARs_predict.md)
   : Fan chart
 - [`posterior_heatmap()`](https://luisgruber.github.io/bayesianVARs/reference/posterior_heatmap.md)
-  : Posterior heatmaps for VAR coefficients or variance-covariance
-  matrices
+  : Posterior heatmaps for matrix valued parameters
 - [`predict(`*`<bayesianVARs_bvar>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/predict.bayesianVARs_bvar.md)
   : Predict method for Bayesian VARs
 - [`print(`*`<bayesianVARs_bvar>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/print.bayesianVARs_bvar.md)
