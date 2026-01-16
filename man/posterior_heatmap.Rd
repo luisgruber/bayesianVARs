@@ -2,19 +2,25 @@
 % Please edit documentation in R/plots.R
 \name{posterior_heatmap}
 \alias{posterior_heatmap}
-\title{Posterior heatmaps for VAR coefficients or variance-covariance matrices}
+\title{Posterior heatmaps for matrix valued parameters}
 \usage{
 posterior_heatmap(
   x,
   FUN,
   ...,
+  transpose = FALSE,
   colorbar = TRUE,
+  colorbar_width = 0.1,
+  whitespace_width = 0.25,
   xlabels = NULL,
   ylabels = NULL,
   add_numbers = FALSE,
   zlim = NULL,
   colspace = NULL,
+  border_color = NA,
+  zero_color = NA,
   main = "",
+  detect_lags = FALSE,
   cex.axis = 0.75,
   cex.colbar = 1,
   cex.numbers = 1,
@@ -32,17 +38,26 @@ number of posterior draws.}
 
 \item{...}{optional arguments to \code{FUN}.}
 
+\item{transpose}{logical indicating whether to transpose the matrix or not.
+Default is \code{FALSE}.}
+
 \item{colorbar}{logical indicating whether to display a colorbar or not.
 Default is \code{TRUE}.}
 
-\item{xlabels}{\code{ylabels=NULL}, the default, indicates that the names of
-the dependent variables will be displayed. \code{ylabels=""} indicates that
-no ylabels will be displayed.}
+\item{colorbar_width}{numeric. A value between 0 and 1 indicating the
+proportion of the width of the plot reserved for the colorbar.}
 
-\item{ylabels}{\code{xlabels=NULL}, the default, indicates that the labels of
-all covariables (the lagged values of the dependent variables) will be
-displayed. \code{xlabels="lags"} indicates that only the lags will be
-marked. \code{xlabels=""} indicates that no ylabels are displayed.}
+\item{whitespace_width}{numeric. A value between 0 and 1 indicating the width
+of the whitespace between the heatmap and the colorbar as proportion of
+\code{colorbar_width}.}
+
+\item{xlabels}{\code{ylabels=NULL}, the default, indicates that \code{colnames(x)}
+will be displayed. \code{ylabels=""} indicates that no ylabels will be
+displayed.}
+
+\item{ylabels}{\code{xlabels=NULL}, the default, indicates that \code{rownames(x)}
+will be displayed. \code{xlabels=""} indicates that no ylabels are
+displayed.}
 
 \item{add_numbers}{logical. \code{add_numbers=TRUE}, the default indicates
 that the actual values of \code{summary} will be displayed.}
@@ -53,7 +68,17 @@ determined by the maximum of the absolute values of the selected summary.}
 
 \item{colspace}{Optional argument.}
 
+\item{border_color}{The color of the rectangles of the heatmap. Default is
+that no borders are displayed.}
+
+\item{zero_color}{The color of exact zero elements. By default this is not
+specified and then will depend on the colspace.}
+
 \item{main}{main title for the plot.}
+
+\item{detect_lags}{logical. If \code{class(x)} is "bayesianVARs_coef", then
+\code{detect_lags=TRUE} will separate the sub matrices corresponding to the lags
+with black lines.}
 
 \item{cex.axis}{The magnification to be used for y-axis annotation relative
 to the current setting of cex.}
@@ -70,7 +95,7 @@ relative to the current setting of cex.}
 Returns \code{x} invisibly.
 }
 \description{
-Posterior heatmaps for VAR coefficients or variance-covariance matrices
+Posterior heatmaps for matrix valued parameters
 }
 \examples{
 # Access a subset of the usmacro_growth dataset
@@ -83,7 +108,7 @@ mod <- bvar(100*data, sv_keep = "all", quiet = TRUE)
 phi_post <- coef(mod)
 
 # Visualize posterior median of VAR coefficients
-posterior_heatmap(phi_post, median)
+posterior_heatmap(phi_post, median, detect_lags = TRUE)
 
 # Extract posterior draws of variance-covariance matrices (for each point in time)
 sigma_post <- vcov(mod)

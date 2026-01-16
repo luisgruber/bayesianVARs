@@ -1,4 +1,4 @@
-#' Posterior heatmaps for VAR coefficients or variance-covariance matrices
+#' Posterior heatmaps for matrix valued parameters
 #'
 #' @param x An array of dimension \eqn{a \times b \times draws}, where \eqn{a
 #'   \times b} is the dimension of the parameter to visualize and draws is the
@@ -7,22 +7,35 @@
 #'   \code{"median"}, \code{"mean"}, \code{"IQR"}, \code{"sd"} or \code{"var"}.
 #'   `apply(x, 1:2, FUN, ...)` must return a matrix!
 #' @param ... optional arguments to `FUN`.
+#' @param transpose logical indicating whether to transpose the matrix or not.
+#'   Default is `FALSE`.
 #' @param colorbar logical indicating whether to display a colorbar or not.
 #'   Default is \code{TRUE}.
-#' @param xlabels \code{ylabels=NULL}, the default, indicates that the names of
-#'   the dependent variables will be displayed. \code{ylabels=""} indicates that
-#'   no ylabels will be displayed.
-#' @param ylabels \code{xlabels=NULL}, the default, indicates that the labels of
-#'   all covariables (the lagged values of the dependent variables) will be
-#'   displayed. \code{xlabels="lags"} indicates that only the lags will be
-#'   marked. \code{xlabels=""} indicates that no ylabels are displayed.
+#' @param colorbar_width numeric. A value between 0 and 1 indicating the
+#'   proportion of the width of the plot reserved for the colorbar.
+#' @param whitespace_width numeric. A value between 0 and 1 indicating the width
+#'   of the whitespace between the heatmap and the colorbar as proportion of
+#'   `colorbar_width`.
+#' @param xlabels \code{ylabels=NULL}, the default, indicates that `colnames(x)`
+#'   will be displayed. \code{ylabels=""} indicates that no ylabels will be
+#'   displayed.
+#' @param ylabels \code{xlabels=NULL}, the default, indicates that `rownames(x)`
+#'   will be displayed. \code{xlabels=""} indicates that no ylabels are
+#'   displayed.
 #' @param add_numbers logical. \code{add_numbers=TRUE}, the default indicates
 #'   that the actual values of \code{summary} will be displayed.
 #' @param zlim numeric vector of length two indicating the minimum and maximum
 #'   values for which colors should be plotted. By default this range is
 #'   determined by the maximum of the absolute values of the selected summary.
 #' @param colspace Optional argument.
+#' @param border_color The color of the rectangles of the heatmap. Default is
+#'   that no borders are displayed.
+#' @param zero_color The color of exact zero elements. By default this is not
+#'   specified and then will depend on the colspace.
 #' @param main main title for the plot.
+#' @param detect_lags logical. If `class(x)` is "bayesianVARs_coef", then
+#'   `detect_lags=TRUE` will separate the sub matrices corresponding to the lags
+#'   with black lines.
 #' @param cex.axis The magnification to be used for y-axis annotation relative
 #'   to the current setting of cex.
 #' @param cex.colbar The magnification to be used for colorbar annotation
@@ -48,7 +61,7 @@
 #' phi_post <- coef(mod)
 #'
 #' # Visualize posterior median of VAR coefficients
-#' posterior_heatmap(phi_post, median)
+#' posterior_heatmap(phi_post, median, detect_lags = TRUE)
 #'
 #' # Extract posterior draws of variance-covariance matrices (for each point in time)
 #' sigma_post <- vcov(mod)
@@ -57,23 +70,28 @@
 posterior_heatmap <- function(x,
                               FUN,
                               ...,
+                              transpose = FALSE,
                               colorbar = TRUE,
+                              colorbar_width = 0.1,
+                              whitespace_width = 0.25,
                               xlabels = NULL,
                               ylabels = NULL,
                               add_numbers = FALSE,
                               zlim = NULL,
                               colspace = NULL,
+                              border_color = NA,
+                              zero_color = NA,
                               main="",
+                              detect_lags = FALSE,
                               cex.axis = 0.75,
                               cex.colbar = 1,
                               cex.numbers = 1,
                               asp=NULL){
 
-
-
-  # PHI <- apply(x, 1:2, function(x) do.call(what = summary,
-  #                                          args = list(x)))
   PHI <- apply(x, 1:2, FUN, ...)
+  if(transpose){
+    PHI <- t(PHI)
+  }
   PHI_range <- range(PHI)
   if(!is.matrix(PHI)){
     stop("Invalid 'FUN'. apply(x,1:2,FUN,...) must return a matrix!")
@@ -104,27 +122,38 @@ posterior_heatmap <- function(x,
 
   M <- ncol(PHI)
   K <- nrow(PHI)
-  p <- floor(K/M)
+  
+  if(detect_lags){
+    MM <- if(!transpose) M else K
+    KK <- if(!transpose) K else M
+    p <- floor(KK/MM)
+  }
 
   row_names <- rownames(PHI)
   col_names <- colnames(PHI)
   maxstrwidth_left <- max(strwidth(row_names, "inches", cex = cex.axis))
   maxstrheight_top <- max(strwidth(col_names, "inches", cex = cex.axis)) # because las=2
 
-  colbar_labels <- if(PHI_range[1]<0 & PHI_range[2]>0) c(PHI_range[1], 0, PHI_range[2]) else PHI_range
-  colbar_labels <- round(colbar_labels, 2)
-  maxstrwidth_right <- max(strwidth(colbar_labels, units = "inches", cex = cex.colbar))
-  strheight_right <- strheight(c(colbar_labels[1], colbar_labels[length(colbar_labels)]), units = "inches", cex = cex.colbar)
+  if(colorbar){
+    colbar_labels <- if(PHI_range[1]<0 & PHI_range[2]>0) c(PHI_range[1], 0, PHI_range[2]) else PHI_range
+    colbar_labels <- round(colbar_labels, 2)
+    maxstrwidth_right <- max(strwidth(colbar_labels, units = "inches", cex = cex.colbar))
+    strheight_right <- strheight(c(colbar_labels[1], colbar_labels[length(colbar_labels)]), units = "inches", cex = cex.colbar)
+  }
 
-  cols_to_plot_indices <- round(((as.vector(PHI)-zlim[1])/diff(zlim))*(colspace_length-1)+1,0)
-  colbar_range <- colspace[min(cols_to_plot_indices):max(cols_to_plot_indices)]
-  cols_to_plot <- colspace[cols_to_plot_indices]
+  diffzlim <- diff(zlim)
+  cols_to_plot_indices <- round(((as.vector(PHI)-zlim[1])/diffzlim)*(colspace_length-1)+1,0) 
+  colbar_range <- if(diffzlim != 0) colspace[min(cols_to_plot_indices):max(cols_to_plot_indices)] else c("lightgrey", "lightgrey")
+  cols_to_plot <- if(diffzlim != 0) colspace[cols_to_plot_indices] else rep("lightgrey", length(PHI))
+  if(!is.na(zero_color)){
+    cols_to_plot[PHI==0] <- zero_color 
+  }
 
   # width plus space for colorbar
-  width <- 30
-  xlim_colorbar <- c(width-2, width)
-  xlim_whitespace <- c(xlim_colorbar[1]-1,xlim_colorbar[1])
-  xlim_heatmap <- c(0,xlim_whitespace[1])
+  width <- 1
+  xlim_colorbar <- if(colorbar) c(width-colorbar_width, width) else NULL
+  xlim_whitespace <- if(colorbar) c(xlim_colorbar[1]-0.25*colorbar_width, xlim_colorbar[1]) else NULL
+  xlim_heatmap <- if(colorbar) c(0,xlim_whitespace[1]) else c(0,width)
   x_breaks <- seq(xlim_heatmap[1] + diff(xlim_heatmap)/M,xlim_heatmap[2], length.out = M)
 
   # height
@@ -135,16 +164,20 @@ posterior_heatmap <- function(x,
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
   par(mgp=c(2,.1,0))
-  mar <- rep(0.1,4)
+  mar <- rep(0.4,4)
   par(mar=mar)
   if(colorbar){
     mar[1] <- mar[1] + strheight_right[1]/2*5
-    mar[3] <- mar[3] + if(is.null(xlabels) & colorbar) maxstrheight_top*5 +.3 else strheight_right[1]/2*5
+    mar[3] <- mar[3] + strheight_right[1]/2*5 #if(is.null(xlabels) & colorbar) maxstrheight_top*5 +.3 else 
     mar[4] <- mar[4] + maxstrwidth_right*5
     par(mar=mar)
   }
   if(is.null(ylabels)){
-    mar[2] <- mar[2] + maxstrwidth_left*5+.1
+    mar[2] <- mar[2] + maxstrwidth_left*5
+    par(mar=mar)
+  }
+  if(is.null(xlabels)){
+    mar[3] <- mar[3] + maxstrheight_top*5 
     par(mar=mar)
   }
   #par(mar = c(strheight_right[1]/2*5,maxstrwidth_left*5+.1,strheight_right[1]/2*5,maxstrwidth_right*5)+.1)
@@ -158,7 +191,7 @@ posterior_heatmap <- function(x,
        sort(rep(x_breaks,K), decreasing = FALSE),
        (rep(y_breaks ,M)),
        col = cols_to_plot,
-       border = cols_to_plot)
+       border = if(is.na(border_color)) cols_to_plot else border_color)
 
   if(add_numbers){
     text(x = sort(rep(x_breaks-diff(x_breaks)[1]/2,K), decreasing = FALSE),
@@ -167,18 +200,25 @@ posterior_heatmap <- function(x,
   }
 
   # seperate lags
-  abline_at <- NULL
-  if(p==1 & K>M){
-    abline_at <- M
-  }else if(p>1){
-    abline_at <- M*(1:(p-1))
-    if(K%%M != 0){
-      abline_at <- c(abline_at, M*p)
+  if(detect_lags){
+    abline_at <- NULL
+    if(p==1 & KK>MM){
+      abline_at <- MM
+    }else if(p>1){
+      abline_at <- MM*(1:(p-1))
+      if(KK%%MM != 0){
+        abline_at <- c(abline_at, MM*p)
+      }
     }
-  }
-  if(!is.null(abline_at)){
-    for(i in seq.int(length(abline_at))){
-      lines(xlim_heatmap, rep(height - abline_at[i]*height/K, 2))
+    if(!is.null(abline_at)){
+      for(i in seq.int(length(abline_at))){
+        if(!transpose){
+          lines(xlim_heatmap, rep(height - abline_at[i]*height/KK, 2))
+        }else{
+          thewidth <- diff(xlim_heatmap)
+          lines(rep(abline_at[i]*thewidth/KK, 2), c(0,height))
+        }
+      }
     }
   }
 
