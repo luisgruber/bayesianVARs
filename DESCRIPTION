@@ -36,12 +36,15 @@ Suggests:
     coda,
     knitr,
     rmarkdown,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    lpSolveAPI
 LinkingTo: 
     factorstochvol,
     Rcpp,
     RcppArmadillo,
-    stochvol
+    RcppProgress,
+    stochvol,
+    lpSolveAPI
 VignetteBuilder: 
     knitr
 Config/testthat/edition: 3

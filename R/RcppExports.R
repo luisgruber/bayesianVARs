@@ -23,6 +23,26 @@ my_gig <- function(n, lambda, chi, psi) {
     .Call(`_bayesianVARs_my_gig`, n, lambda, chi, psi)
 }
 
+compute_parameter_transformations <- function(reduced_coefficients, factor_loadings, U_vecs, logvar_T, restrictions) {
+    .Call(`_bayesianVARs_compute_parameter_transformations`, reduced_coefficients, factor_loadings, U_vecs, logvar_T, restrictions)
+}
+
+find_rotation_cpp <- function(parameter_transformations, restriction_specs, solver_option = "randomized", randomized_max_rotations_per_sample = 2L, tol = 1e-6) {
+    .Call(`_bayesianVARs_find_rotation_cpp`, parameter_transformations, restriction_specs, solver_option, randomized_max_rotations_per_sample, tol)
+}
+
+irf_cpp <- function(coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahead, rotation_ = NULL) {
+    .Call(`_bayesianVARs_irf_cpp`, coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahead, rotation_)
+}
+
+irf_bayes_optimal_order <- function(irf) {
+    .Call(`_bayesianVARs_irf_bayes_optimal_order`, irf)
+}
+
+irf_from_true_parameters <- function(true_structural_matrix, true_reduced_coeff, ahead) {
+    .Call(`_bayesianVARs_irf_from_true_parameters`, true_structural_matrix, true_reduced_coeff, ahead)
+}
+
 sample_PHI_cholesky <- function(PHI, PHI_prior, Y, X, U, d_sqrt, V_prior) {
     .Call(`_bayesianVARs_sample_PHI_cholesky`, PHI, PHI_prior, Y, X, U, d_sqrt, V_prior)
 }
