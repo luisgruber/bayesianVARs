@@ -1,6 +1,8 @@
 # Posterior heatmaps for matrix valued parameters
 
-Posterior heatmaps for matrix valued parameters
+`posterior_heatmap()` generates a heatmap for draws of matrix values
+parameters visualizing point wise summaries, such as mean, median,
+variance, standard deviation, interquartile range etc. etc.
 
 ## Usage
 
@@ -12,7 +14,7 @@ posterior_heatmap(
   transpose = FALSE,
   colorbar = TRUE,
   colorbar_width = 0.1,
-  whitespace_width = 0.25,
+  gap_width = 0.25,
   xlabels = NULL,
   ylabels = NULL,
   add_numbers = FALSE,
@@ -21,7 +23,7 @@ posterior_heatmap(
   border_color = NA,
   zero_color = NA,
   main = "",
-  detect_lags = FALSE,
+  detect_lags = TRUE,
   cex.axis = 0.75,
   cex.colbar = 1,
   cex.numbers = 1,
@@ -49,8 +51,9 @@ posterior_heatmap(
 
 - transpose:
 
-  logical indicating whether to transpose the matrix or not. Default is
-  `FALSE`.
+  logical indicating whether to transpose the matrix or not, i.e.
+  whether to plot an \\a \times b\\ or an \\b \times a\\ matrix. Default
+  is `FALSE`.
 
 - colorbar:
 
@@ -60,13 +63,13 @@ posterior_heatmap(
 - colorbar_width:
 
   numeric. A value between 0 and 1 indicating the proportion of the
-  width of the plot reserved for the colorbar.
+  width of the plot for the colorbar.
 
-- whitespace_width:
+- gap_width:
 
-  numeric. A value between 0 and 1 indicating the width of the
-  whitespace between the heatmap and the colorbar as proportion of
-  `colorbar_width`.
+  numeric. A value between 0 and 1 indicating the width of the gap
+  between the heatmap and the colorbar. The width is computed as
+  `gap_width*colorbar_width`.
 
 - xlabels:
 
@@ -92,17 +95,22 @@ posterior_heatmap(
 
 - colspace:
 
-  Optional argument.
+  Optional argument indicating the color palette to be used. If not
+  specified,
+  [`colorspace::diverge_hcl()`](https://colorspace.R-Forge.R-project.org/reference/hcl_palettes.html)
+  will be used, or, if `FUN` returns only positive values
+  [`colorspace::sequential_hcl()`](https://colorspace.R-Forge.R-project.org/reference/hcl_palettes.html).
+  See below for a more detailed description of the default usage.
 
 - border_color:
 
-  The color of the rectangles of the heatmap. Default is that no borders
-  are displayed.
+  The color of the rectangles borders. If not specified no borders will
+  be displayed.
 
 - zero_color:
 
   The color of exact zero elements. By default this is not specified and
-  then will depend on the colspace.
+  then will depend on `colspace`.
 
 - main:
 
@@ -137,6 +145,15 @@ posterior_heatmap(
 
 Returns `x` invisibly.
 
+## Details
+
+### colspace
+
+If not specified either
+`colorspace::diverge_hcl(1001, alpha = alpha, palette = "Blue-Red")` or
+`colorspace::sequential_hcl(1001, alpha = alpha, rev = TRUE, palette = "Reds 2")`
+will be used.
+
 ## See also
 
 Other plotting
@@ -158,7 +175,7 @@ mod <- bvar(100*data, sv_keep = "all", quiet = TRUE)
 phi_post <- coef(mod)
 
 # Visualize posterior median of VAR coefficients
-posterior_heatmap(phi_post, median, detect_lags = TRUE)
+posterior_heatmap(phi_post, median, detect_lags = TRUE, border_color = rgb(0, 0, 0, alpha = 0.2))
 
 
 # Extract posterior draws of variance-covariance matrices (for each point in time)
