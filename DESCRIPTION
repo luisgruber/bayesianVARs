@@ -37,7 +37,8 @@ Suggests:
     knitr,
     rmarkdown,
     testthat (>= 3.0.0),
-    lpSolveAPI
+    lpSolveAPI,
+    bsvarSIGNs
 LinkingTo: 
     factorstochvol,
     Rcpp,
