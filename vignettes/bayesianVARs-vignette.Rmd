@@ -153,8 +153,10 @@ heatmaps, see Figure\nobreakspace{}\ref{fig:unnamed-chunk-5}.
 
 ```{r, out.width="45%", fig.asp=1.5,fig.align='center', fig.cap="Posterior summary of the VAR coefficients. Left: Heatmap of the posterior median. Right: Heatmap of the posterior interquartile range.", fig.pos="t", fig.show='hold'}
 phi <- coef(mod)
-posterior_heatmap(phi,median)
-posterior_heatmap(phi, IQR)
+posterior_heatmap(phi, median, detect_lags = TRUE, 
+                  border_color = rgb(0,0,0, alpha = 0.2))
+posterior_heatmap(phi, IQR, detect_lags = TRUE, 
+                  border_color = rgb(0,0,0, alpha = 0.2))
 ```
 
 The \texttt{predict} method simulates from the posterior predictive
