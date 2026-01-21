@@ -398,6 +398,70 @@ plot.bayesianVARs_fitted <- function(x,
   invisible(x)
 }
 
+#' Visualization of the residuals of an estimated VAR.
+#'
+#' @param x A `bayesianVARs_residuals` object.
+#' @param dates optional vector of dates for labelling the x-axis. The default
+#'   values is `NULL`; in this case, the axis will be labeled with numbers.
+#' @param vars character vector containing the names of the variables to be
+#'   visualized. The default is `"all"` indicating that the fit of all variables
+#'   is visualized.
+#' @param quantiles numeric vector indicating which quantiles to plot.
+#' @param n_col integer indicating the number of columns to use for plotting.
+#' @param ... Currently ignored.
+#'
+#' @return returns `x` invisibly
+#' @seealso
+#' * residuals method for class 'bayesianVARs_bvar': [residuals.bayesianVARs_bvar()].
+#' * Other plotting [`plot.bayesianVARs_bvar()`],
+#' [`plot.bayesianVARs_fitted()`], [`plot.bayesianVARs_predict()`],
+#' [`pairs.bayesianVARs_predict()`], [`posterior_heatmap()`].
+#' @export
+#'
+#' @examples
+#' # Access a subset of the usmacro_growth dataset
+#' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
+#'
+#' # Estimate a model
+#' mod <- bvar(data, sv_keep = "all", quiet = TRUE)
+#'
+#' mod.resids <- residuals(mod)
+#'
+#' # Visualize
+#' plot(mod.resids)
+plot.bayesianVARs_residuals <- function(x,
+                                     dates = NULL,
+                                     vars = "all",
+                                     quantiles = c(0.05,0.5,0.95),
+                                     n_col = 1L, ...){
+
+  if(length(vars)==1L & any(vars == "all")){
+    vars <- 1:x$Ydim[2]
+  }else if(any(!(vars %in% x$Ydimnames[[2]] ))){
+    stop("Elements of 'vars' must coincide with 'x$Ydimnames[[2]]'!")
+  }else{
+    vars <- which(x$Ydimnames[[2]] %in% vars)
+  }
+
+  if(is.null(dates)){
+    dates <- 1:x$Ydim[1]
+    if(!is.null(x$Ydimnames[[1]])){
+      dates <- tryCatch(as.Date(x$Ydimnames[[1]]), error = function(e) dates)
+    }
+  }else{
+    if(length(dates) != x$Ydim[1]){
+      stop("Length of argument 'dates' differs from 'nrow(x$Ydim[1])'!")
+    }
+  }
+  dates <- as.character(dates)
+
+  zeros <- array(0, dim = x$Ydim, dimnames = x$Ydimnames)
+  plot_predvals(x$resids[,vars,, drop=FALSE], quantiles, observed = zeros[,vars, drop = FALSE], colnames(zeros[,vars, drop = FALSE]),
+                dates, n_col, x$Ydim[1], 0)
+
+  invisible(x)
+}
+
 #' Plot method for bayesianVARs_bvar
 #'
 #' Visualization of in-sample fit. Can also be used to display prediction

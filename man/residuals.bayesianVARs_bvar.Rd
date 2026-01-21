@@ -12,7 +12,7 @@
 \item{...}{Passed to \code{\link[=fitted.bayesianVARs_bvar]{fitted.bayesianVARs_bvar()}}.}
 }
 \value{
-An object of class \code{bayesianVARs_fitted}.
+An object of class \code{bayesianVARs_residuals}.
 }
 \description{
 Extract model residuals, defined as the difference between the observed
@@ -27,8 +27,8 @@ data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 # Estimate a model
 mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 
-resids <- residuals(mod)
-plot(resids)
+mod.resids <- residuals(mod)
+plot(mod.resids)
 }
 \seealso{
 \code{\link{fitted.bayesianVARs_bvar}}
