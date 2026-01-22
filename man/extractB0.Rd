@@ -15,7 +15,7 @@ Retrieve the structural parameter \eqn{\boldsymbol{B}_0} samples from an IRF obj
 \examples{
 train_data <- 100 * usmacro_growth[,c("GDPC1", "GDPCTPI", "GS1", "M2REAL", "CPIAUCSL")]
 prior_sigma <- specify_prior_sigma(train_data, type="cholesky", cholesky_heteroscedastic=FALSE)
-mod <- bvar(train_data, lags=5L, prior_sigma=prior_sigma)
+mod <- bvar(train_data, lags=5L, prior_sigma=prior_sigma, quiet=TRUE)
 
 structural_restrictions <- specify_structural_restrictions(
  mod,
@@ -34,17 +34,13 @@ irf_structural <- irf(
 
 B0 <- extractB0(irf_structural)
 
-# Visually check that all restrictions on B0 have been satisfied
-par(mfrow=c(nrow(B0), ncol(B0)))
-for (i in 1:nrow(B0))
-for (j in 1:ncol(B0)) {
- hist(
-   B0[i,j,],
-   xlim=range(0, B0),
-   main = paste0("Posterior B0[", i, ",", j,"]")
- )
- abline(v=0, col=2, lwd=2)
-}
+# Visually check that the restriction B0[1,1] >= 0 has been satisfied
+hist(
+ B0[1,1,],
+ xlim=range(0, B0),
+ main = paste0("Posterior B0[", 1, ",", 1,"]")
+)
+abline(v=0, col=2, lwd=2)
 }
 \seealso{
 \code{\link{specify_structural_restrictions}}

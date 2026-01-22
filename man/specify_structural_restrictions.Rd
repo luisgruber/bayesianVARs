@@ -55,7 +55,7 @@ The structural VAR(p) model is of the following form: \deqn{\boldsymbol{y}^\prim
 \examples{
 train_data <- 100 * usmacro_growth[,c("GDPC1", "GDPCTPI", "GS1", "M2REAL", "CPIAUCSL")]
 prior_sigma <- specify_prior_sigma(train_data, type="cholesky", cholesky_heteroscedastic=FALSE)
-mod <- bvar(train_data, lags=5L, prior_sigma=prior_sigma)
+mod <- bvar(train_data, lags=5L, prior_sigma=prior_sigma, quiet=TRUE)
 
 structural_restrictions <- specify_structural_restrictions(
  mod,
