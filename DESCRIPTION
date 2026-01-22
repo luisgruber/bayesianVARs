@@ -4,7 +4,7 @@ Version: 0.1.5.9000
 Authors@R: c(
     person("Luis", "Gruber", , "Luis.Gruber@aau.at", role = c("cph", "aut", "cre"),
            comment = c(ORCID = "0000-0002-2399-738X")),
-    person("Gregor", "Kastner", , "gregor.kastner@aau.at", role = "ctb",
+    person("Gregor", "Kastner", , "gregor.kastner@aau.at", role = c("aut", "ths"),
            comment = c(ORCID = "0000-0002-8237-8271"))
   )
 Description: Efficient Markov Chain Monte Carlo (MCMC) algorithms for the
@@ -37,7 +37,8 @@ Suggests:
     knitr,
     rmarkdown,
     testthat (>= 3.0.0),
-    lpSolveAPI
+    lpSolveAPI,
+    bsvarSIGNs
 LinkingTo: 
     factorstochvol,
     Rcpp,

@@ -1,4 +1,14 @@
-#' Posterior heatmaps for VAR coefficients or variance-covariance matrices
+#' Posterior heatmaps for matrix valued parameters
+#'
+#' `posterior_heatmap()` generates a heatmap for draws of matrix values
+#' parameters visualizing point wise summaries, such as mean, median, variance,
+#' standard deviation, interquartile range etc. etc.
+#'
+#' @details
+#' ## colspace 
+#' If not specified either `colorspace::diverge_hcl(1001, alpha =
+#' alpha, palette = "Blue-Red")` or `colorspace::sequential_hcl(1001, alpha =
+#' alpha, rev = TRUE, palette = "Reds 2")` will be used.
 #'
 #' @param x An array of dimension \eqn{a \times b \times draws}, where \eqn{a
 #'   \times b} is the dimension of the parameter to visualize and draws is the
@@ -7,22 +17,39 @@
 #'   \code{"median"}, \code{"mean"}, \code{"IQR"}, \code{"sd"} or \code{"var"}.
 #'   `apply(x, 1:2, FUN, ...)` must return a matrix!
 #' @param ... optional arguments to `FUN`.
+#' @param transpose logical indicating whether to transpose the matrix or not,
+#'   i.e. whether to plot an \eqn{a \times b} or an \eqn{b \times a} matrix.
+#'   Default is `FALSE`.
 #' @param colorbar logical indicating whether to display a colorbar or not.
 #'   Default is \code{TRUE}.
-#' @param xlabels \code{ylabels=NULL}, the default, indicates that the names of
-#'   the dependent variables will be displayed. \code{ylabels=""} indicates that
-#'   no ylabels will be displayed.
-#' @param ylabels \code{xlabels=NULL}, the default, indicates that the labels of
-#'   all covariables (the lagged values of the dependent variables) will be
-#'   displayed. \code{xlabels="lags"} indicates that only the lags will be
-#'   marked. \code{xlabels=""} indicates that no ylabels are displayed.
+#' @param colorbar_width numeric. A value between 0 and 1 indicating the
+#'   proportion of the width of the plot for the colorbar.
+#' @param gap_width numeric. A value between 0 and 1 indicating the width of the
+#'   gap between the heatmap and the colorbar. The width is computed as
+#'   `gap_width*colorbar_width`.
+#' @param xlabels \code{ylabels=NULL}, the default, indicates that `colnames(x)`
+#'   will be displayed. \code{ylabels=""} indicates that no ylabels will be
+#'   displayed.
+#' @param ylabels \code{xlabels=NULL}, the default, indicates that `rownames(x)`
+#'   will be displayed. \code{xlabels=""} indicates that no ylabels are
+#'   displayed.
 #' @param add_numbers logical. \code{add_numbers=TRUE}, the default indicates
 #'   that the actual values of \code{summary} will be displayed.
 #' @param zlim numeric vector of length two indicating the minimum and maximum
 #'   values for which colors should be plotted. By default this range is
 #'   determined by the maximum of the absolute values of the selected summary.
-#' @param colspace Optional argument.
+#' @param colspace Optional argument indicating the color palette to be used. If
+#'   not specified, [colorspace::diverge_hcl()] will be used, or, if `FUN`
+#'   returns only positive values [colorspace::sequential_hcl()]. See below for
+#'   a more detailed description of the default usage.
+#' @param border_color The color of the rectangles borders. If not specified no
+#'   borders will be displayed.
+#' @param zero_color The color of exact zero elements. By default this is not
+#'   specified and then will depend on `colspace`.
 #' @param main main title for the plot.
+#' @param detect_lags logical. If `class(x)` is "bayesianVARs_coef", then
+#'   `detect_lags=TRUE` will separate the sub matrices corresponding to the lags
+#'   with black lines.
 #' @param cex.axis The magnification to be used for y-axis annotation relative
 #'   to the current setting of cex.
 #' @param cex.colbar The magnification to be used for colorbar annotation
@@ -48,7 +75,7 @@
 #' phi_post <- coef(mod)
 #'
 #' # Visualize posterior median of VAR coefficients
-#' posterior_heatmap(phi_post, median)
+#' posterior_heatmap(phi_post, median, detect_lags = TRUE, border_color = rgb(0, 0, 0, alpha = 0.2))
 #'
 #' # Extract posterior draws of variance-covariance matrices (for each point in time)
 #' sigma_post <- vcov(mod)
@@ -57,23 +84,28 @@
 posterior_heatmap <- function(x,
                               FUN,
                               ...,
+                              transpose = FALSE,
                               colorbar = TRUE,
+                              colorbar_width = 0.1,
+                              gap_width = 0.25,
                               xlabels = NULL,
                               ylabels = NULL,
                               add_numbers = FALSE,
                               zlim = NULL,
                               colspace = NULL,
+                              border_color = NA,
+                              zero_color = NA,
                               main="",
+                              detect_lags = TRUE,
                               cex.axis = 0.75,
                               cex.colbar = 1,
                               cex.numbers = 1,
                               asp=NULL){
 
-
-
-  # PHI <- apply(x, 1:2, function(x) do.call(what = summary,
-  #                                          args = list(x)))
   PHI <- apply(x, 1:2, FUN, ...)
+  if(transpose){
+    PHI <- t(PHI)
+  }
   PHI_range <- range(PHI)
   if(!is.matrix(PHI)){
     stop("Invalid 'FUN'. apply(x,1:2,FUN,...) must return a matrix!")
@@ -104,27 +136,32 @@ posterior_heatmap <- function(x,
 
   M <- ncol(PHI)
   K <- nrow(PHI)
-  p <- floor(K/M)
 
   row_names <- rownames(PHI)
   col_names <- colnames(PHI)
   maxstrwidth_left <- max(strwidth(row_names, "inches", cex = cex.axis))
-  maxstrheight_top <- max(strwidth(col_names, "inches", cex = cex.axis)) # because las=2
+  maxstrheight_top <- max(strwidth(col_names, "inches", cex = cex.axis)) 
 
-  colbar_labels <- if(PHI_range[1]<0 & PHI_range[2]>0) c(PHI_range[1], 0, PHI_range[2]) else PHI_range
-  colbar_labels <- round(colbar_labels, 2)
-  maxstrwidth_right <- max(strwidth(colbar_labels, units = "inches", cex = cex.colbar))
-  strheight_right <- strheight(c(colbar_labels[1], colbar_labels[length(colbar_labels)]), units = "inches", cex = cex.colbar)
+  if(colorbar){
+    colbar_labels <- if(PHI_range[1]<0 & PHI_range[2]>0) c(PHI_range[1], 0, PHI_range[2]) else PHI_range
+    colbar_labels <- round(colbar_labels, 2)
+    maxstrwidth_right <- max(strwidth(colbar_labels, units = "inches", cex = cex.colbar))
+    strheight_right <- strheight(c(colbar_labels[1], colbar_labels[length(colbar_labels)]), units = "inches", cex = cex.colbar)
+  }
 
-  cols_to_plot_indices <- round(((as.vector(PHI)-zlim[1])/diff(zlim))*(colspace_length-1)+1,0)
-  colbar_range <- colspace[min(cols_to_plot_indices):max(cols_to_plot_indices)]
-  cols_to_plot <- colspace[cols_to_plot_indices]
+  diffzlim <- diff(zlim)
+  cols_to_plot_indices <- round(((as.vector(PHI)-zlim[1])/diffzlim)*(colspace_length-1)+1,0) 
+  colbar_range <- if(diffzlim != 0) colspace[min(cols_to_plot_indices):max(cols_to_plot_indices)] else c("lightgrey", "lightgrey")
+  cols_to_plot <- if(diffzlim != 0) colspace[cols_to_plot_indices] else rep("lightgrey", length(PHI))
+  if(!is.na(zero_color)){
+    cols_to_plot[PHI==0] <- zero_color 
+  }
 
   # width plus space for colorbar
-  width <- 30
-  xlim_colorbar <- c(width-2, width)
-  xlim_whitespace <- c(xlim_colorbar[1]-1,xlim_colorbar[1])
-  xlim_heatmap <- c(0,xlim_whitespace[1])
+  width <- 1
+  xlim_colorbar <- if(colorbar) c(width-colorbar_width, width) else NULL
+  xlim_whitespace <- if(colorbar) c(xlim_colorbar[1]-gap_width*colorbar_width, xlim_colorbar[1]) else NULL
+  xlim_heatmap <- if(colorbar) c(0,xlim_whitespace[1]) else c(0,width)
   x_breaks <- seq(xlim_heatmap[1] + diff(xlim_heatmap)/M,xlim_heatmap[2], length.out = M)
 
   # height
@@ -135,16 +172,20 @@ posterior_heatmap <- function(x,
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
   par(mgp=c(2,.1,0))
-  mar <- rep(0.1,4)
+  mar <- rep(0.4,4)
   par(mar=mar)
   if(colorbar){
     mar[1] <- mar[1] + strheight_right[1]/2*5
-    mar[3] <- mar[3] + if(is.null(xlabels) & colorbar) maxstrheight_top*5 +.3 else strheight_right[1]/2*5
+    mar[3] <- mar[3] + strheight_right[1]/2*5 #if(is.null(xlabels) & colorbar) maxstrheight_top*5 +.3 else 
     mar[4] <- mar[4] + maxstrwidth_right*5
     par(mar=mar)
   }
   if(is.null(ylabels)){
-    mar[2] <- mar[2] + maxstrwidth_left*5+.1
+    mar[2] <- mar[2] + maxstrwidth_left*5
+    par(mar=mar)
+  }
+  if(is.null(xlabels)){
+    mar[3] <- mar[3] + maxstrheight_top*5 
     par(mar=mar)
   }
   #par(mar = c(strheight_right[1]/2*5,maxstrwidth_left*5+.1,strheight_right[1]/2*5,maxstrwidth_right*5)+.1)
@@ -158,7 +199,7 @@ posterior_heatmap <- function(x,
        sort(rep(x_breaks,K), decreasing = FALSE),
        (rep(y_breaks ,M)),
        col = cols_to_plot,
-       border = cols_to_plot)
+       border = if(is.na(border_color)) cols_to_plot else border_color)
 
   if(add_numbers){
     text(x = sort(rep(x_breaks-diff(x_breaks)[1]/2,K), decreasing = FALSE),
@@ -167,18 +208,28 @@ posterior_heatmap <- function(x,
   }
 
   # seperate lags
-  abline_at <- NULL
-  if(p==1 & K>M){
-    abline_at <- M
-  }else if(p>1){
-    abline_at <- M*(1:(p-1))
-    if(K%%M != 0){
-      abline_at <- c(abline_at, M*p)
+  if(detect_lags & inherits(x, "bayesianVARs_coef")){
+    MM <- if(!transpose) M else K
+    KK <- if(!transpose) K else M
+    p <- floor(KK/MM)
+    abline_at <- NULL
+    if(p==1 & KK>MM){
+      abline_at <- MM
+    }else if(p>1){
+      abline_at <- MM*(1:(p-1))
+      if(KK%%MM != 0){
+        abline_at <- c(abline_at, MM*p)
+      }
     }
-  }
-  if(!is.null(abline_at)){
-    for(i in seq.int(length(abline_at))){
-      lines(xlim_heatmap, rep(height - abline_at[i]*height/K, 2))
+    if(!is.null(abline_at)){
+      for(i in seq.int(length(abline_at))){
+        if(!transpose){
+          lines(xlim_heatmap, rep(height - abline_at[i]*height/KK, 2))
+        }else{
+          thewidth <- diff(xlim_heatmap)
+          lines(rep(abline_at[i]*thewidth/KK, 2), c(0,height))
+        }
+      }
     }
   }
 
@@ -241,8 +292,8 @@ plot_predvals <- function(preds, quantiles, observed = NULL, var_names,
     )
     )
     myaxis <- axis(side = 1, labels = FALSE, tick = FALSE) + 1
-    equidist <- mean(diff(myaxis))
-    myaxis <- seq(equidist/2, length(dates), by = equidist)
+    equidist <- max(mean(diff(myaxis)),1)
+    myaxis <- seq(max(floor(equidist/2),1), length(dates), by = equidist)
     axis(side=1, at = myaxis, labels = dates[myaxis])
     mtext(var_names[i], side = 3)
     if(nr_insample>0){
@@ -323,7 +374,7 @@ plot.bayesianVARs_fitted <- function(x,
 
   if(length(vars)==1L & any(vars == "all")){
     vars <- 1:ncol(x$Yraw)
-  }else if(any(base::isFALSE(vars %in% colnames(x$Yraw)))){
+  }else if(any(!(vars %in% colnames(x$Yraw)))){
     stop("Elements of 'vars' must coincide with 'colnames(x$Yraw)'!")
   }else{
     vars <- which(colnames(x$Yraw) %in% vars)
@@ -341,8 +392,72 @@ plot.bayesianVARs_fitted <- function(x,
   }
   dates <- as.character(dates)
 
-  plot_predvals(x$fitted[,vars,], quantiles, observed = x$Yraw, colnames(x$Yraw[,vars]),
+  plot_predvals(x$fitted[,vars,, drop=FALSE], quantiles, observed = x$Yraw[,vars, drop = FALSE], colnames(x$Yraw[,vars, drop = FALSE]),
                 dates, n_col, nrow(x$Yraw), 0)
+
+  invisible(x)
+}
+
+#' Visualization of the residuals of an estimated VAR.
+#'
+#' @param x A `bayesianVARs_residuals` object.
+#' @param dates optional vector of dates for labelling the x-axis. The default
+#'   values is `NULL`; in this case, the axis will be labeled with numbers.
+#' @param vars character vector containing the names of the variables to be
+#'   visualized. The default is `"all"` indicating that the fit of all variables
+#'   is visualized.
+#' @param quantiles numeric vector indicating which quantiles to plot.
+#' @param n_col integer indicating the number of columns to use for plotting.
+#' @param ... Currently ignored.
+#'
+#' @return returns `x` invisibly
+#' @seealso
+#' * residuals method for class 'bayesianVARs_bvar': [residuals.bayesianVARs_bvar()].
+#' * Other plotting [`plot.bayesianVARs_bvar()`],
+#' [`plot.bayesianVARs_fitted()`], [`plot.bayesianVARs_predict()`],
+#' [`pairs.bayesianVARs_predict()`], [`posterior_heatmap()`].
+#' @export
+#'
+#' @examples
+#' # Access a subset of the usmacro_growth dataset
+#' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
+#'
+#' # Estimate a model
+#' mod <- bvar(data, sv_keep = "all", quiet = TRUE)
+#'
+#' mod.resids <- residuals(mod)
+#'
+#' # Visualize
+#' plot(mod.resids)
+plot.bayesianVARs_residuals <- function(x,
+                                     dates = NULL,
+                                     vars = "all",
+                                     quantiles = c(0.05,0.5,0.95),
+                                     n_col = 1L, ...){
+
+  if(length(vars)==1L & any(vars == "all")){
+    vars <- 1:x$Ydim[2]
+  }else if(any(!(vars %in% x$Ydimnames[[2]] ))){
+    stop("Elements of 'vars' must coincide with 'x$Ydimnames[[2]]'!")
+  }else{
+    vars <- which(x$Ydimnames[[2]] %in% vars)
+  }
+
+  if(is.null(dates)){
+    dates <- 1:x$Ydim[1]
+    if(!is.null(x$Ydimnames[[1]])){
+      dates <- tryCatch(as.Date(x$Ydimnames[[1]]), error = function(e) dates)
+    }
+  }else{
+    if(length(dates) != x$Ydim[1]){
+      stop("Length of argument 'dates' differs from 'nrow(x$Ydim[1])'!")
+    }
+  }
+  dates <- as.character(dates)
+
+  zeros <- array(0, dim = x$Ydim, dimnames = x$Ydimnames)
+  plot_predvals(x$resids[,vars,, drop=FALSE], quantiles, observed = zeros[,vars, drop = FALSE], colnames(zeros[,vars, drop = FALSE]),
+                dates, n_col, x$Ydim[1], 0)
 
   invisible(x)
 }
@@ -541,12 +656,22 @@ plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NUL
     stop("For plotting, set 'simulate_predictive = TRUE' when calling 'predict.bayesianVARs_bvar()'!")
   }
 
-  n_ahead <- nrow(x$predictions)
+  max_ahead <- nrow(x$predictions)
+  
+  if(!is.null(ahead)){
+    ahead <- as.integer(sort(ahead))
+    if(max(ahead)>max_ahead){
+      stop(" 'max(ahead)' must be smaller equal to 'dim(x$predictions)[1]'")
+    }
+  }else{
+    ahead <- 1:max_ahead
+  }
+  n_ahead <- length(ahead)
 
   if(length(vars)==1L & any(vars == "all")){
     vars <- 1:ncol(x$Yraw)
   }else if(is.character(vars)){
-    if(any(base::isFALSE(vars %in% colnames(x$Yraw)))){
+    if(any(!(vars %in% colnames(x$Yraw)))){
       stop("Elements of 'vars' must coincide with 'colnames(x$Yraw)'!")
     }else{
       vars <- which(colnames(x$Yraw) %in% vars)
@@ -557,7 +682,7 @@ plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NUL
       stop("'max(vars)' must be at most 'ncol(x$Yraw)'!")
     }
   }
-  var_names <- colnames(x$Yraw)
+  var_names <- colnames(x$Yraw[,vars, drop = FALSE])
 
   if(is.null(dates)){
     dates <- first_obs:(nrow(x$Yraw) + n_ahead)
@@ -569,8 +694,7 @@ plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NUL
   nr_intervals <- floor(nr_quantiles/2)
   even <- nr_quantiles%%2 == 0
 
-  ahead <- as.integer(ahead)
-  pred_quants <- apply(x$predictions, 1:2, quantile, quantiles)
+  pred_quants <- apply(x$predictions[ahead,,,drop=FALSE], 1:2, quantile, quantiles)
 
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar), add = TRUE)
@@ -582,8 +706,8 @@ plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NUL
     lines(first_obs:nrow(x$Yraw), x$Yraw[first_obs:Tobs,vars[j]])
 
     myaxis <- axis(side = 1, labels = FALSE, tick = FALSE) + 1
-    equidist <- mean(diff(myaxis))
-    myaxis <- seq(floor(equidist/2), length(dates), by = equidist)
+    equidist <- max(mean(diff(myaxis)),1)
+    myaxis <- seq(max(floor(equidist/2),1), length(dates), by = equidist)
     axis(side=1, at = myaxis + first_obs -1, labels = dates[myaxis])
     mtext(var_names[j], side = 3)
 

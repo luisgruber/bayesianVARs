@@ -346,7 +346,7 @@ fitted.bayesianVARs_bvar <- function(object, error_term = TRUE, ...){
 #'
 #' @param object A `bayesianVARs_bvar` object estimated via [bvar()].
 #' @param ... Passed to [fitted.bayesianVARs_bvar()].
-#' @return An object of class `bayesianVARs_fitted`.
+#' @return An object of class `bayesianVARs_residuals`.
 #' @export
 #' @seealso [`fitted.bayesianVARs_bvar`]
 #' @examples
@@ -356,15 +356,16 @@ fitted.bayesianVARs_bvar <- function(object, error_term = TRUE, ...){
 #' # Estimate a model
 #' mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 #'
-#' resids <- residuals(mod)
-#' plot(resids)
+#' mod.resids <- residuals(mod)
+#' plot(mod.resids)
 residuals.bayesianVARs_bvar <- function(object, ...) {
 	yh <- fitted(object, ...)
 	out <- list(
-	  fitted = yh$fitted - rep(object$Y, object$config$draws),
-	  Yraw = array(0, dim = dim(object$Yraw), dimnames = dimnames(object$Yraw))
+	  resids = yh$fitted - rep(object$Y, object$config$draws),
+	  Ydim = dim(object$Yraw),
+	  Ydimnames = dimnames(object$Yraw)
 	)
-	class(out) <- "bayesianVARs_fitted"
+	class(out) <- "bayesianVARs_residuals"
 	out
 }
 
