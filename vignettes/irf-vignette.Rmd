@@ -219,7 +219,7 @@ Following [@inoue2021, section 2.4], we allow the user to visualize the $(1-\alp
 := \hat{\mathbb{E}}_\Phi\left[L(\Phi^{(r)}, \Phi) \right]
 = \frac{1}{R} \sum_{s=1}^{R} L\left(\Phi^{(r)}, \Phi^{(s)} \right)
 \end{equation*}
-and plotting only the first $(1-\alpha)~\text{100%}$ draws. We use absolute loss for the loss function $L$. The draw with the smallest value of $\hat Q$ is referred to as the \textit{Bayes estimator} (shown as the black trajectory in the plot below).
+and plotting only the first $(1-\alpha)~\text{100%}$ draws. We use absolute loss for the loss function $L$. The draw with the smallest value of $\hat Q$ is referred to as the _Bayes estimator_ (shown as the black trajectory in the plot below).
 
 Consider the following example, in which we deliberately do not use any sign-normalization: Using **bayesianVARs**, we estimate a two factor model on the entire `usmacro_growth` dataset, containing 21 variables.
 ```{r, cache=TRUE, results="hide"}
