@@ -4,6 +4,7 @@ Version: 0.1.5.9000
 Authors@R: c(
     person("Luis", "Gruber", , "Luis.Gruber@aau.at", role = c("cph", "aut", "cre"),
            comment = c(ORCID = "0000-0002-2399-738X")),
+    person("Stefan", "Haan", , "sthaan@edu.aau.at", role = "aut"),
     person("Gregor", "Kastner", , "gregor.kastner@aau.at", role = c("aut", "ths"),
            comment = c(ORCID = "0000-0002-8237-8271"))
   )
