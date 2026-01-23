@@ -398,6 +398,70 @@ plot.bayesianVARs_fitted <- function(x,
   invisible(x)
 }
 
+#' Visualization of the residuals of an estimated VAR.
+#'
+#' @param x A `bayesianVARs_residuals` object.
+#' @param dates optional vector of dates for labelling the x-axis. The default
+#'   values is `NULL`; in this case, the axis will be labeled with numbers.
+#' @param vars character vector containing the names of the variables to be
+#'   visualized. The default is `"all"` indicating that the fit of all variables
+#'   is visualized.
+#' @param quantiles numeric vector indicating which quantiles to plot.
+#' @param n_col integer indicating the number of columns to use for plotting.
+#' @param ... Currently ignored.
+#'
+#' @return returns `x` invisibly
+#' @seealso
+#' * residuals method for class 'bayesianVARs_bvar': [residuals.bayesianVARs_bvar()].
+#' * Other plotting [`plot.bayesianVARs_bvar()`],
+#' [`plot.bayesianVARs_fitted()`], [`plot.bayesianVARs_predict()`],
+#' [`pairs.bayesianVARs_predict()`], [`posterior_heatmap()`].
+#' @export
+#'
+#' @examples
+#' # Access a subset of the usmacro_growth dataset
+#' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
+#'
+#' # Estimate a model
+#' mod <- bvar(data, sv_keep = "all", quiet = TRUE)
+#'
+#' mod.resids <- residuals(mod)
+#'
+#' # Visualize
+#' plot(mod.resids)
+plot.bayesianVARs_residuals <- function(x,
+                                     dates = NULL,
+                                     vars = "all",
+                                     quantiles = c(0.05,0.5,0.95),
+                                     n_col = 1L, ...){
+
+  if(length(vars)==1L & any(vars == "all")){
+    vars <- 1:x$Ydim[2]
+  }else if(any(!(vars %in% x$Ydimnames[[2]] ))){
+    stop("Elements of 'vars' must coincide with 'x$Ydimnames[[2]]'!")
+  }else{
+    vars <- which(x$Ydimnames[[2]] %in% vars)
+  }
+
+  if(is.null(dates)){
+    dates <- 1:x$Ydim[1]
+    if(!is.null(x$Ydimnames[[1]])){
+      dates <- tryCatch(as.Date(x$Ydimnames[[1]]), error = function(e) dates)
+    }
+  }else{
+    if(length(dates) != x$Ydim[1]){
+      stop("Length of argument 'dates' differs from 'nrow(x$Ydim[1])'!")
+    }
+  }
+  dates <- as.character(dates)
+
+  zeros <- array(0, dim = x$Ydim, dimnames = x$Ydimnames)
+  plot_predvals(x$resids[,vars,, drop=FALSE], quantiles, observed = zeros[,vars, drop = FALSE], colnames(zeros[,vars, drop = FALSE]),
+                dates, n_col, x$Ydim[1], 0)
+
+  invisible(x)
+}
+
 #' Plot method for bayesianVARs_bvar
 #'
 #' Visualization of in-sample fit. Can also be used to display prediction
@@ -679,6 +743,143 @@ plot.bayesianVARs_predict <- function(x, dates = NULL, vars = "all", ahead = NUL
               col = "red", lwd = 2)
       }
     }
+  }
+
+  invisible(x)
+}
+
+
+#' Impulse Responses Plot
+#'
+#' Visualization of the impulse responses.
+#' Responses are plotted on a grid, where rows correspond to variables
+#' and columns correspond to shocks.
+#'
+#' @param x An object of type `bayesianVARs_irf` obtained via
+#'   [`irf`].
+#' @param vars character vector containing the names of the variables to be
+#'   visualized. The default is `"all"` indicating that all variables are
+#'   visualized.
+#' @param quantiles numeric vector indicating which quantiles to plot. If
+#' \code{hairy=TRUE} was specified when calling [`irf`], a proportion of \code{max(quantiles)} IRFs will be plotted.
+#' Specify \code{0} to plot a point-estimate only. If \code{hairy=FALSE} was specified (the default),
+#' point-wise quantiles will be plotted. Note that the curve of point-wise medians is not necessarily
+#' in the set of IRFs (see Inoue 2022).
+#' @param default_hair_color the color of the IRF samples, if \code{hairy=TRUE} was specified.
+#' @param true_irf If the true IRFs are known (because the data was simulated) they can be plotted alongside
+#' the estimates, such that the quality of the estimates may be judged. \code{true_irf} should be a numeric array
+#' with dimensions variables, shocks and time, in that order.
+#' @param ... Currently ignored!
+#'
+#' @references Inoue, A. and Kilian, L. (2022).
+#'  Joint Bayesian inference about impulse responses in VAR models.
+#'  \emph{Journal of Econometrics}, \doi{10.1016/j.jeconom.2021.05.010}.
+#'
+#' @export
+#' @seealso [`irf`]
+#' @author Stefan Haan \email{sthaan@edu.aau.at}
+plot.bayesianVARs_irf <- function(
+	x,
+	vars = "all",
+	quantiles = c(0.05,0.25,0.5,0.75,0.95),
+	default_hair_color = "#FF000003",
+	true_irf = NULL,
+	...
+) {
+  n_ahead <- dim(x)[3]
+  n_shocks <- ncol(x)
+  var_names <- rownames(x)
+  n_posterior_samples <- dim(x)[4]
+  
+  do_plot_hairs <- !is.null(attr(x, "hair_order"))
+  hair_order <- utils::head(attr(x, "hair_order"), n=1+max(quantiles)*n_posterior_samples)
+  
+  if(length(vars)==1L & any(vars == "all")){
+    vars <- seq_along(var_names)
+  }else if(is.character(vars)){
+    if(any(vars %in% var_names == FALSE)){
+      stop("Elements of 'vars' must coincide with 'rownames(x)'!")
+    }else{
+      vars <- match(vars, var_names)
+    }
+  }else if(is.numeric(vars)){
+    vars <- as.integer(vars)
+    if(any(vars > length(var_names))){
+      stop(paste("'max(vars)' must be at most", length(var_names)))
+    }
+  }
+  
+  t <- seq_len(n_ahead)
+  dates <- t-1
+
+  quantiles <- sort(quantiles)
+  nr_quantiles <- length(quantiles)
+  nr_intervals <- floor(nr_quantiles/2)
+  even <- nr_quantiles%%2 == 0
+  alpha_upper <- 0.4
+  alpha_lower <- 0.2
+  alphas <- seq(alpha_lower, alpha_upper, length.out = nr_intervals)
+  if (nr_intervals==1) {
+    alphas <- alpha_upper
+  }
+
+  # dimensions: quantiles x vars x shocks x time
+  pred_quants <- c()
+  if (!do_plot_hairs) {
+    pred_quants <- apply(x, MARGIN=1:3, FUN=quantile, quantiles, na.rm=TRUE)
+  }
+
+  oldpar <- par(no.readonly = TRUE)
+  on.exit(par(oldpar), add = TRUE)
+  par(mfrow=c(length(vars), n_shocks), mar=c(2,2,2,1), mgp=c(2,.5,0))
+  for(j in vars){
+  for(i in seq_len(n_shocks)) {
+  	ylim <- c(0,0)
+    if (!is.null(true_irf)) {
+    	ylim <- range(true_irf[j,i,])
+    }
+    if (do_plot_hairs) {
+    	ylim <- range(ylim, x[j,i,,hair_order], finite=TRUE)
+    } else {
+      ylim <- range(ylim, pred_quants[,j,i,], finite=TRUE)
+    }
+    plot(t, rep(0, n_ahead), type="n", xlab="", ylab="", xaxt="n", ylim=ylim)
+    abline(h=0, lty=2)
+    axis(side=1, at = t, labels = dates[t])
+    mtext(var_names[j], side = 3)
+	
+    if(!do_plot_hairs && nr_intervals>0){
+      for(r in seq.int(nr_intervals)){
+        polygon(x = c(t, rev(t)),
+                y = c(pred_quants[r,j,i,], rev(pred_quants[r+1,j,i,])),
+                col = scales::alpha("red", alphas[r]),
+                border = NA)
+        if(length(quantiles)>2){
+          polygon(x = c(t, rev(t)),
+                  y = c(pred_quants[nrow(pred_quants)+1-r,j,i,],
+                        rev(pred_quants[nrow(pred_quants)-r,j,i,])),
+                  col = scales::alpha("red", alphas[r]),
+                  border = NA)
+        }
+      }
+      if(!even){
+        lines(t, pred_quants[ceiling(length(quantiles)/2),j,i,],
+              col = "red", lwd = 2)
+      }
+    } else {
+    	for (r in hair_order) {
+    		hair_color <- attr(x, "hair_color")[r]
+		    if (is.null(hair_color)) {
+			  hair_color <- default_hair_color
+		    }
+    		lines(t, x[j,i,,r], col=hair_color)
+    	}
+    	lines(t, x[j,i,,hair_order[1]], col="black", lwd=2)
+    }
+    if (!is.null(true_irf)) {
+    	lines(t, true_irf[j,i,], col="black", lwd=2, lty=6)
+    }
+  }
   }
 
   invisible(x)
