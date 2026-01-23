@@ -5,6 +5,8 @@
 - **Luis Gruber**. Copyright holder, author, maintainer.
   [](https://orcid.org/0000-0002-2399-738X)
 
+- **Stefan Haan**. Author.
+
 - **Gregor Kastner**. Author, thesis advisor.
   [](https://orcid.org/0000-0002-8237-8271)
 
@@ -13,13 +15,13 @@
 Source:
 [`DESCRIPTION`](https://github.com/luisgruber/bayesianVARs/blob/main/DESCRIPTION)
 
-Gruber L, Kastner G (2026). *bayesianVARs: MCMC Estimation of Bayesian
-Vectorautoregressions*. R package version 0.1.5.9000,
+Gruber L, Haan S, Kastner G (2026). *bayesianVARs: MCMC Estimation of
+Bayesian Vectorautoregressions*. R package version 0.1.5.9000,
 <https://github.com/luisgruber/bayesianVARs>.
 
     @Manual{,
       title = {bayesianVARs: MCMC Estimation of Bayesian Vectorautoregressions},
-      author = {Luis Gruber and Gregor Kastner},
+      author = {Luis Gruber and Stefan Haan and Gregor Kastner},
       year = {2026},
       note = {R package version 0.1.5.9000},
       url = {https://github.com/luisgruber/bayesianVARs},

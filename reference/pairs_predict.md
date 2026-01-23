@@ -61,7 +61,7 @@ predictions <- predict(mod, ahead = 1:3)
 #> 'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
 #>           draws that do not fulfill the stable criterion.
 #> 
-#> 522/1000 stable posterior draws remaining for prediction!
+#> 443/1000 stable posterior draws remaining for prediction!
 
 # Visualize
 pairs(predictions, vars = 1:3, ahead = 1:3)

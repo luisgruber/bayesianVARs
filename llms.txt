@@ -80,9 +80,14 @@ R](https://bayesian.org/wp-content/uploads/2023/12/2312.pdf#SOFTWARE%20HIGHLIGHT
   : Markov Chain Monte Carlo Sampling for Bayesian Vectorautoregressions
 - [`coef(`*`<bayesianVARs_bvar>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/coef.md)
   : Extract VAR coefficients
+- [`extractB0()`](https://luisgruber.github.io/bayesianVARs/reference/extractB0.md)
+  : Retrieve the structural parameter \\\boldsymbol{B}\_0\\ samples from
+  an IRF object.
 - [`fitted(`*`<bayesianVARs_bvar>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/fitted.bayesianVARs_bvar.md)
   : Simulate fitted/predicted historical values for an estimated VAR
   model
+- [`irf()`](https://luisgruber.github.io/bayesianVARs/reference/irf.md)
+  : Impulse response functions
 - [`my_gig()`](https://luisgruber.github.io/bayesianVARs/reference/my_gig.md)
   : Draw from generalized inverse Gaussian
 - [`pairs(`*`<bayesianVARs_predict>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/pairs_predict.md)
@@ -92,8 +97,12 @@ R](https://bayesian.org/wp-content/uploads/2023/12/2312.pdf#SOFTWARE%20HIGHLIGHT
   : Plot method for bayesianVARs_bvar
 - [`plot(`*`<bayesianVARs_fitted>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/plot.bayesianVARs_fitted.md)
   : Visualization of in-sample fit of an estimated VAR.
+- [`plot(`*`<bayesianVARs_irf>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/plot.bayesianVARs_irf.md)
+  : Impulse Responses Plot
 - [`plot(`*`<bayesianVARs_predict>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/plot.bayesianVARs_predict.md)
   : Fan chart
+- [`plot(`*`<bayesianVARs_residuals>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/plot.bayesianVARs_residuals.md)
+  : Visualization of the residuals of an estimated VAR.
 - [`posterior_heatmap()`](https://luisgruber.github.io/bayesianVARs/reference/posterior_heatmap.md)
   : Posterior heatmaps for matrix valued parameters
 - [`predict(`*`<bayesianVARs_bvar>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/predict.bayesianVARs_bvar.md)
@@ -106,10 +115,14 @@ R](https://bayesian.org/wp-content/uploads/2023/12/2312.pdf#SOFTWARE%20HIGHLIGHT
   : Print method for summary.bayesianVARs_bvar objects
 - [`print(`*`<summary.bayesianVARs_predict>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/print.summary.bayesianVARs_predict.md)
   : Print method for summary.bayesianVARs_predict objects
+- [`residuals(`*`<bayesianVARs_bvar>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/residuals.bayesianVARs_bvar.md)
+  : Extract Model Residuals
 - [`specify_prior_phi()`](https://luisgruber.github.io/bayesianVARs/reference/specify_prior_phi.md)
   : Specify prior on PHI
 - [`specify_prior_sigma()`](https://luisgruber.github.io/bayesianVARs/reference/specify_prior_sigma.md)
   : Specify prior on Sigma
+- [`specify_structural_restrictions()`](https://luisgruber.github.io/bayesianVARs/reference/specify_structural_restrictions.md)
+  : Set identifying restrictions for the structural VAR parameters.
 - [`stable_bvar()`](https://luisgruber.github.io/bayesianVARs/reference/stable_bvar.md)
   : Stable posterior draws
 - [`` `[`( ``*`<bayesianVARs_coef>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/sub-.bayesianVARs_coef.md)
@@ -135,3 +148,5 @@ R](https://bayesian.org/wp-content/uploads/2023/12/2312.pdf#SOFTWARE%20HIGHLIGHT
 - [Shrinkage Priors for Bayesian Vectorautoregressions featuring
   Stochastic Volatility Using the \*\*R\*\* Package \*\*bayesianVARs\*\*
   (PDF)](https://luisgruber.github.io/bayesianVARs/articles/bayesianVARs-vignette.pdf):
+- [Compute Impulse Response Functions to Structural Shocks using
+  \*\*bayesianVARs\*\*](https://luisgruber.github.io/bayesianVARs/articles/irf-vignette.md):

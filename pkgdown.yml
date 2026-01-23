@@ -3,7 +3,8 @@ pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
   bayesianVARs-vignette: bayesianVARs-vignette.pdf
-last_built: 2026-01-20T14:56Z
+  irf-vignette: irf-vignette.html
+last_built: 2026-01-23T18:35Z
 urls:
   reference: https://luisgruber.github.io/bayesianVARs/reference
   article: https://luisgruber.github.io/bayesianVARs/articles

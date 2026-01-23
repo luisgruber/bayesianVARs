@@ -16,9 +16,9 @@ bvar(
   prior_phi = specify_prior_phi(data = data, lags = lags, prior = "HS"),
   prior_sigma = specify_prior_sigma(data = data, type = "factor", quiet = TRUE),
   sv_keep = "last",
+  expert_huge = FALSE,
   quiet = FALSE,
-  startvals = list(),
-  expert = list()
+  startvals = list()
 )
 ```
 
@@ -72,6 +72,12 @@ bvar(
   the default, only draws for the very last log-variance \\h_T\\ are
   stored.
 
+- expert_huge:
+
+  logical value indicating whether to use a specific algorithm for huge
+  VARs. Only possible if a factor structure for the errors is specified.
+  See section MCMC algorithm below for more details.
+
 - quiet:
 
   logical value indicating whether information about the progress during
@@ -80,10 +86,6 @@ bvar(
 - startvals:
 
   optional list with starting values.
-
-- expert:
-
-  optional list with expert settings.
 
 ## Value
 
@@ -190,8 +192,13 @@ autoregressive processes \\h\_{it}\sim N(\mu_i +
 
 To sample efficiently the reduced-form VAR coefficients assuming a
 **factor structure for the errors**, the equation per equation algorithm
-in Kastner & Huber (2020) is implemented. All parameters and latent
-variables associated with the factor-structure are sampled using package
+in Kastner & Huber (2020) is implemented. The factor structure has the
+advantage that an algorithm for sampling from high-dimensional Gaussian
+distributions can be exploited by setting `expert_huge = TRUE`. However,
+this speeds up computations only if \\K \> T\\, i.e. the number of
+coefficients per equations exceeds the number of observations. All
+parameters and latent variables associated with the factor-structure are
+sampled using package
 [`factorstochvol-package`](https://rdrr.io/pkg/factorstochvol/man/factorstochvol-package.html)'s
 function `update_fsv` callable on the C-level only.
 
@@ -202,7 +209,8 @@ and latent variables are sampled using package
 [`stochvol`](https://gregorkastner.github.io/stochvol/reference/stochvol-package.html)'s
 [`update_fast_sv`](https://gregorkastner.github.io/stochvol/reference/update_fast_sv.html)
 function. The precision parameters, i.e. the free off-diagonal elements
-in \\\boldsymbol{U}\\, are sampled as in Cogley and Sargent (2005).
+in \\\boldsymbol{U}\\, can be sampled using Bayesian linear regression
+methods, see Cogley and Sargent (2005).
 
 ## References
 

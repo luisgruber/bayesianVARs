@@ -40,7 +40,7 @@ stable_mod <- stable_bvar(mod)
 #> 
 #> Original 'bayesianVARs_bvar' object consists of 1000 posterior draws.
 #> 
-#> Detected 552 unstable draws.
+#> Detected 468 unstable draws.
 #> 
-#> Remaining draws: 448 !
+#> Remaining draws: 532 !
 ```
