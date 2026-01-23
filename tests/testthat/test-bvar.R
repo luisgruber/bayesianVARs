@@ -553,3 +553,13 @@ test_that("cholesky", {
   expect_equal(ng_a_c$prior_sigma_cpp$cholesky_GT_priorkernel, "normal")
   expect_equal(ng_a_c$prior_sigma_cpp$cholesky_GT_vs, 1)
 })
+
+test_that("expert_huge", {
+  n <- 20
+  m <- 10
+  y <- matrix(rnorm(n*m), n, m)
+  colnames(y) <- paste0("y", 1:m)
+  expect_warning(bvar(y, draws = 2L, burnin = 2L, quiet = TRUE,
+                      prior_sigma = specify_prior_sigma(y, type = "cholesky"),
+                      expert_huge = TRUE))
+})

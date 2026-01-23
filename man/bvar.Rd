@@ -14,9 +14,9 @@ bvar(
   prior_phi = specify_prior_phi(data = data, lags = lags, prior = "HS"),
   prior_sigma = specify_prior_sigma(data = data, type = "factor", quiet = TRUE),
   sv_keep = "last",
+  expert_huge = FALSE,
   quiet = FALSE,
-  startvals = list(),
-  expert = list()
+  startvals = list()
 )
 }
 \arguments{
@@ -52,13 +52,15 @@ the variance-covariance matrix of the VAR. Best use constructor
 \code{sv_keep = "last"}, the default, only draws for the very last
 log-variance \eqn{h_T} are stored.}
 
+\item{expert_huge}{logical value indicating whether to use a specific
+algorithm for huge VARs. Only possible if a factor structure for the errors
+is specified. See section MCMC algorithm below for more details.}
+
 \item{quiet}{logical value indicating whether information about the progress
 during sampling should be displayed during sampling (default is
 \code{TRUE}).}
 
 \item{startvals}{optional list with starting values.}
-
-\item{expert}{optional list with expert settings.}
 }
 \value{
 An object of type \code{bayesianVARs_bvar}, a list containing the following
@@ -141,18 +143,24 @@ follow a priori independent autoregressive processes \eqn{h_{it}\sim N(\mu_i +
 \section{MCMC algorithm}{
  To sample efficiently the reduced-form VAR
 coefficients assuming a \strong{factor structure for the errors}, the equation
-per equation algorithm in Kastner & Huber (2020) is implemented. All
-parameters and latent variables associated with the factor-structure are
-sampled using package \code{\link[factorstochvol]{factorstochvol-package}}'s
-function \code{update_fsv} callable on the C-level only.
+per equation algorithm in Kastner & Huber (2020) is implemented. The factor
+structure has the advantage that an algorithm for sampling from
+high-dimensional Gaussian distributions can be exploited by setting
+\code{expert_huge = TRUE}. However, this speeds up computations only if \eqn{K >
+ T}, i.e. the number of coefficients per equations exceeds the number of
+observations. All parameters and latent variables associated with the
+factor-structure are sampled using package
+\code{\link[factorstochvol]{factorstochvol-package}}'s function \code{update_fsv}
+callable on the C-level only.
 
 To sample efficiently the reduced-form VAR coefficients, assuming a
 \strong{cholesky-structure for the errors}, the corrected triangular algorithm in
 Carriero et al. (2021) is implemented. The SV parameters and latent
 variables are sampled using package \code{\link[stochvol]{stochvol}}'s
 \code{\link[stochvol]{update_fast_sv}} function. The precision parameters,
-i.e. the free off-diagonal elements in \eqn{\boldsymbol{U}}, are sampled as
-in Cogley and Sargent (2005).
+i.e. the free off-diagonal elements in \eqn{\boldsymbol{U}}, can be sampled
+using Bayesian linear regression methods, see Cogley and
+Sargent (2005).
 }
 
 \examples{
