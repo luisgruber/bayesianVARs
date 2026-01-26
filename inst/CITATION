@@ -1,0 +1,20 @@
+bibentry(
+  header   = "To cite package ‘bayesianVARs’ in publications use:",
+  bibtype  = "Manual",
+  title    = "{bayesianVARs}: {MCMC} Estimation of {Bayesian} Vectorautoregressions",
+  author   = "Luis Gruber, Stefan Haan, Gregor Kastner",
+  year     = 2026,
+  note     = "https://doi.org/10.32614/CRAN.package.bayesianVARs"
+)
+
+bibentry(header = "To refer to the shrinkage methodology used in bayesianVARs please cite:",
+         bibtype = "Article",
+         title = "Forecasting macroeconomic data with {Bayesian VARs}: Sparse or dense? It depends!",
+         author = "Luis Gruber, Gregor Kastner",
+         journal = "International Journal of Forecasting",
+         year = "2025",
+         volume = "41",
+         number = "4",
+         pages = "1589--1619",
+         doi = "10.1016/j.ijforecast.2025.02.001"
+)
