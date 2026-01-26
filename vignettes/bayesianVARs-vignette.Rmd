@@ -101,6 +101,7 @@ variables transformed to growth rates through taking log-differences
 (except for interest rates).
 
 ```{r, results='hide'}
+set.seed(123)
 library(bayesianVARs)
 variables <- c("GDPC1", "GDPCTPI",  "FEDFUNDS", "EXUSUKx", "S&P 500")
 train_data <- 100 * usmacro_growth[1:230, variables]
@@ -131,7 +132,8 @@ prior_phi <- specify_prior_phi(data = train_data,
                                global_grouping = "olcl-lagwise")
 prior_sigma <- specify_prior_sigma(data = train_data, 
                                    type = "factor", 
-                                   factor_factors = 4L)
+                                   factor_factors = 4L,
+                                   factor_facloadtol = 1e-10)
                                    
 mod <- bvar(train_data, lags = 2L, draws = 10000, burnin = 2000, 
             prior_phi = prior_phi, prior_sigma = prior_sigma, 
