@@ -12,7 +12,7 @@ specify_prior_sigma(
   factor_restrict = c("none", "upper"),
   factor_priorfacloadtype = c("rowwiseng", "colwiseng", "normal"),
   factor_priorfacload = 0.1,
-  factor_facloadtol = 1e-18,
+  factor_facloadtol = 1e-14,
   factor_priorng = c(1, 1),
   factor_priormu = c(0, 10),
   factor_priorphiidi = c(10, 3),
