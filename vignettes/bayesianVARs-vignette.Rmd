@@ -132,8 +132,7 @@ prior_phi <- specify_prior_phi(data = train_data,
                                global_grouping = "olcl-lagwise")
 prior_sigma <- specify_prior_sigma(data = train_data, 
                                    type = "factor", 
-                                   factor_factors = 4L,
-                                   factor_facloadtol = 1e-10)
+                                   factor_factors = 4L)
                                    
 mod <- bvar(train_data, lags = 2L, draws = 10000, burnin = 2000, 
             prior_phi = prior_phi, prior_sigma = prior_sigma, 
