@@ -132,43 +132,43 @@ predictions <- predict(mod, ahead = 1:4, LPL = TRUE, Y_obs = test)
 #> 'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
 #>           draws that do not fulfill the stable criterion.
 #> 
-#> 492/1000 stable posterior draws remaining for prediction!
+#> 490/1000 stable posterior draws remaining for prediction!
 
 # Summary
 summary(predictions)
 #> 
 #> LPL:
 #>   t+1   t+2   t+3   t+4 
-#> 3.234 8.839 8.629 6.442 
+#> 3.295 8.963 8.848 6.618 
 #> 
 #> Marginal univariate LPLs:
 #>      GDPC1 CPIAUCSL FEDFUNDS
-#> t+1 -1.046   0.4946    3.587
-#> t+2  2.658   2.7642    3.284
-#> t+3  2.780   2.6174    3.123
-#> t+4  2.893   0.5619    2.996
+#> t+1 -1.208   0.4945    3.705
+#> t+2  2.811   2.7032    3.380
+#> t+3  2.986   2.5687    3.225
+#> t+4  3.086   0.4691    3.077
 #> 
 #> Prediction quantiles:
 #> , , GDPC1
 #> 
-#>          t+1       t+2       t+3       t+4
-#> 5%  -0.08087 -0.036587 -0.023680 -0.020865
-#> 50% -0.02243 -0.001922  0.004844  0.006433
-#> 95%  0.03125  0.037331  0.031066  0.032412
+#>          t+1        t+2       t+3       t+4
+#> 5%  -0.06271 -0.0358741 -0.025896 -0.021977
+#> 50% -0.01847  0.0003222  0.007422  0.007056
+#> 95%  0.03786  0.0396699  0.042156  0.041783
 #> 
 #> , , CPIAUCSL
 #> 
 #>           t+1       t+2       t+3       t+4
-#> 5%  -0.017982 -0.019123 -0.018902 -0.013825
-#> 50% -0.007775 -0.005189 -0.002953 -0.001493
-#> 95%  0.003257  0.006441  0.010182  0.012025
+#> 5%  -0.018501 -0.018386 -0.016577 -0.013903
+#> 50% -0.008211 -0.005274 -0.002744 -0.001245
+#> 95%  0.003095  0.006904  0.010319  0.010655
 #> 
 #> , , FEDFUNDS
 #> 
 #>           t+1       t+2       t+3       t+4
-#> 5%  -0.024906 -0.033167 -0.037943 -0.046417
-#> 50% -0.004319 -0.004624 -0.006759 -0.004937
-#> 95%  0.015106  0.019991  0.030742  0.042475
+#> 5%  -0.017187 -0.029766 -0.035690 -0.046158
+#> 50% -0.002658 -0.003953 -0.004949 -0.005525
+#> 95%  0.014293  0.020864  0.026225  0.028602
 #> 
 
 # Visualize via fan-charts
@@ -182,9 +182,9 @@ predictions <- predict(mod, ahead = 1:4, LPL = TRUE, Y_obs = test, LPL_VoI = c("
 #> 'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
 #>           draws that do not fulfill the stable criterion.
 #> 
-#> 492/1000 stable posterior draws remaining for prediction!
+#> 490/1000 stable posterior draws remaining for prediction!
 predictions$LPL_VoI
 #>      t+1      t+2      t+3      t+4 
-#> 2.485835 6.018957 5.981567 5.954947 
+#> 2.405161 6.277865 6.228728 6.194043 
 # }
 ```

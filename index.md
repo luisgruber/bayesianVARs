@@ -3,7 +3,8 @@
 Estimation of Bayesian vectorautoregressions with/without stochastic
 volatility.
 
-Implements several modern hierarchical shrinkage priors, amongst them
+Implements several modern hierarchical shrinkage priors and their
+semi-global refinements allowing for structured shrinkage. Amongst them
 Dirichlet-Laplace prior (DL), hierarchical Minnesota prior (HM),
 Horseshoe prior (HS), normal-gamma prior (NG),
 $R^{2}$-induced-Dirichlet-decomposition prior (R2D2) and stochastic
@@ -45,6 +46,10 @@ Some features:
   [`specify_prior_phi()`](https://luisgruber.github.io/bayesianVARs/reference/specify_prior_phi.md)
   and
   [`specify_prior_sigma()`](https://luisgruber.github.io/bayesianVARs/reference/specify_prior_sigma.md).
+- Computation and simulation of impulse response functions
+  with[`irf()`](https://luisgruber.github.io/bayesianVARs/reference/irf.md)
+  and specification of structural restrictions with helper function
+  [`specify_structural_restrictions()`](https://luisgruber.github.io/bayesianVARs/reference/specify_structural_restrictions.md).
 
 # Demonstration
 
@@ -69,5 +74,8 @@ plot(mod, predictions = pred)
 
 # Documentation
 
-[bayesianVARs - Shrinkage Priors for Bayesian Vectorautoregressions in
-R](https://bayesian.org/wp-content/uploads/2023/12/2312.pdf#SOFTWARE%20HIGHLIGHT)
+``` r
+vignette(package = "bayesianVARs")
+# If installing directly from GitHub, one has to explicitely request vignettes, e.g. with
+# devtools::install_github("luisgruber/bayesianVARs", dependencies = TRUE, build_vignettes = TRUE)
+```

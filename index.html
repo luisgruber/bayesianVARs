@@ -43,6 +43,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="articles/bayesianVARs-vignette.pdf">Shrinkage Priors for Bayesian Vectorautoregressions featuring Stochastic Volatility Using the **R** Package **bayesianVARs** (PDF)</a></li>
     <li><a class="dropdown-item" href="articles/irf-vignette.html">Compute Impulse Response Functions to Structural Shocks using **bayesianVARs**</a></li>
+    <li><a class="dropdown-item" href="articles/scalability-vignette.html">Scalability of bayesianVARs</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -67,7 +68,7 @@
 <!-- badges: start -->
 
 <p>Estimation of Bayesian vectorautoregressions with/without stochastic volatility.</p>
-<p>Implements several modern hierarchical shrinkage priors, amongst them Dirichlet-Laplace prior (DL), hierarchical Minnesota prior (HM), Horseshoe prior (HS), normal-gamma prior (NG), <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>R</mi><mn>2</mn></msup><annotation encoding="application/x-tex">R^2</annotation></semantics></math>-induced-Dirichlet-decomposition prior (R2D2) and stochastic search variable selection prior (SSVS).</p>
+<p>Implements several modern hierarchical shrinkage priors and their semi-global refinements allowing for structured shrinkage. Amongst them Dirichlet-Laplace prior (DL), hierarchical Minnesota prior (HM), Horseshoe prior (HS), normal-gamma prior (NG), <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>R</mi><mn>2</mn></msup><annotation encoding="application/x-tex">R^2</annotation></semantics></math>-induced-Dirichlet-decomposition prior (R2D2) and stochastic search variable selection prior (SSVS).</p>
 <p>Concerning the error-term, the user can either specify an order-invariant factor structure or an order-variant cholesky structure.</p>
 </div>
 <div class="section level1">
@@ -88,6 +89,7 @@
 <ul>
 <li>Prediction, plotting, extraction of model parameters and extraction of fitted values with the usual generic functions <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>, <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code>, <code><a href="reference/coef.html">coef()</a></code>, <code><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov()</a></code> and <code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code>.</li>
 <li>Configure prior distributions with helper functions <code><a href="reference/specify_prior_phi.html">specify_prior_phi()</a></code> and <code><a href="reference/specify_prior_sigma.html">specify_prior_sigma()</a></code>.</li>
+<li>Computation and simulation of impulse response functions with<code><a href="reference/irf.html">irf()</a></code> and specification of structural restrictions with helper function <code><a href="reference/specify_structural_restrictions.html">specify_structural_restrictions()</a></code>.</li>
 </ul>
 </div>
 <div class="section level1">
@@ -114,7 +116,10 @@
 <div class="section level1">
 <h1 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
 </h1>
-<p><a href="https://bayesian.org/wp-content/uploads/2023/12/2312.pdf#SOFTWARE%20HIGHLIGHT" class="external-link">bayesianVARs - Shrinkage Priors for Bayesian Vectorautoregressions in R</a></p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette</a></span><span class="op">(</span>package <span class="op">=</span> <span class="st">"bayesianVARs"</span><span class="op">)</span></span>
+<span><span class="co"># If installing directly from GitHub, one has to explicitely request vignettes, e.g. with</span></span>
+<span><span class="co"># devtools::install_github("luisgruber/bayesianVARs", dependencies = TRUE, build_vignettes = TRUE)</span></span></code></pre></div>
 </div>
 
   </main><aside class="col-md-3"><div class="links">

@@ -20,6 +20,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/bayesianVARs-vignette.pdf">Shrinkage Priors for Bayesian Vectorautoregressions featuring Stochastic Volatility Using the **R** Package **bayesianVARs** (PDF)</a></li>
     <li><a class="dropdown-item" href="../articles/irf-vignette.html">Compute Impulse Response Functions to Structural Shocks using **bayesianVARs**</a></li>
+    <li><a class="dropdown-item" href="../articles/scalability-vignette.html">Scalability of bayesianVARs</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -38,7 +39,10 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="bayesianvars-development-version">bayesianVARs (development version)<a class="anchor" aria-label="anchor" href="#bayesianvars-development-version"></a></h2>
-<ul><li>Underlying ‘cpp’ functions of bvar(), predict() and vcov() now return Rcpp objects instead of arma objects. Efficiency gains only measurable in huge dimensions!</li>
+<ul><li>Welcome Stefan Haan as contributor to the package!</li>
+<li>bayesianVARs now features impulse response functions via irf(). Thanks to Stefan for taking care of this!</li>
+<li>bvar() now formally can estimate ‘huge’ VARs in combination with a factor specification on the errors by setting ‘expert_huge=TRUE’.</li>
+<li>Underlying ‘cpp’ functions of bvar(), predict() and vcov() now return Rcpp objects instead of arma objects. Efficiency gains only measurable in huge dimensions!</li>
 <li>new additional unit tests (bayesianVARs/test/testthat)</li>
 <li>internal restructuring of specify_prior_phi() and specify_prior_sigma(), for users of bayesianVARs nothing changes</li>
 <li>Updated references in DESCRIPTION, vignette and function documentations.</li>

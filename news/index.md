@@ -2,6 +2,11 @@
 
 ## bayesianVARs (development version)
 
+- Welcome Stefan Haan as contributor to the package!
+- bayesianVARs now features impulse response functions via irf(). Thanks
+  to Stefan for taking care of this!
+- bvar() now formally can estimate ‘huge’ VARs in combination with a
+  factor specification on the errors by setting ‘expert_huge=TRUE’.
 - Underlying ‘cpp’ functions of bvar(), predict() and vcov() now return
   Rcpp objects instead of arma objects. Efficiency gains only measurable
   in huge dimensions!

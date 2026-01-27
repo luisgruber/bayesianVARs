@@ -38,27 +38,27 @@ summary(mod)
 #> 
 #> Posterior median of reduced-form coefficients:
 #>              GDPC1 CPIAUCSL FEDFUNDS
-#> GDPC1.l1     0.230    0.003    0.043
-#> CPIAUCSL.l1 -0.072    0.636   -0.003
-#> FEDFUNDS.l1  0.013    0.037    0.998
+#> GDPC1.l1     0.222    0.017    0.013
+#> CPIAUCSL.l1 -0.053    0.634   -0.004
+#> FEDFUNDS.l1  0.012    0.038    1.001
 #> intercept    0.006    0.001    0.000
 #> 
 #> Posterior interquartile range of of reduced-form coefficients:
 #>             GDPC1 CPIAUCSL FEDFUNDS
-#> GDPC1.l1    0.076    0.024    0.023
-#> CPIAUCSL.l1 0.120    0.086    0.016
-#> FEDFUNDS.l1 0.017    0.015    0.007
+#> GDPC1.l1    0.101    0.037    0.021
+#> CPIAUCSL.l1 0.111    0.096    0.014
+#> FEDFUNDS.l1 0.019    0.015    0.006
 #> intercept   0.001    0.001    0.000
 #> 
 #> Posterior median of factor loadings:
 #>          factor1
-#> GDPC1      0.002
-#> CPIAUCSL   0.000
+#> GDPC1      0.000
+#> CPIAUCSL   0.002
 #> FEDFUNDS   0.000
 #> 
 #> Posterior interquartile range of factor loadings:
 #>          factor1
-#> GDPC1      0.001
-#> CPIAUCSL   0.000
+#> GDPC1      0.000
+#> CPIAUCSL   0.002
 #> FEDFUNDS   0.000
 ```
