@@ -4,6 +4,10 @@
 library(bayesianVARs)
 ```
 
+**This vignette only deals with the computational complexity of the
+implemented algorithms. It does not cover sampling efficiency in terms
+of mixing.**
+
 bayesianVARs’
 [`bvar()`](https://luisgruber.github.io/bayesianVARs/reference/bvar.md)
 implements state of the art Markov Chain Monte Carlo (MCMC) algorithms
@@ -139,6 +143,10 @@ for(i in seq_len(nrow(all_combinations))){
   all_combinations$user_time[i] <- res[["bench"]]["user.self"]
 }
 ```
+
+**The estimates of computation time are based on an
+Intel**^(®)**Core**^(™)**i7-10610U processor using one core in
+combination with a standard single-threaded R installation**.
 
 [Figure 1](#fig-comp_times), which can be replicated with the following
 code chunk, depicts the computation time of generating 10 draws from the

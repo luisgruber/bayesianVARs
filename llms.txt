@@ -75,7 +75,7 @@ plot(mod, predictions = pred)
 # Documentation
 
 ``` r
-vignette(package = "bayesianVARs")
+browseVignettes(package = "bayesianVARs")
 # If installing directly from GitHub, one has to explicitely request vignettes, e.g. with
 # devtools::install_github("luisgruber/bayesianVARs", dependencies = TRUE, build_vignettes = TRUE)
 ```
