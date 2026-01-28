@@ -1,4 +1,4 @@
-# bayesianVARs (development version)
+# bayesianVARs 0.1.6
 
 * Welcome Stefan Haan as contributor to the package!
 * bayesianVARs now features impulse response functions via irf(). Thanks to Stefan for taking care of this!
