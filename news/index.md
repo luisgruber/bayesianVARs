@@ -1,6 +1,8 @@
 # Changelog
 
-## bayesianVARs (development version)
+## bayesianVARs 0.1.6
+
+CRAN release: 2026-01-28
 
 - Welcome Stefan Haan as contributor to the package!
 - bayesianVARs now features impulse response functions via irf(). Thanks
