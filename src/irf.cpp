@@ -1,3 +1,4 @@
+#include <array>
 #include <memory>
 #include <list>
 #include <lp_lib.h>
@@ -158,6 +159,7 @@ class Solver {
 	virtual vec solve() = 0;
 	virtual void recycle() = 0;
 	virtual void print() = 0;
+	virtual ~Solver() = default;
 };
 
 class LPSolver : public Solver {
@@ -184,7 +186,7 @@ class LPSolver : public Solver {
 	lp_func_ptr<bool, int, int> resize_lp = (lp_func_ptr<bool, int, int>)R_GetCCallable("lpSolveAPI", "resize_lp");
 	lp_func_ptr<bool, int, bool> set_binary = (lp_func_ptr<bool, int, bool>)R_GetCCallable("lpSolveAPI", "set_binary");
 	lp_func_ptr<bool, int, char*> set_col_name = (lp_func_ptr<bool, int, char*>)R_GetCCallable("lpSolveAPI", "set_col_name");
-	lp_func_ptr<void, int, int> set_presolve = NULL; //do not combine presolve and recycling!!
+	//lp_func_ptr<void, int, int> set_presolve = NULL; //do not combine presolve and recycling!!
 	lp_func_ptr<int> get_Nrows = (lp_func_ptr<int>)R_GetCCallable("lpSolveAPI", "get_Nrows");
 	lp_func_ptr<int> get_Ncolumns = (lp_func_ptr<int>)R_GetCCallable("lpSolveAPI", "get_Ncolumns");
 	
