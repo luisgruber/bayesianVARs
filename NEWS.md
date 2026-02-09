@@ -1,3 +1,7 @@
+# bayesianVARs (development version)
+
+* fixed CRAN check issues. Thanks to Brian Ripley for pointing them out.
+
 # bayesianVARs 0.1.6
 
 * Welcome Stefan Haan as contributor to the package!
