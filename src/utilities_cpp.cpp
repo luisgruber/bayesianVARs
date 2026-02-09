@@ -404,8 +404,6 @@ arma::cube insample(const arma::mat& X,
   const int T = X.n_rows;
   const int nsave = PHI.n_slices;
   const int m = PHI.n_cols;
-  int factors = logvar.n_cols;
-  factors += -m;
 
   arma::cube y_pred(T,m,nsave);
   arma::rowvec rand_vec(m);
