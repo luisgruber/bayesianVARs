@@ -363,11 +363,10 @@ Rcpp::List find_rotation_cpp(
 	const uword n_posterior_draws = parameter_transformations(0).n_slices;
 	
 	// rotation at index i belongs to sample with one-based-index rotation_sample_map[i]
-	// if the sample is rejected, rotation_sample_map[i] is set to zero
-	// treat values of the slice where rotation_sample_map is zero as undefined
 	std::list<uword> rotation_sample_map;
 	std::list<mat> rotations;
-	//cube rotation(n_variables, n_variables, n_posterior_draws, fill::none);
+	// we do not know how many samples will be rejected, so the return value is constructed later
+	//cube rotation(n_variables, n_variables, ?, fill::none);
 
 	std::unique_ptr<Solver> solver;
 	uword max_rotations_per_sample = 0;
@@ -411,8 +410,10 @@ Rcpp::List find_rotation_cpp(
 			const uword j = col_order[j_index];
 			
 			// the column j of the rotation matrix must be orthogonal to columns that came before
-			mat previous_columns = rotation.cols(col_order.head(j_index)).t();
-			solver->add_constraints(previous_columns, EQ, 0);
+			if (j_index > 0) {
+			  mat previous_columns = rotation.cols(col_order.head(j_index)).t();
+			  solver->add_constraints(previous_columns, EQ, 0);
+			}
 			
 			if (n_zero_restrictions(j) > 0) {
 				for (uword i = 0; i < parameter_transformations.n_elem; i++) {
