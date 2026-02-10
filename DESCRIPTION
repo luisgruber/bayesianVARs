@@ -1,6 +1,6 @@
 Package: bayesianVARs
 Title: MCMC Estimation of Bayesian Vectorautoregressions
-Version: 0.1.7
+Version: 0.1.7.9000
 Authors@R: c(
     person("Luis", "Gruber", , "Luis.Gruber@aau.at", role = c("cph", "aut", "cre"),
            comment = c(ORCID = "0000-0002-2399-738X")),

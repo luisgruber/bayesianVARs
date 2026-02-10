@@ -1,3 +1,5 @@
+# bayesianVARs (development version)
+
 # bayesianVARs 0.1.7
 
 * fixed CRAN check issues. Thanks to Brian Ripley for pointing them out.
