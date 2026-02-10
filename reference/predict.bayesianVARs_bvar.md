@@ -132,43 +132,43 @@ predictions <- predict(mod, ahead = 1:4, LPL = TRUE, Y_obs = test)
 #> 'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
 #>           draws that do not fulfill the stable criterion.
 #> 
-#> 661/1000 stable posterior draws remaining for prediction!
+#> 490/1000 stable posterior draws remaining for prediction!
 
 # Summary
 summary(predictions)
 #> 
 #> LPL:
 #>   t+1   t+2   t+3   t+4 
-#> 3.179 8.841 8.710 6.504 
+#> 3.295 8.963 8.848 6.618 
 #> 
 #> Marginal univariate LPLs:
-#>       GDPC1 CPIAUCSL FEDFUNDS
-#> t+1 -0.7522   0.5097    3.586
-#> t+2  2.6422   2.7711    3.296
-#> t+3  2.8231   2.6009    3.139
-#> t+4  2.9553   0.5632    3.009
+#>      GDPC1 CPIAUCSL FEDFUNDS
+#> t+1 -1.208   0.4945    3.705
+#> t+2  2.811   2.7032    3.380
+#> t+3  2.986   2.5687    3.225
+#> t+4  3.086   0.4691    3.077
 #> 
 #> Prediction quantiles:
 #> , , GDPC1
 #> 
-#>          t+1       t+2       t+3       t+4
-#> 5%  -0.08795 -0.044676 -0.031418 -0.025550
-#> 50% -0.02285 -0.002203  0.004421  0.007084
-#> 95%  0.03916  0.046564  0.037960  0.044622
+#>          t+1        t+2       t+3       t+4
+#> 5%  -0.06271 -0.0358741 -0.025896 -0.021977
+#> 50% -0.01847  0.0003222  0.007422  0.007056
+#> 95%  0.03786  0.0396699  0.042156  0.041783
 #> 
 #> , , CPIAUCSL
 #> 
-#>           t+1       t+2       t+3      t+4
-#> 5%  -0.018304 -0.019707 -0.018021 -0.01523
-#> 50% -0.007872 -0.005365 -0.002934 -0.00120
-#> 95%  0.003491  0.008279  0.009535  0.01203
+#>           t+1       t+2       t+3       t+4
+#> 5%  -0.018501 -0.018386 -0.016577 -0.013903
+#> 50% -0.008211 -0.005274 -0.002744 -0.001245
+#> 95%  0.003095  0.006904  0.010319  0.010655
 #> 
 #> , , FEDFUNDS
 #> 
 #>           t+1       t+2       t+3       t+4
-#> 5%  -0.022097 -0.030451 -0.040058 -0.048608
-#> 50% -0.004467 -0.004472 -0.006268 -0.005041
-#> 95%  0.012831  0.020932  0.032039  0.045410
+#> 5%  -0.017187 -0.029766 -0.035690 -0.046158
+#> 50% -0.002658 -0.003953 -0.004949 -0.005525
+#> 95%  0.014293  0.020864  0.026225  0.028602
 #> 
 
 # Visualize via fan-charts
@@ -182,9 +182,9 @@ predictions <- predict(mod, ahead = 1:4, LPL = TRUE, Y_obs = test, LPL_VoI = c("
 #> 'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
 #>           draws that do not fulfill the stable criterion.
 #> 
-#> 661/1000 stable posterior draws remaining for prediction!
+#> 490/1000 stable posterior draws remaining for prediction!
 predictions$LPL_VoI
 #>      t+1      t+2      t+3      t+4 
-#> 2.702619 6.078233 6.054422 6.015822 
+#> 2.405161 6.277865 6.228728 6.194043 
 # }
 ```
