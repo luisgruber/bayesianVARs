@@ -3,6 +3,7 @@
 #include <list>
 #include <lp_lib.h>
 #include "utilities_cpp.h"
+#include "lpSolve.h"
 
 inline cube Sigma_chol_t_draws (
 	const uword n_variables,
@@ -162,33 +163,37 @@ class Solver {
 	virtual ~Solver() = default;
 };
 
+// void setcolname(lprec* lp_ptr, int colnr, char* name_cstr){
+//   // Retrieve the callable function
+// 
+//   MYBOOL (*set_col_name_ptr)(lprec*, int, char*) = NULL;
+//   if(!set_col_name_ptr) set_col_name_ptr = (MYBOOL (*)(lprec*, int, char*)) R_GetCCallable("lpSolveAPI", "set_col_name");
+// 
+//   // if (set_col_name_ptr == NULL) {
+//   //   throw std::runtime_error("Could not find set_col_name");
+//   // }
+// 
+//   // Cast SEXP to lprec*
+//   // lprec* lp_ptr = reinterpret_cast<lprec*>(lp);
+// 
+//   // Prepare the new name
+//   // char* name_cstr = const_cast<char*>(new_name.c_str());
+// 
+//   // Call the function
+//   set_col_name_ptr(lp_ptr, colnr, name_cstr);
+// }
+
 class LPSolver : public Solver {
 	using make_lp_func_ptr= lprec*(*)(int, int);
-	template<typename R, typename... T> using lp_func_ptr = R(*)(lprec*, T...);
+	// template<typename R, typename... T> using lp_func_ptr = R(*)(lprec*, T...);
+	using get_statustext_func_ptr = char* (*)(lprec*, int);
 	
 	private:
 	static constexpr double bigM = 10.0;
 	
-	//import routines from the R package "lpSolveAPI"
+	//import remaining routines from the R package "lpSolveAPI"
 	make_lp_func_ptr make_lp = (make_lp_func_ptr)R_GetCCallable("lpSolveAPI", "make_lp");
-	lp_func_ptr<void, int> set_verbose = (lp_func_ptr<void, int>)R_GetCCallable("lpSolveAPI", "set_verbose");
-	lp_func_ptr<void> set_maxim = (lp_func_ptr<void>)R_GetCCallable("lpSolveAPI", "set_maxim");
-	lp_func_ptr<bool, int, double> set_obj = (lp_func_ptr<bool, int, double>)R_GetCCallable("lpSolveAPI", "set_obj");
-	lp_func_ptr<bool, int, double, double> set_bounds = (lp_func_ptr<bool, int, double, double>)R_GetCCallable("lpSolveAPI", "set_bounds");
-	lp_func_ptr<bool, bool> set_add_rowmode = (lp_func_ptr<bool, bool>)R_GetCCallable("lpSolveAPI", "set_add_rowmode");
-	lp_func_ptr<bool, int, double*, int*, int, double> add_constraintex = (lp_func_ptr<bool, int, double*, int*, int, double>)R_GetCCallable("lpSolveAPI", "add_constraintex");
-	lp_func_ptr<int> lp_solve = (lp_func_ptr<int>)R_GetCCallable("lpSolveAPI", "solve");
-	lp_func_ptr<bool, double*> get_variables = (lp_func_ptr<bool, double*>)R_GetCCallable("lpSolveAPI", "get_variables");
-	lp_func_ptr<char*, int> get_statustext = (lp_func_ptr<char*, int>)R_GetCCallable("lpSolveAPI", "get_statustext");
-	lp_func_ptr<void> print_lp = (lp_func_ptr<void>)R_GetCCallable("lpSolveAPI", "print_lp");
-	lp_func_ptr<void> delete_lp = (lp_func_ptr<void>)R_GetCCallable("lpSolveAPI", "delete_lp");
-	lp_func_ptr<bool, int, double*, int*> set_obj_fnex = (lp_func_ptr<bool, int, double*, int*>)R_GetCCallable("lpSolveAPI", "set_obj_fnex");
-	lp_func_ptr<bool, int, int> resize_lp = (lp_func_ptr<bool, int, int>)R_GetCCallable("lpSolveAPI", "resize_lp");
-	lp_func_ptr<bool, int, bool> set_binary = (lp_func_ptr<bool, int, bool>)R_GetCCallable("lpSolveAPI", "set_binary");
-	lp_func_ptr<bool, int, char*> set_col_name = (lp_func_ptr<bool, int, char*>)R_GetCCallable("lpSolveAPI", "set_col_name");
-	//lp_func_ptr<void, int, int> set_presolve = NULL; //do not combine presolve and recycling!!
-	lp_func_ptr<int> get_Nrows = (lp_func_ptr<int>)R_GetCCallable("lpSolveAPI", "get_Nrows");
-	lp_func_ptr<int> get_Ncolumns = (lp_func_ptr<int>)R_GetCCallable("lpSolveAPI", "get_Ncolumns");
+	get_statustext_func_ptr get_statustext = (get_statustext_func_ptr) R_GetCCallable("lpSolveAPI", "get_statustext");
 	
 	lprec *lp;
 	uword n; //dimension of x
@@ -202,8 +207,8 @@ class LPSolver : public Solver {
 		lp = (*make_lp)(0, 3*n);
 		if (lp == NULL) throw std::bad_alloc();
 		
-		(*set_verbose)(lp, IMPORTANT);
-		(*set_maxim)(lp);
+		setverbose(lp, IMPORTANT);
+		setmaxim(lp);
 		
 		// we have variables x_i, U_i, y_i for i=1...n
 		x_cols = regspace<ivec>(1, n);
@@ -212,24 +217,24 @@ class LPSolver : public Solver {
 		for (uword j = 0; j < n; j++) {
 			std::string col_name("x");
 			col_name += std::to_string(j+1);
-			(*set_col_name)(lp, x_cols[j], col_name.data());
+			setcol_name(lp, x_cols[j], col_name.data());
 			col_name[0] = 'U';
-			(*set_col_name)(lp, U_cols[j], col_name.data());
+			setcol_name(lp, U_cols[j], col_name.data());
 			col_name[0] = 'y';
-			(*set_col_name)(lp, y_cols[j], col_name.data());
+			setcol_name(lp, y_cols[j], col_name.data());
 		}
 		
-		(*set_add_rowmode)(lp, TRUE);
+		setadd_rowmode(lp, TRUE);
 				
 		// maximize over sum of U
 		vec ones(U_cols.n_elem, fill::ones);
-		(*set_obj_fnex)(lp, U_cols.n_elem, ones.memptr(), U_cols.memptr());
+		setobj_fnex(lp, U_cols.n_elem, ones.memptr(), U_cols.memptr());
 		
 		// set variable bounds
 		for (uword j = 0; j < n; j++) {
-			(*set_bounds)(lp, x_cols[j], -1, 1); //x_i in [-1, 1]
-			(*set_bounds)(lp, U_cols[j], 0, 1); //U_i in [0, 1]
-			(*set_binary)(lp, y_cols[j], TRUE); //y_i in {0, 1}
+			setbounds(lp, x_cols[j], -1, 1); //x_i in [-1, 1]
+			setbounds(lp, U_cols[j], 0, 1); //U_i in [0, 1]
+			setbinary(lp, y_cols[j], TRUE); //y_i in {0, 1}
 		}
 		
 		//setup initial constraints
@@ -240,17 +245,17 @@ class LPSolver : public Solver {
 		std::array<double, 3> right_constraint = {-1.0 /* x_i */, 1.0 /*U_i*/,  bigM /*y*/};
 		for (uword j = 0; j < n; j++) {
 			std::array<int, 3> cols = {x_cols[j], U_cols[j], y_cols[j]};
-			(*add_constraintex)(lp, cols.size(), left_constraint.data(), cols.data(), LE, 0);
-			(*add_constraintex)(lp, cols.size(), right_constraint.data(), cols.data(), LE, bigM);
+			addconstraintex(lp, cols.size(), left_constraint.data(), cols.data(), LE, 0);
+			addconstraintex(lp, cols.size(), right_constraint.data(), cols.data(), LE, bigM);
 		}
 		
 		//recycling will remove all constraints added by `add_constraint`
-		n_initial_rows = (*get_Nrows)(lp);
+		n_initial_rows = getNrows(lp);
 	}
 	
 	void add_constraints(mat& constraints, int constr_type, double rhs) override {
 		constraints.each_row([&](rowvec& row) {
-			const bool success = (*add_constraintex)(lp, n, row.memptr(), x_cols.memptr(), constr_type, rhs);
+			const bool success = addconstraintex(lp, n, row.memptr(), x_cols.memptr(), constr_type, rhs);
 			if (success == FALSE) {
 				throw std::runtime_error("Could not add constraints");
 			}
@@ -258,30 +263,30 @@ class LPSolver : public Solver {
 	}
 	
 	vec solve() override {
-		(*set_add_rowmode)(lp, FALSE);
-		int ret = (*lp_solve)(lp);
+		setadd_rowmode(lp, FALSE);
+		int ret = lpsolve(lp);
 		if(ret != 0) {
 			print();
 			throw std::logic_error((*get_statustext)(lp, ret));
 		};
 		vec lp_vars_store(3*n);
-		(*get_variables)(lp, lp_vars_store.memptr());
+		getvariables(lp, lp_vars_store.memptr());
 		return lp_vars_store.head_rows(n); // only return x
 	}
 	
 	void recycle() override {
 		// delete all non-initial constraints
-		(*resize_lp)(lp, n_initial_rows, (*get_Ncolumns)(lp));
-		(*set_add_rowmode)(lp, TRUE);
+		resizelp(lp, n_initial_rows, getNcolumns(lp));
+		setadd_rowmode(lp, TRUE);
 	}
 	
 	void print() override {
-		(*set_add_rowmode)(lp, FALSE);
-		(*print_lp)(lp);
+		setadd_rowmode(lp, FALSE);
+		printlp(lp);
 	}
 		
 	~LPSolver() {
-		(*delete_lp)(lp);
+		deletelp(lp);
 	}
 	
 };
