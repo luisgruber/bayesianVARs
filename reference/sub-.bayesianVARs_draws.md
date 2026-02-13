@@ -43,7 +43,7 @@ mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 # Extract coefficients, which are of class bayesianVARs_draws
 phi <- coef(mod)
 phi[1,1,1]
-#> [1] 0.256216
+#> [1] 0.1651513
 #> attr(,"class")
 #> [1] "bayesianVARs_coef"  "bayesianVARs_draws"
 ```
