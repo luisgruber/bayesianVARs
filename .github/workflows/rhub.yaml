@@ -11,8 +11,6 @@ on:
         type: choice
         options:
         - 'gcc-asan'
-        - 'clang-asan'
-        - 'clang-ubsan'
         - 'valgrind'
 
 jobs:
@@ -23,9 +21,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - uses: r-lib/actions/setup-tinytex@v2
-    - run: tlmgr --version
-    - uses: quarto-dev/quarto-actions/setup@v2
+    - name: Install additional tools and packages
+      run: |
+        sh -c "dnf check-update && \
+        dnf install -y ghostscript && \
+        dnf install -y wget && \
+        dnf install -y pandoc && \
+        wget -O quarto.rpm https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.27/quarto-1.8.27-linux-x86_64.rpm && \
+        dnf install -y ./quarto.rpm && \
+        dnf install -y texlive"
     - name: Install dependencies
       run: |
         R -q -e 'pak::pkg_install(c("deps::.", "any::rcmdcheck"), dependencies = TRUE)'
