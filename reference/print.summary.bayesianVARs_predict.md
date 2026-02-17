@@ -42,7 +42,7 @@ predictions <- predict(mod, ahead = 1L)
 #> 'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
 #>           draws that do not fulfill the stable criterion.
 #> 
-#> 594/1000 stable posterior draws remaining for prediction!
+#> 599/1000 stable posterior draws remaining for prediction!
 sum <- summary(predictions)
 print(sum)
 #> 
@@ -50,22 +50,22 @@ print(sum)
 #> , , GDPC1
 #> 
 #>          t+1
-#> 5%  -0.06821
-#> 50% -0.02042
-#> 95%  0.04002
+#> 5%  -0.09297
+#> 50% -0.01958
+#> 95%  0.05450
 #> 
 #> , , CPIAUCSL
 #> 
 #>           t+1
-#> 5%  -0.018291
-#> 50% -0.007161
-#> 95%  0.003453
+#> 5%  -0.019524
+#> 50% -0.006549
+#> 95%  0.004611
 #> 
 #> , , FEDFUNDS
 #> 
 #>           t+1
-#> 5%  -0.017710
-#> 50% -0.003622
-#> 95%  0.016360
+#> 5%  -0.020377
+#> 50% -0.003513
+#> 95%  0.013922
 #> 
 ```
