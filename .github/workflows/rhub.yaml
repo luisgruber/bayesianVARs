@@ -1,5 +1,5 @@
 # added env:
-#          BUILD_ARGS: 'c("--no-build-vignettes")'
+#          BUILD_ARGS: "no-build-vignettes"
 #
 # R-hub's generic GitHub Actions workflow file. It's canonical location is at
 # https://github.com/r-hub/actions/blob/v1/workflows/rhub.yaml
@@ -69,7 +69,7 @@ jobs:
           token: ${{ secrets.RHUB_TOKEN }}
           job-config: ${{ matrix.config.job-config }}
         env:
-          BUILD_ARGS: 'c("--no-build-vignettes")'
+          BUILD_ARGS: "--no-build-vignettes"
 
   other-platforms:
     needs: setup
