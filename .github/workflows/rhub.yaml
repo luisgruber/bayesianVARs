@@ -1,16 +1,4 @@
-# added env:
-#          BUILD_ARGS: "no-build-vignettes"
-#
-# R-hub's generic GitHub Actions workflow file. It's canonical location is at
-# https://github.com/r-hub/actions/blob/v1/workflows/rhub.yaml
-# You can update this file to a newer version using the rhub2 package:
-#
-# rhub::rhub_setup()
-#
-# It is unlikely that you need to modify this file manually.
-
-
-name: R-hub
+name: R-hub-fork
 run-name: "${{ github.event.inputs.id }}: ${{ github.event.inputs.name || format('Manually run by {0}', github.triggering_actor) }}"
 
 on:
@@ -64,12 +52,10 @@ jobs:
         with:
           token: ${{ secrets.RHUB_TOKEN }}
           job-config: ${{ matrix.config.job-config }}
-      - uses: r-hub/actions/run-check@v1
+      - uses: luisgruber/r-hub_actions/run-check@main
         with:
           token: ${{ secrets.RHUB_TOKEN }}
           job-config: ${{ matrix.config.job-config }}
-        env:
-          BUILD_ARGS: "--no-build-vignettes"
 
   other-platforms:
     needs: setup
