@@ -11,7 +11,7 @@ test_that("flat prior cholesky", {
                                quiet = TRUE)
   set.seed(123)
   mod <- bvar(data, lags = 2, prior_intercept = 1e6, prior_phi = phi,
-              prior_sigma = sigma, draws = 10000)
+              prior_sigma = sigma, draws = 10000, quiet = TRUE)
   phi_post_mean <- apply(mod$PHI, 1:2, mean)
   ols <- solve(crossprod(mod$X), crossprod(mod$X,mod$Y))
 
@@ -397,7 +397,7 @@ test_that("flat prior factor", {
   # the following caused a valgrind issue on CRAN which I could not replicate
   set.seed(123)
   mod <- bvar(data, lags = 2, prior_intercept = 1e6, prior_phi = phi,
-              prior_sigma = sigma, draws = 10000)
+              prior_sigma = sigma, draws = 10000, quiet = TRUE)
   phi_post_mean <- apply(mod$PHI, 1:2, mean)
   ols <- solve(crossprod(mod$X), crossprod(mod$X,mod$Y))
 
