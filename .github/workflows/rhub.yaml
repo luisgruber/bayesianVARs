@@ -26,9 +26,13 @@ jobs:
     - name: Install dependencies
       run: |
         R -q -e 'pak::pkg_install(c("deps::.", "any::rcmdcheck"), dependencies = TRUE)'
-    - uses: r-lib/actions/check-r-package@v2
-      with:
-          upload-snapshots: true
-          build_args: 'c("--no-manual", "--no-build-vignettes")'
-          args: 'c("--no-manual", "--no-build-vignettes", "--no-stop-on-test-error")'
-          error-on: '"error"'
+    # - uses: r-lib/actions/check-r-package@v2
+    #   with:
+    #       upload-snapshots: true
+    #       upload-results: true
+    #       build_args: 'c("--no-manual", "--no-build-vignettes")'
+    #       args: 'c("--no-manual", "--no-build-vignettes", "--no-stop-on-test-error")'
+    #       error-on: '"error"'
+    - uses: r-hub/actions/run-check@v1
+      env:
+          BUILD_ARGS: 'c("--no-build-vignettes")'
