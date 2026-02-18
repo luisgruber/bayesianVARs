@@ -1,6 +1,6 @@
 # modified version of https://r-hub.github.io/containers/gha.html
 
-name: R CMD check with and R-hub container
+name: R CMD check with tests of memory access (R-hub container)
 
 on:
   workflow_dispatch:
@@ -11,6 +11,8 @@ on:
         type: choice
         options:
         - 'gcc-asan'
+        - 'clang-asan'
+        - 'clang-ubsan'
         - 'valgrind'
 
 jobs:
@@ -21,20 +23,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Install additional tools and packages
-      run: |
-        sh -c "dnf check-update && \
-        dnf install -y ghostscript && \
-        dnf install -y wget && \
-        dnf install -y pandoc && \
-        wget -O quarto.rpm https://github.com/quarto-dev/quarto-cli/releases/download/v1.8.27/quarto-1.8.27-linux-x86_64.rpm && \
-        dnf install -y ./quarto.rpm && \
-        R -e 'install.packages(\"tinytex\", repos = \"https://cloud.r-project.org\")' && \
-        R -e 'tinytex::install_tinytex()'"
     - name: Install dependencies
       run: |
         R -q -e 'pak::pkg_install(c("deps::.", "any::rcmdcheck"), dependencies = TRUE)'
     - uses: r-lib/actions/check-r-package@v2
       with:
           upload-snapshots: true
-          build_args: c('--compact-vignettes=both')
+          args: 'c("--no-manual", "--no-build-vignettes")'
+          build_args: 'c("--no-manual", "--no-build-vignettes", "--no-stop-on-test-error")'
