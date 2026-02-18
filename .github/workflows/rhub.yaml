@@ -1,38 +1,101 @@
-# modified version of https://r-hub.github.io/containers/gha.html
+# added env:
+#          BUILD_ARGS: 'c("--no-build-vignettes")'
+#
+# R-hub's generic GitHub Actions workflow file. It's canonical location is at
+# https://github.com/r-hub/actions/blob/v1/workflows/rhub.yaml
+# You can update this file to a newer version using the rhub2 package:
+#
+# rhub::rhub_setup()
+#
+# It is unlikely that you need to modify this file manually.
 
-name: R CMD check with tests of memory access (R-hub container)
+
+name: R-hub
+run-name: "${{ github.event.inputs.id }}: ${{ github.event.inputs.name || format('Manually run by {0}', github.triggering_actor) }}"
 
 on:
   workflow_dispatch:
     inputs:
-      inpcont:
-        description: 'Check container'
-        required: true
-        type: choice
-        options:
-        - 'gcc-asan'
-        - 'clang-asan'
-        - 'clang-ubsan'
-        - 'valgrind'
+      config:
+        description: 'A comma separated list of R-hub platforms to use.'
+        type: string
+        default: 'linux,windows,macos'
+      name:
+        description: 'Run name. You can leave this empty now.'
+        type: string
+      id:
+        description: 'Unique ID. You can leave this empty now.'
+        type: string
 
 jobs:
-  check:
+
+  setup:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/r-hub/containers/${{ github.event.inputs.inpcont }}:latest
+    outputs:
+      containers: ${{ steps.rhub-setup.outputs.containers }}
+      platforms: ${{ steps.rhub-setup.outputs.platforms }}
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Install dependencies
-      run: |
-        R -q -e 'pak::pkg_install(c("deps::.", "any::rcmdcheck"), dependencies = TRUE)'
-    # - uses: r-lib/actions/check-r-package@v2
-    #   with:
-    #       upload-snapshots: true
-    #       upload-results: true
-    #       build_args: 'c("--no-manual", "--no-build-vignettes")'
-    #       args: 'c("--no-manual", "--no-build-vignettes", "--no-stop-on-test-error")'
-    #       error-on: '"error"'
-    - uses: r-hub/actions/run-check@v1
-      env:
+    # NO NEED TO CHECKOUT HERE
+    - uses: r-hub/actions/setup@v1
+      with:
+        config: ${{ github.event.inputs.config }}
+      id: rhub-setup
+
+  linux-containers:
+    needs: setup
+    if: ${{ needs.setup.outputs.containers != '[]' }}
+    runs-on: ubuntu-latest
+    name: ${{ matrix.config.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJson(needs.setup.outputs.containers) }}
+    container:
+      image: ${{ matrix.config.container }}
+
+    steps:
+      - uses: r-hub/actions/checkout@v1
+      - uses: r-hub/actions/platform-info@v1
+        with:
+          token: ${{ secrets.RHUB_TOKEN }}
+          job-config: ${{ matrix.config.job-config }}
+      - uses: r-hub/actions/setup-deps@v1
+        with:
+          token: ${{ secrets.RHUB_TOKEN }}
+          job-config: ${{ matrix.config.job-config }}
+      - uses: r-hub/actions/run-check@v1
+        with:
+          token: ${{ secrets.RHUB_TOKEN }}
+          job-config: ${{ matrix.config.job-config }}
+        env:
           BUILD_ARGS: 'c("--no-build-vignettes")'
+
+  other-platforms:
+    needs: setup
+    if: ${{ needs.setup.outputs.platforms != '[]' }}
+    runs-on: ${{ matrix.config.os }}
+    name: ${{ matrix.config.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJson(needs.setup.outputs.platforms) }}
+
+    steps:
+      - uses: r-hub/actions/checkout@v1
+      - uses: r-hub/actions/setup-r@v1
+        with:
+          job-config: ${{ matrix.config.job-config }}
+          token: ${{ secrets.RHUB_TOKEN }}
+      - uses: r-hub/actions/platform-info@v1
+        with:
+          token: ${{ secrets.RHUB_TOKEN }}
+          job-config: ${{ matrix.config.job-config }}
+      - uses: r-hub/actions/setup-deps@v1
+        with:
+          job-config: ${{ matrix.config.job-config }}
+          token: ${{ secrets.RHUB_TOKEN }}
+      - uses: r-hub/actions/run-check@v1
+        with:
+          job-config: ${{ matrix.config.job-config }}
+          token: ${{ secrets.RHUB_TOKEN }}
