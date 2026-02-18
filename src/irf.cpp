@@ -4,6 +4,7 @@
 #include <lp_lib.h>
 #include "utilities_cpp.h"
 #include "lpSolve.h"
+#include <optional>
 
 inline cube Sigma_chol_t_draws (
 	const uword n_variables,
@@ -115,43 +116,49 @@ Rcpp::List compute_parameter_transformations (
 	return ret;
 }
 
-uword count(const Rcpp::LogicalVector& vec) {
-	// vec can contain the values TRUE, FALSE and notably NA_LOGICAL
-	uword counter = 0;
-	for(int i = 0; i < vec.size(); i++) {
-		if (vec[i] == TRUE) counter++;
-	}
-	return counter;
-}
-
-mat construct_zero_restriction(const NumericMatrix::ConstColumn& spec) {
-	const LogicalVector spec_is_zero = (spec == 0);
-	const uword n_zero_restrictions = count(spec_is_zero);
-
-	mat zero_restriction_matrix(n_zero_restrictions, spec.size());
+// see doi:10.1111/j.1467-937X.2009.00578.x section "5.2. A monetary SVAR"
+// for an example how the matrices produced by this function should look like.
+// In short: If spec[i] is zero for index i, add the unit vector e_i to
+// the rows of the result.
+std::optional<mat> construct_zero_restriction(const NumericMatrix::ConstColumn& spec) {
+	const auto n = spec.size();
+	mat zero_restriction_matrix(n, n);
 	uword i = 0;
-	for (uword j = 0; j < spec_is_zero.size(); j++) {
-		if (spec_is_zero[j] == TRUE) {
+	for (R_xlen_t j = 0; j < n; j++) {
+		if (spec[j] == 0) {
 			zero_restriction_matrix(i++, j) = 1;
 		}
 	}
-	return zero_restriction_matrix;
+	if (i > 0) {
+		return zero_restriction_matrix.head_rows(i);
+	} else {
+		// If spec contains no zero restrictions, return nothing:
+		// altough perfectly valid here, Armadillo triggers CRAN's UBSAN checks
+		// for matrices of size zero.
+		return {};
+	}
 }
 
-mat construct_sign_restriction (const NumericMatrix::ConstColumn& spec) {
-	const uword n_sign_restrictions = count(spec != 0);
-
-	mat sign_restriction_matrix(n_sign_restrictions, spec.size());
+// if spec[i] > 0, add unit vector e_i to the rows of the result;
+// if spec[i] < 0, add unit vector -e_i to the rows of the result.
+std::optional<mat> construct_sign_restriction (const NumericMatrix::ConstColumn& spec) {
+	const auto n = spec.size();
+	mat sign_restriction_matrix(n, n);
 	uword i = 0;
-	for (R_xlen_t j = 0; j < spec.size(); j++) {
-		if ((spec[j] > 0) == TRUE) {
+	for (R_xlen_t j = 0; j < n; j++) {
+		if (spec[j] > 0) {
 			sign_restriction_matrix(i++, j) = 1;
 		}
-		else if ((spec[j] < 0) == TRUE) {
+		else if (spec[j] < 0) {
 			sign_restriction_matrix(i++, j) = -1;
 		}
+		// else: spec[i] is either 0 or NA, so not a sign restriction
 	}
-	return sign_restriction_matrix;
+	if (i > 0) {
+		return sign_restriction_matrix.head_rows(i);
+	} else {
+		return {};
+	}
 }
 
 class Solver {
@@ -162,26 +169,6 @@ class Solver {
 	virtual void print() = 0;
 	virtual ~Solver() = default;
 };
-
-// void setcolname(lprec* lp_ptr, int colnr, char* name_cstr){
-//   // Retrieve the callable function
-// 
-//   MYBOOL (*set_col_name_ptr)(lprec*, int, char*) = NULL;
-//   if(!set_col_name_ptr) set_col_name_ptr = (MYBOOL (*)(lprec*, int, char*)) R_GetCCallable("lpSolveAPI", "set_col_name");
-// 
-//   // if (set_col_name_ptr == NULL) {
-//   //   throw std::runtime_error("Could not find set_col_name");
-//   // }
-// 
-//   // Cast SEXP to lprec*
-//   // lprec* lp_ptr = reinterpret_cast<lprec*>(lp);
-// 
-//   // Prepare the new name
-//   // char* name_cstr = const_cast<char*>(new_name.c_str());
-// 
-//   // Call the function
-//   set_col_name_ptr(lp_ptr, colnr, name_cstr);
-// }
 
 class LPSolver : public Solver {
 	using make_lp_func_ptr= lprec*(*)(int, int);
@@ -391,11 +378,12 @@ Rcpp::List find_rotation_cpp(
 	field<mat> sign_restrictions(restriction_specs.n_elem, n_variables);
 	uvec n_zero_restrictions(n_variables, fill::zeros);
 	uvec n_sign_restrictions(n_variables, fill::zeros);
+	const mat no_restrictions(0, n_variables);
 	for (uword i = 0; i < restriction_specs.n_elem; i++) {
 		for (uword j = 0; j < n_variables; j++) {
 			const NumericMatrix::ConstColumn column_restriction_spec = restriction_specs(i).column(j);
-			zero_restrictions(i, j) = construct_zero_restriction(column_restriction_spec);
-			sign_restrictions(i, j) = construct_sign_restriction(column_restriction_spec);
+			zero_restrictions(i, j) = construct_zero_restriction(column_restriction_spec).value_or(no_restrictions);
+			sign_restrictions(i, j) = construct_sign_restriction(column_restriction_spec).value_or(no_restrictions);
 			n_zero_restrictions(j) += zero_restrictions(i, j).n_rows; //rank = n_rows by construction!
 			n_sign_restrictions(j) += sign_restrictions(i, j).n_rows; //rank = n_rows by construction!
 		}
