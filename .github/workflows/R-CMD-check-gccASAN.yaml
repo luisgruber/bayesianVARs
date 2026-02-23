@@ -73,9 +73,9 @@ jobs:
         name: pkg
         path: /check
 
-    - uses: geekyeggo/delete-artifact@v5
-      with:
-          name: pkg
+    # - uses: geekyeggo/delete-artifact@v5
+    #   with:
+    #       name: pkg
 
     - name: detect package manager
       run: |
@@ -88,6 +88,7 @@ jobs:
             elif [[ "$ID" == "fedora" || "$ID_LIKE" == "fedora" ]]; then
               echo "pm=dnf" >> "$GITHUB_ENV"
             fi
+        fi
 
     - name: Install Ghostsrcipt
       run: |
