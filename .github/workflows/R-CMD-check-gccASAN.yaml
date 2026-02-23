@@ -57,7 +57,7 @@ jobs:
 
     - name: Install Ghostsrcipt
       run: |
-        dnf install -y ghostcript
+        dnf install -y ghostscript
 
     - name: Install dependencies and check package
       run: r-check
