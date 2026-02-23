@@ -8,6 +8,9 @@ on:
         type: string
         default: 'gcc-asan, clang-ubsan, clang-asan, valgrind'
 
+env:
+  plat: ${{ toJSON(inputs.platform) }}
+
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -16,9 +19,9 @@ jobs:
     steps:
       - id: rhub-setup
         run: |
-          echo "::set-output name=matrix::$input"
-        env:
-          input: ${{ inputs.platform }}
+          echo "matrix=$plat" >> $GITHUB_OUTPUT
+        # env:
+        #   input: ${{ inputs.platform }}
 
   build:
     runs-on: ubuntu-latest
