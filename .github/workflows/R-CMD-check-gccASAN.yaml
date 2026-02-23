@@ -34,23 +34,36 @@ jobs:
         with:
           name: pkg
           path: "*.tar.gz"
-    #
-    #
-    #
-    # container:
-    #   image: ghcr.io/r-hub/containers/${{ github.event.inputs.inpcont }}:latest
-    #
-    # steps:
-    # - name: Download package
-    #   run: |
-    #     mkdir /check
-    #     curl -LO "${{ github.event.inputs.inpurl }}" --output-dir /check
-    #
-    # - name: Install dependencies and check package
-    #   run: r-check
-    #
-    # - name: Upload check result as artifact
-    #   uses: actions/upload-artifact@v4
-    #   with:
-    #     name: check-results
-    #     path: /check
+          retention-days: 1
+
+  check:
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/r-hub/containers/gcc-asan:latest
+
+    steps:
+    - name: Download package
+      uses: actions/download-artifact@v4
+      with:
+        name: pkg
+        path: /check
+
+    # - name: Delete downloaded artifact
+    #     run: |
+    #       echo "Deleting artifact..."
+    #       rm *.tar.gz
+    #       echo "Artifact deleted."
+
+    - name: Install Ghostsrcipt
+      run: |
+        dnf install -y ghostcript
+
+    - name: Install dependencies and check package
+      run: r-check
+
+    - name: Upload check result as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: check-results
+        path: /check
