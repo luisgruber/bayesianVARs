@@ -1,8 +1,25 @@
 name: Check with test of memory access checks
 
-on: push
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'A comma separated list of R-hub containers to use.'
+        type: string
+        default: 'gcc-asan, clang-ubsan, clang-asan, valgrind'
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.rhub-setup.outputs.matrix }}
+    steps:
+      - id: rhub-setup
+        run: |
+          echo "::set-output name=matrix::$input"
+        env:
+          input: ${{ inputs.platform }}
+
   build:
     runs-on: ubuntu-latest
 
@@ -27,7 +44,7 @@ jobs:
           install-pandoc: false
 
       - name: Build package
-        run: R CMD build --no-manual .
+        run: R CMD build --no-manual --compact-vignettes=both .
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v6
@@ -37,10 +54,14 @@ jobs:
           retention-days: 1
 
   check:
-    needs: build
+    needs: [setup, build]
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJSON(needs.setup.outputs.matrix) }}
     container:
-      image: ghcr.io/r-hub/containers/gcc-asan:latest
+      image: ghcr.io/r-hub/containers/${{ matrix.config }}:latest
 
     steps:
     - name: Download package
@@ -49,15 +70,36 @@ jobs:
         name: pkg
         path: /check
 
-    # - name: Delete downloaded artifact
-    #     run: |
-    #       echo "Deleting artifact..."
-    #       rm *.tar.gz
-    #       echo "Artifact deleted."
+    - uses: geekyeggo/delete-artifact@v5
+      with:
+          name: pkg
+
+    - name: detect package manager
+      run: |
+        if [ -f /etc/os-release ]; then
+            . /etc/os-release
+            echo "OS: $NAME"
+            if [[ "$ID" == "ubuntu" || "$ID_LIKE" == "debian" ]]; then
+              echo "pm=apt-get" >> "$GITHUB_ENV"
+
+            elif [[ "$ID" == "fedora" || "$ID_LIKE" == "fedora" ]]; then
+              echo "pm=dnf" >> "$GITHUB_ENV"
+            fi
 
     - name: Install Ghostsrcipt
       run: |
-        dnf install -y ghostcript
+        if [[ "${{ env.pm }}" == "apt-get" ]]; then
+            apt-get update
+            apt-get install -y ghostscript
+          elif [[ "${{ env.pm }}" == "dnf" ]]; then
+            dnf install -y ghostscript
+          fi
+
+    - name: set --no-build-vignettes
+      run: |
+        if ! [[ "$CHECK_ARGS" =~ --no-build-vignettes ]]; then
+              CHECK_ARGS="$CHECK_ARGS --no-build-vignettes"
+          fi
 
     - name: Install dependencies and check package
       run: r-check
@@ -65,5 +107,5 @@ jobs:
     - name: Upload check result as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: check-results
+        name: check-results-${{ matrix.config }}
         path: /check
