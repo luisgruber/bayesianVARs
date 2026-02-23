@@ -6,7 +6,10 @@ on:
       platform:
         description: 'A comma separated list of R-hub containers to use.'
         type: string
-        default: 'gcc-asan, clang-ubsan, clang-asan, valgrind'
+        default: '["gcc-asan", "clang-ubsan", "clang-asan", "valgrind"]'
+
+# env:
+#   plat: ${{ toJSON(inputs.platform) }}
 
 jobs:
   setup:
@@ -16,7 +19,7 @@ jobs:
     steps:
       - id: rhub-setup
         run: |
-          echo "::set-output name=matrix::$input"
+          echo "matrix=$input" >> $GITHUB_OUTPUT
         env:
           input: ${{ inputs.platform }}
 
