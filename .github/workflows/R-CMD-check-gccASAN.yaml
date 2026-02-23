@@ -1,0 +1,57 @@
+name: Check with test of memory access checks
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-tinytex@v2
+      - run: tlmgr --version
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck, local::.
+          needs: check
+          install-quarto: false
+          install-pandoc: false
+
+      - name: Build package
+        run: R CMD build --no-manual .
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: pkg
+          path: "*.tar.gz"
+    #
+    #
+    #
+    # container:
+    #   image: ghcr.io/r-hub/containers/${{ github.event.inputs.inpcont }}:latest
+    #
+    # steps:
+    # - name: Download package
+    #   run: |
+    #     mkdir /check
+    #     curl -LO "${{ github.event.inputs.inpurl }}" --output-dir /check
+    #
+    # - name: Install dependencies and check package
+    #   run: r-check
+    #
+    # - name: Upload check result as artifact
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: check-results
+    #     path: /check
