@@ -111,7 +111,7 @@ jobs:
         path: /check
         
   delete:
-    needs: build
+    needs: check
     runs-on: ubuntu-latest
     
     steps:
