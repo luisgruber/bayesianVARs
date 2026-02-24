@@ -118,7 +118,7 @@ jobs:
         name: check-results-${{ matrix.config }}
         path: /check
         
-  delete build artifact:
+  delete-build-artifact:
     needs: check
     runs-on: ubuntu-latest
     
