@@ -101,6 +101,10 @@ jobs:
           CHECK_ARGS="$CHECK_ARGS --no-manual"
         fi
         echo "CHECK_ARGS=$CHECK_ARGS" >> $GITHUB_ENV
+        
+    - name: Replace double brackets with single brackets
+      run: |
+        sed -i.bak 's/\[\[/\[/g; s/\]\]/\]/g' usr/local/bin/r-check
 
     - name: Install dependencies and check package
       run: r-check
