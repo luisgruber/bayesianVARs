@@ -109,7 +109,7 @@ jobs:
     - name: Replace double brackets with single brackets
       run: |
         sed -i.bak 's/\[\[/\[/g; s/\]\]/\]/g' r-check
-      working-directory: ./usr/local/bin/
+      working-directory: /usr/local/bin
 
     # - name: Install dependencies and check package
     #   run: r-check
