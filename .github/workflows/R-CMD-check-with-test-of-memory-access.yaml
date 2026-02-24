@@ -1,6 +1,9 @@
 name: Check with test of memory access checks
 
 on:
+  push:
+    branches:
+      - '*' 
   workflow_dispatch:
     inputs:
       platform:
@@ -115,7 +118,7 @@ jobs:
         name: check-results-${{ matrix.config }}
         path: /check
         
-  delete:
+  delete build artifact:
     needs: check
     runs-on: ubuntu-latest
     
