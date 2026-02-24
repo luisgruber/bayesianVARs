@@ -1,9 +1,6 @@
 name: Check with test of memory access checks
 
 on:
-  push:
-    branches:
-      - '*' 
   workflow_dispatch:
     inputs:
       platform:
