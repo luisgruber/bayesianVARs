@@ -4,12 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: 'A comma separated list of R-hub containers to use.'
+        description: 'An array of R-hub containers to use.'
         type: string
         default: '["gcc-asan", "clang-ubsan", "clang-asan", "valgrind"]'
-
-# env:
-#   plat: ${{ toJSON(inputs.platform) }}
 
 jobs:
   setup:
@@ -73,37 +70,36 @@ jobs:
         name: pkg
         path: /check
 
-    # - uses: geekyeggo/delete-artifact@v5
-    #   with:
-    #       name: pkg
-
     - name: detect package manager
       run: |
         if [ -f /etc/os-release ]; then
             . /etc/os-release
             echo "OS: $NAME"
-            if [[ "$ID" == "ubuntu" || "$ID_LIKE" == "debian" ]]; then
+            if [ "$ID" = "ubuntu" ] || [ "$ID_LIKE" = "debian" ]; then
               echo "pm=apt-get" >> "$GITHUB_ENV"
 
-            elif [[ "$ID" == "fedora" || "$ID_LIKE" == "fedora" ]]; then
+            elif [ "$ID" = "fedora" ] || [ "$ID_LIKE" = "fedora" ]; then
               echo "pm=dnf" >> "$GITHUB_ENV"
             fi
         fi
 
     - name: Install Ghostsrcipt
       run: |
-        if [[ "${{ env.pm }}" == "apt-get" ]]; then
+        if [ "${{ env.pm }}" = "apt-get" ]; then
             apt-get update
             apt-get install -y ghostscript
-          elif [[ "${{ env.pm }}" == "dnf" ]]; then
+          elif [ "${{ env.pm }}" = "dnf" ]; then
             dnf install -y ghostscript
-          fi
+        fi
 
     - name: set --no-build-vignettes
       run: |
-        if ! [[ "$CHECK_ARGS" =~ --no-build-vignettes ]]; then
-              CHECK_ARGS="$CHECK_ARGS --no-build-vignettes"
-          fi
+        if ! echo "$CHECK_ARGS" | grep -q -- --no-build-vignettes; then
+          CHECK_ARGS="$CHECK_ARGS --no-build-vignettes"
+        fi
+        if ! echo "$CHECK_ARGS" | grep -q -- --no-manual; then
+          CHECK_ARGS="$CHECK_ARGS --no-manual"
+        fi
 
     - name: Install dependencies and check package
       run: r-check
@@ -113,3 +109,12 @@ jobs:
       with:
         name: check-results-${{ matrix.config }}
         path: /check
+        
+  delete:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: geekyeggo/delete-artifact@v5
+      with:
+        name: pkg
