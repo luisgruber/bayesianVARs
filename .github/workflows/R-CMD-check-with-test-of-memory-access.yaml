@@ -103,7 +103,7 @@ jobs:
         echo "CHECK_ARGS=$CHECK_ARGS" >> $GITHUB_ENV
 
     - name: Install dependencies and check package
-      uses: |
+      run: |
         set -e
 
         checkdir=${1-/check}
