@@ -101,14 +101,47 @@ jobs:
           CHECK_ARGS="$CHECK_ARGS --no-manual"
         fi
         echo "CHECK_ARGS=$CHECK_ARGS" >> $GITHUB_ENV
-        
-    - name: Replace double brackets with single brackets
-      run: |
-        sed -i.bak 's/\[\[/\[/g; s/\]\]/\]/g' r-check
-      working-directory: /usr/local/bin
 
     - name: Install dependencies and check package
-      run: r-check
+      uses: |
+        set -e
+
+        checkdir=${1-/check}
+
+        do_check () {
+          pkg=${1}
+          echo Checking "$pkg"
+          cd `dirname $pkg`
+          R -q -e "pak::pkg_install('deps::$pkg', dependencies = TRUE)"
+          R CMD check $CHECK_ARGS $pkg
+          packagename=$(basename "$pkg" | sed "s/_.*$//")
+          cd "${packagename}.Rcheck"
+          
+          fail=false
+          pattern='UndefinedBehaviorSanitizer\|AddressSanitizer'
+
+          # List files with .Rout in the 'check' directory and its subdirectories
+          out=$(find . -type f -name "*.Rout" -o -name "*.Rout.*")
+          # Loop through each found file
+          for of in $out; do
+              echo "$of"
+              # Read the lines of the file
+              if grep -q "${pattern}" "$of"; then
+                  fail=true
+                  echo ----------------------------------------------------------
+                  echo "${of}"
+                  echo ----------------------------------------------------------
+                  cat "${of}"
+                  echo ----------------------------------------------------------
+              fi
+          done
+
+          if [ "$fail" = "true" ]; then exit 1; fi
+        }
+
+        for pkg in `ls $checkdir/*.tar.gz`; do
+            do_check "$pkg"
+        done
 
     - name: Upload check result as artifact
       uses: actions/upload-artifact@v4
