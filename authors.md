@@ -13,7 +13,7 @@
 ## Citation
 
 Source:
-[`inst/CITATION`](https://github.com/luisgruber/bayesianVARs/blob/v0.1.8/inst/CITATION)
+[`inst/CITATION`](https://github.com/luisgruber/bayesianVARs/blob/main/inst/CITATION)
 
 Gruber L, Haan S, Kastner G (2026). *bayesianVARs: MCMC Estimation of
 Bayesian Vectorautoregressions*.

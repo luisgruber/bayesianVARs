@@ -1,6 +1,10 @@
 # Changelog
 
+## bayesianVARs (development version)
+
 ## bayesianVARs 0.1.8
+
+CRAN release: 2026-02-19
 
 - fixed CRAN check (memory access) issues. Thanks to Brian Ripley for
   pointing them out.
