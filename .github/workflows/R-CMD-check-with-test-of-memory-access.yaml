@@ -61,7 +61,7 @@ jobs:
 
       - name: Build package
         run: |
-          if [ "$args"" = "null" ]; then
+          if [ "$args" = "null" ]; then
             R CMD build .
           else
             R CMD build $args .
