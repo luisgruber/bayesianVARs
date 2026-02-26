@@ -4,9 +4,25 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: 'An array of R-hub containers to use.'
+        description: 'An array of r-hub containers to use.'
+        required: true
         type: string
         default: '["gcc-asan", "clang-ubsan", "clang-asan", "valgrind"]'
+      check_args:
+        description: |
+          Additional arguments passed to R CMD check, which will be added to 
+          CHECK_ARGS (CHECK_ARGS is an env variable of the r-hub containers). 
+          null indicates that no arguments will be added.
+        required: false
+        type: string
+        default: '--no-manual --no-build-vignettes'
+      build_args:
+        description: |
+          Arguments passed to R CMD build. null indicates that no arguments will 
+          be passed.
+        required: false
+        type: string
+        default: '--no-manual --compact-vignettes=both'
 
 jobs:
   setup:
@@ -44,7 +60,14 @@ jobs:
           install-pandoc: false
 
       - name: Build package
-        run: R CMD build --no-manual --compact-vignettes=both .
+        run: |
+          if [ "$args"" = "null" ]; then
+            R CMD build .
+          else
+            R CMD build $args .
+          fi
+        env: 
+          args: ${{ inputs.build_args }}
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v6
@@ -85,65 +108,84 @@ jobs:
 
     - name: Install Ghostsrcipt
       run: |
-        if [ "${{ env.pm }}" = "apt-get" ]; then
+        if [ "$pm" = "apt-get" ]; then
             apt-get update
             apt-get install -y ghostscript
-          elif [ "${{ env.pm }}" = "dnf" ]; then
+          elif [ "$pm" = "dnf" ]; then
             dnf install -y ghostscript
         fi
 
-    - name: Manipulate CHECK_ARGS
+    - name: Set CHECK_ARGS
+      if: ${{ inputs.check_args != 'null' }}
       run: |
-        if ! echo "$CHECK_ARGS" | grep -q -- --no-build-vignettes; then
-          CHECK_ARGS="$CHECK_ARGS --no-build-vignettes"
-        fi
-        if ! echo "$CHECK_ARGS" | grep -q -- --no-manual; then
-          CHECK_ARGS="$CHECK_ARGS --no-manual"
-        fi
-        echo "CHECK_ARGS=$CHECK_ARGS" >> $GITHUB_ENV
+        # CHECK_ARGS is an environment variable of the r-hub container
+        CHECK_ARGS <- Sys.getenv("CHECK_ARGS")
+        CHECK_ARGS_spl <- strsplit(CHECK_ARGS, "\\s+")[[1]]
+        check <- Sys.getenv("check")
+        check_spl <- strsplit(check, "\\s+")[[1]]
+        l <- check_spl %in% CHECK_ARGS_spl
+        CHECK_ARGS_spl <- c(check_spl[!l], CHECK_ARGS_spl)
+        CHECK_ARGS <- paste(CHECK_ARGS_spl, collapse = " ")
+        cat("\nCHECK_ARGS=", CHECK_ARGS, sep="", file = Sys.getenv("GITHUB_ENV"), append = TRUE)
+      shell: Rscript {0}
+      env:
+        check: ${{ inputs.check_args }}
 
     - name: Install dependencies and check package
+      if: ${{ !cancelled() }}
       run: |
-        set -e
-
-        checkdir=${1-/check}
-
-        do_check () {
-          pkg=${1}
-          echo Checking "$pkg"
-          cd `dirname $pkg`
-          R -q -e "pak::pkg_install('deps::$pkg', dependencies = TRUE)"
-          R CMD check $CHECK_ARGS $pkg
-          packagename=$(basename "$pkg" | sed "s/_.*$//")
-          cd "${packagename}.Rcheck"
-          
-          fail=false
-          pattern='UndefinedBehaviorSanitizer\|AddressSanitizer'
-
-          # List files with .Rout in the 'check' directory and its subdirectories
-          out=$(find . -type f -name "*.Rout" -o -name "*.Rout.*")
-          # Loop through each found file
-          for of in $out; do
-              echo "$of"
-              # Read the lines of the file
-              if grep -q "${pattern}" "$of"; then
-                  fail=true
-                  echo ----------------------------------------------------------
-                  echo "${of}"
-                  echo ----------------------------------------------------------
-                  cat "${of}"
-                  echo ----------------------------------------------------------
-              fi
-          done
-
-          if [ "$fail" = "true" ]; then exit 1; fi
+        echo "$CHECK_ARGS"
+        pkg=$(ls /check/*.tar.gz)
+        echo Checking "$pkg"
+        cd `dirname $pkg`
+        R -q -e "pak::pkg_install('deps::$pkg', dependencies = TRUE)"
+        R CMD check $CHECK_ARGS $pkg
+    
+    - name: Check for ASAN and UBSAN issues
+      if: ${{ !cancelled() && (matrix.config == 'gcc-asan' || matrix.config == 'clang-asan' || matrix.config == 'clang-ubsan') }}
+      run: |
+        writeLines("-- Checking for sanitizer errors ----------------------------------------")
+        out <- dir("/check", recursive=TRUE, pattern = "[.]Rout|[.][A-Za-z]+[.]log$", full.names = TRUE)
+        cat("Files to check:",out, sep="\n")
+        fail <- 0
+        for (of in out) {
+          cat("Checking:", of)
+          l <- readLines(of, warn = FALSE)
+          if (any(grepl("UndefinedBehaviorSanitizer|AddressSanitizer", l, fixed = TRUE))) {
+             fail <- 1
+          }
+          if (any(grepl("runtime error:", l, fixed = TRUE))) {
+            fail <- 1
+          }
+          if(fail) writeLines(l) else cat("✓\n")
         }
+        writeLines("-------------------------------------------------------------------------")
+        q(save = "no", status = fail)
+      shell: Rscript {0}
 
-        for pkg in `ls $checkdir/*.tar.gz`; do
-            do_check "$pkg"
-        done
+    - name: Check valgrind issues
+      if: ${{ !cancelled() && matrix.config == 'valgrind'}}
+      run: |
+        writeLines("-- Checking for valgrind errors -----------------------------------------")
+        out <- dir("/check", recursive=TRUE, pattern = "[.]Rout|[.][A-Za-z]+[.]log$", full.names = TRUE)
+        cat("Files to check:",out, sep="\n")
+        fail <- 0
+        for (of in out) {
+          cat("Checking:", of)
+          l <- readLines(of, warn = FALSE)
+          if (any(grepl("==[0-9]+== ERROR SUMMARY: [1-9][0-9]* error", l))) {
+            fail <- 1
+            writeLines(l)
+          }else{
+            cat("✓\n")
+          }
+        }
+        writeLines("-------------------------------------------------------------------------")
+        q(save = "no", status = fail)
+      shell: Rscript {0}
 
     - name: Upload check result as artifact
+      if: '!cancelled()'
       uses: actions/upload-artifact@v4
       with:
         name: check-results-${{ matrix.config }}
