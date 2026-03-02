@@ -507,17 +507,26 @@ List bvar_cpp(const arma::mat& Y,
       //arma::mat PHI_old = PHI; // zombie???
       try{
         sample_PHI(PHI, PHI0, Y, X, U, d_sqrt, V_prior, M);
+      } catch(const std::exception &e){
+        Rcpp::stop("sample_PHI() failed in run %i: %s", rep+1, e.what());
       } catch(...){
-        ::Rf_error("Couldn't sample PHI in rep %i.", rep);
+        Rprintf("\nsample_PHI() failed in run %i: Rethrowing exception:", rep+1);
+        throw;
       }
     }else if(sigma_type == "factor"){
-      sample_PHI_factor(PHI, PHI0, Y, X, logvar.cols(0,M-1), V_prior,
-                        armafacload, armafac, huge);
+      try{
+        sample_PHI_factor(PHI, PHI0, Y, X, logvar.cols(0,M-1), V_prior,
+                          armafacload, armafac, huge);
+      } catch(const std::exception &e){
+        Rcpp::stop("sample_PHI() failed in run %i: %s", rep+1, e.what());
+      } catch(...){
+        Rprintf("\nsample_PHI() failed in run %i: Rethrowing exception:", rep+1);
+        throw;
+      }
     }
 
-
     if(!PHI.is_finite()){
-      ::Rf_error("non-finite PHI in rep %i.", rep);
+      Rcpp::stop("non-finite PHI in rep %i.", rep+1);
     }
 
     if(priorPHI == "DL" || priorPHI == "R2D2" || priorPHI == "NG" || priorPHI == "GT"){
@@ -602,45 +611,55 @@ List bvar_cpp(const arma::mat& Y,
     //----3) Draw Sigma_t
 
     if(sigma_type == "factor"){
-      factorstochvol::update_fsv(armafacload,
-                                 armafac,
-                                 logvar,
-                                 logvar0,
-                                 sv_para,
-                                 armatau2,
-                                 armalambda2,
-                                 mixind,
-                                 resid.t(),
-                                 factor_facloadtol,
-                                 factor_armarestr,
-                                 armafacloadtunrestrictedelements,
-                                 nonzerospercol,
-                                 nonzerosperrow,
-                                 sv_priorh0,
-                                 ngprior,
-                                 columnwise,
-                                 aShrink,
-                                 cShrink,
-                                 dShrink,
-                                 factor_homoskedastic,
-                                 factor_offset,
-                                 heteroscedastic,
-                                 factor_interweaving,
-                                 expert_sv, // aka expert_idi
-                                 expert_fac,
-                                 prior_specs,
-                                 B011inv,
-                                 true, //const bool& samplefac,
-                                 false,//const bool& signswitch,
-                                 rep);
+      try{
+        factorstochvol::update_fsv(armafacload,
+                                   armafac,
+                                   logvar,
+                                   logvar0,
+                                   sv_para,
+                                   armatau2,
+                                   armalambda2,
+                                   mixind,
+                                   resid.t(),
+                                   factor_facloadtol,
+                                   factor_armarestr,
+                                   armafacloadtunrestrictedelements,
+                                   nonzerospercol,
+                                   nonzerosperrow,
+                                   sv_priorh0,
+                                   ngprior,
+                                   columnwise,
+                                   aShrink,
+                                   cShrink,
+                                   dShrink,
+                                   factor_homoskedastic,
+                                   factor_offset,
+                                   heteroscedastic,
+                                   factor_interweaving,
+                                   expert_sv, // aka expert_idi
+                                   expert_fac,
+                                   prior_specs,
+                                   B011inv,
+                                   true, //const bool& samplefac,
+                                   false,//const bool& signswitch,
+                                   rep);
+      } catch(const std::exception &e){
+        Rcpp::stop("factorstochvol::update_fsv() failed in run %i: %s", rep+1, e.what());
+      } catch (...) {
+        Rprintf("\nfactorstochvol::update_fsv() failed in run %i. Rethrowing exception:", rep+1);
+        throw;
+      }
+      
 
     }else if(sigma_type == "cholesky"){
 
       try{
         sample_U(U, resid, V_i_U, d_sqrt);
-      }
-      catch(...){
-        ::Rf_error("Couldn't sample U in rep %i.", rep);
+      } catch (const std::exception& e) {
+        Rcpp::stop("sample_U() failed in run %i: %s", rep+1, e.what());
+      } catch(...){
+        Rprintf("\nsample_U() failed in run %i. Rethrowing exception:", rep+1);
+        throw;
       }
 
       if(priorU == "DL" || priorU == "R2D2" || priorU == "GT"){
@@ -672,9 +691,11 @@ List bvar_cpp(const arma::mat& Y,
             sample_V_i_DL(V_i_U, u, a_U, b_U, c_U, a_vec_U, a_weight_U,
                         psi_U, lambda_U, xi_U, ind_U, DL_hyper_U, norm_consts_U,
                         GL_tol_U, DL_plus_U, c_vec_U, c_rel_a_U);
+        } catch(const std::exception& e) {
+          Rcpp::stop("sample_V_i_DL() failed in run %i: %s", rep+1, e.what());
         } catch (...) {
-          ::Rf_error("Couldn't sample V_i_U (DL prior)  in run %i", rep);
-
+          Rprintf("\nsample_V_i_DL() failed in run %i. Rethrowing exception:", rep+1);
+          throw;
         }
 
       }else if (priorU == "GT"){

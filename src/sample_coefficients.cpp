@@ -97,8 +97,15 @@ void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
     arma::mat X_norm = X.each_col() % normalizer.col(j);
     arma::vec y_norm = Y_hat.col(j) % normalizer.col(j);
     arma::vec PHI_j = PHI.unsafe_col(j);
-    univariate_regression_update(PHI_j, PHI_prior.col(j), V_prior.col(j),
-                                 y_norm, X_norm, false, huge);
+    try{
+      univariate_regression_update(PHI_j, PHI_prior.col(j), V_prior.col(j),
+                                   y_norm, X_norm, false, huge);
+    } catch(const std::exception& e) {
+      Rcpp::stop("univariate_regression_update() failed in %ith eqation: %s", j+1, e.what());
+    } catch (...) {
+      Rprintf("\nunivariate_regression_update() failed in %ith eqation. Rethrowing exception:", j+1);
+      throw;
+    }
 
   }
 
@@ -124,9 +131,15 @@ void sample_PHI(arma::mat& PHI, const arma::mat PHI_prior, const arma::mat Y,
 
     arma::vec PHI_j = PHI.unsafe_col(j);
     // generate posterior draw
-    univariate_regression_update(PHI_j, PHI_prior.col(j), V_prior.col(j),
-                                 Y_new, X_new, false, false);
-
+    try{
+      univariate_regression_update(PHI_j, PHI_prior.col(j), V_prior.col(j),
+                                   Y_new, X_new, false, false);
+    } catch(const std::exception& e) {
+      Rcpp::stop("univariate_regression_update() failed in %ith eqation:\n%s", j+1, e.what());
+    } catch (...) {
+      Rprintf("\nunivariate_regression_update() failed in %ith eqation. Rethrowing exception:", j+1);
+      throw;
+    }
   }
 }
 
@@ -157,8 +170,15 @@ void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const
     arma::vec c = Ytilde.col(i) / d_sqrt.col(i);
     // update free off-diagonal elements in column i
     arma::vec U_j = U.unsafe_col(i);
-    univariate_regression_update(U_j, prior_mean, V_i.subvec(ind, ind+i-1), c, Z, true, false);
-
+    try{
+      univariate_regression_update(U_j, prior_mean, V_i.subvec(ind, ind+i-1), c, Z, true, false);  
+    } catch (const std::exception& e) {
+      Rcpp::stop("univariate_regression_update() failed in equation %i: %s", i+1, e.what());
+    } catch (...) {
+      Rprintf("\nunivariate_regression_update() failed in equation %i. Rethrowing exception:", i+1);
+      throw;
+    }
+    
     ind = ind+i;
 
   }
