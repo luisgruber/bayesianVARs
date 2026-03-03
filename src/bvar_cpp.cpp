@@ -518,9 +518,9 @@ List bvar_cpp(const arma::mat& Y,
         sample_PHI_factor(PHI, PHI0, Y, X, logvar.cols(0,M-1), V_prior,
                           armafacload, armafac, huge);
       } catch(const std::exception &e){
-        Rcpp::stop("sample_PHI() failed in run %i: %s", rep+1, e.what());
+        Rcpp::stop("sample_PHI_factor() failed in run %i: %s", rep+1, e.what());
       } catch(...){
-        Rprintf("\nsample_PHI() failed in run %i: Rethrowing exception:", rep+1);
+        Rprintf("\nsample_PHI_factor() failed in run %i: Rethrowing exception:", rep+1);
         throw;
       }
     }
