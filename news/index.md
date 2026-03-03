@@ -2,6 +2,11 @@
 
 ## bayesianVARs (development version)
 
+- added the possibility of estimating a VAR(0) (VAR with zero lags) and
+  of specifying 0 factors for the factor error specification.
+- improved error handling; among other things replaced Rf_error() with
+  Rcpp::stop().
+
 ## bayesianVARs 0.1.8
 
 CRAN release: 2026-02-19
