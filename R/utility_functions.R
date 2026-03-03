@@ -1996,12 +1996,12 @@ specify_prior_phi <- function(data = NULL,
                               normal_sds = 10,
                               global_grouping = "global",
                               ...){
-
+  
   prior_phi_cpp <- new_baysesianVARs_prior_phi_cpp()
-  prior_phi_cpp[["prior"]] <- prior
+  prior_phi_cpp[["prior"]] <-  if( lags > 0L) prior else "nothing"
   dots <- list(...)
 
-  if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "SL", "HS", "NG"))){
+  if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "SL", "HS", "NG")) & (lags > 0L)){
     stop("Argument 'prior' must be one of 'DL', 'HS', 'NG', 'SSVS', 'HMP' or 'normal'. \n")
   }
 
@@ -2017,294 +2017,300 @@ specify_prior_phi <- function(data = NULL,
   M <- as.integer(M)
   K <- lags*M
   n <- K*M
-
-  if(prior %in% c("DL", "SSVS",  "R2D2", "HS", "NG")){
-    if(is.character(global_grouping)){
-      if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
-        stop("Argument 'global_grouping' must be one of 'global',
+  
+  if(lags==0L){
+    general_settings <- list(M = M, lags = lags, PHI0 = matrix(0,0,M), PHI_tol = 
+                               numeric(1L), global_grouping = character(1L), 
+                             i_mat = matrix(0L,0,M), SSVS_semiautomatic = logical(0L))
+  } else {
+    if(prior %in% c("DL", "SSVS",  "R2D2", "HS", "NG")){
+      if(is.character(global_grouping)){
+        if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
+          stop("Argument 'global_grouping' must be one of 'global',
            'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
-      }
-    }
-
-    if(all(is.numeric(global_grouping))){
-      i_mat <- global_grouping
-      if(!(identical(dim(i_mat), as.integer(c(K,M))) & all(is.numeric(i_mat))) )
-        stop("\nArgument 'global_grouping' is not of dimension 'c(lags*M,M)'!\n")
-    }else if(global_grouping=="global"){
-      i_mat <- matrix(1, K, M)
-    }else if(global_grouping=="fol"){
-      i_mat <- matrix(1, K, M)
-      diag(i_mat[1:M,1:M]) <- 2
-    }else if(global_grouping=="olcl-lagwise"){
-      i_mat <- matrix(1, K, M)
-      diag(i_mat[1:M,1:M]) <- 2
-      if(lags>1){
-        for (j in 1:(lags-1)) {
-          i_mat[(j*M+1):((j+1)*M),] <- i_mat[((j-1)*M+1):(j*M),] + 2
         }
       }
-    }else if(global_grouping == "equation-wise"){
-      i_mat <- matrix(
-        rep(1:M, K),
-        K,M,
-        byrow = TRUE
-      )
-    }else if(global_grouping == "covariate-wise"){
-      i_mat <- matrix(
-        rep(1:K, M),
-        K,M
-      )
-    }else {
-      stop("Something went wrong specifying 'global_grouping'.")
+      
+      if(all(is.numeric(global_grouping))){
+        i_mat <- global_grouping
+        if(!(identical(dim(i_mat), as.integer(c(K,M))) & all(is.numeric(i_mat))) )
+          stop("\nArgument 'global_grouping' is not of dimension 'c(lags*M,M)'!\n")
+      }else if(global_grouping=="global"){
+        i_mat <- matrix(1, K, M)
+      }else if(global_grouping=="fol"){
+        i_mat <- matrix(1, K, M)
+        diag(i_mat[1:M,1:M]) <- 2
+      }else if(global_grouping=="olcl-lagwise"){
+        i_mat <- matrix(1, K, M)
+        diag(i_mat[1:M,1:M]) <- 2
+        if(lags>1){
+          for (j in 1:(lags-1)) {
+            i_mat[(j*M+1):((j+1)*M),] <- i_mat[((j-1)*M+1):(j*M),] + 2
+          }
+        }
+      }else if(global_grouping == "equation-wise"){
+        i_mat <- matrix(
+          rep(1:M, K),
+          K,M,
+          byrow = TRUE
+        )
+      }else if(global_grouping == "covariate-wise"){
+        i_mat <- matrix(
+          rep(1:K, M),
+          K,M
+        )
+      }else {
+        stop("Something went wrong specifying 'global_grouping'.")
+      }
+      mode(i_mat) <- "integer"
+      prior_phi_cpp[["groups"]] <- unique(as.vector(i_mat))
+      prior_phi_cpp[["n_groups"]] <- length(prior_phi_cpp[["groups"]])
+      
+    }else{
+      i_mat_1 <- diag(M)
+      i_mat_1[upper.tri(i_mat_1)] <-
+        i_mat_1[lower.tri(i_mat_1)] <- -1
+      i_mat <- NULL
+      for (j in seq_len(lags)) {
+        i_mat <- rbind(i_mat, i_mat_1 * j)
+      }
     }
-    mode(i_mat) <- "integer"
-    prior_phi_cpp[["groups"]] <- unique(as.vector(i_mat))
-    prior_phi_cpp[["n_groups"]] <- length(prior_phi_cpp[["groups"]])
-
-  }else{
-    i_mat_1 <- diag(M)
-    i_mat_1[upper.tri(i_mat_1)] <-
-      i_mat_1[lower.tri(i_mat_1)] <- -1
-    i_mat <- NULL
-    for (j in seq_len(lags)) {
-      i_mat <- rbind(i_mat, i_mat_1 * j)
+    
+    
+    if(any(priormean<0)){
+      stop("\nAt least one element in 'priormean' is negative!\n")
     }
-  }
-
-
-  if(any(priormean<0)){
-    stop("\nAt least one element in 'priormean' is negative!\n")
-  }
-  if(length(priormean)>1L){
-    if(is.vector(priormean)){
-      if(length(priormean)!=M) stop("\n'length(priormean)' does not equal 'M'.\n")
-      priormean <- as.vector(priormean)
+    if(length(priormean)>1L){
+      if(is.vector(priormean)){
+        if(length(priormean)!=M) stop("\n'length(priormean)' does not equal 'M'.\n")
+        priormean <- as.vector(priormean)
+        PHI0 <- matrix(0, K, M)
+        PHI0[1:M, 1:M] <- diag(priormean)
+      }
+      if(is.matrix(priormean)){
+        if(ncol(priormean)!=M) stop("\n'ncol(priormean)' does not equal 'M'!\n")
+        if(nrow(priormean)!=K) stop("\n'nrow(priormean)' does not equal 'lags*M'!\n")
+        PHI0 <- priormean
+      }
+    }else if(length(priormean) == 1L){
+      priormean <- rep(priormean, M)
       PHI0 <- matrix(0, K, M)
       PHI0[1:M, 1:M] <- diag(priormean)
     }
-    if(is.matrix(priormean)){
-      if(ncol(priormean)!=M) stop("\n'ncol(priormean)' does not equal 'M'!\n")
-      if(nrow(priormean)!=K) stop("\n'nrow(priormean)' does not equal 'lags*M'!\n")
-      PHI0 <- priormean
-    }
-  }else if(length(priormean) == 1L){
-    priormean <- rep(priormean, M)
-    PHI0 <- matrix(0, K, M)
-    PHI0[1:M, 1:M] <- diag(priormean)
-  }
-
-  # grouping_possible <- prior %in% c("DL", "HS", "SSVS", "NG", "R2D2")
-  general_settings <- list(M = M, lags = lags, PHI0 = PHI0, PHI_tol = PHI_tol,
-                           global_grouping = global_grouping, i_mat = i_mat,
-                           SSVS_semiautomatic = logical(0L))
-
-  if(prior == "DL"){
-
-    text <- c("Argument 'DL_a' should be a single positive numeric. For more advanced options read the function documentation. \n ")
-
-    if(any(DL_a <= 0)) {
-      stop(text)
-    }else if(all(is.character(DL_a))){
-      if(!(any(is.character(DL_a)) &
-           any(DL_a %in% c("hyperprior", "1/K", "1/n")) &
-           length(DL_a)==1)){
+    
+    # grouping_possible <- prior %in% c("DL", "HS", "SSVS", "NG", "R2D2")
+    general_settings <- list(M = M, lags = lags, PHI0 = PHI0, PHI_tol = PHI_tol,
+                             global_grouping = global_grouping, i_mat = i_mat,
+                             SSVS_semiautomatic = logical(0L))
+    
+    if(prior == "DL"){
+      
+      text <- c("Argument 'DL_a' should be a single positive numeric. For more advanced options read the function documentation. \n ")
+      
+      if(any(DL_a <= 0)) {
         stop(text)
-      }
-    }else if(is.matrix(DL_a)){
-      if(ncol(DL_a) == 1L | nrow(DL_a) == 1L){
-        DL_a <- as.vector(DL_a)
-      }else if(ncol(DL_a)>2){
-        stop(text)
-      }
-    }
-
-    if(is.character(global_grouping)){
-      if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
-        stop("Argument 'global_grouping' must be one of 'global',
-           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
-      }
-    }
-    # out <- list(prior = prior, PHI_tol = PHI_tol, a = DL_a, global_grouping = global_grouping,
-    #             GL_tol = DL_tol, ...)
-    prior_phi_cpp[["a"]] <- DL_a
-    prior_phi_cpp[["GL_tol"]] <- DL_tol
-
-    if(all(is.numeric(prior_phi_cpp[["a"]]))&is.null(dim(prior_phi_cpp[["a"]]))){
-      prior_phi_cpp[["DL_hyper"]] <- FALSE
-      prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a"]], prior_phi_cpp[["n_groups"]])
-    }else if(is.matrix(prior_phi_cpp[["a"]])){
-      prior_phi_cpp[["DL_hyper"]] <- TRUE
-      prior_phi_cpp[["a_vec"]] <- prior_phi_cpp[["a"]][,1]
-      prior_phi_cpp[["a_weight"]] <- prior_phi_cpp[["a"]][,2]
-      prior_phi_cpp[["norm_consts"]] <- lgamma(prior_phi_cpp[["a_vec"]])
-      prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a_vec"]][1], prior_phi_cpp[["n_groups"]])
-    }else if(any(c("1/K", "1/n") %in% prior_phi_cpp[["a"]]) &
-             length(prior_phi_cpp[["a"]]) == 1){
-      prior_phi_cpp[["DL_hyper"]] <- FALSE
-      if(prior_phi_cpp[["a"]] == "1/K") {
-        prior_phi_cpp[["a"]] <- rep(1/K, prior_phi_cpp[["n_groups"]])
-      }else if(prior_phi_cpp[["a"]] == "1/n") {
-        prior_phi_cpp[["a"]] <- rep(1/n, prior_phi_cpp[["n_groups"]])
-      }
-    }else{
-      stop("Something went wrong specifying DL_a!")
-    }
-
-    if(exists("DL_plus", dots)){
-      if(!is.logical(dots[["DL_plus"]])){
-        stop("Try without DL_plus, or make sure it evaluates to a logical of unit length!")
-      }
-      prior_phi_cpp[["DL_plus"]] <- dots[["DL_plus"]]
-      if(prior_phi_cpp[["DL_plus"]]){
-        if(!exists("DL_b", dots)){
-          prior_phi_cpp[["b"]] <- rep_len(0.5, prior_phi_cpp[["n_groups"]])
-        }else{
-          prior_phi_cpp[["b"]] <- rep_len(dots[["DL_b"]], prior_phi_cpp[["n_groups"]])
+      }else if(all(is.character(DL_a))){
+        if(!(any(is.character(DL_a)) &
+             any(DL_a %in% c("hyperprior", "1/K", "1/n")) &
+             length(DL_a)==1)){
+          stop(text)
         }
-        if(!exists("DL_c", dots)){
-          prior_phi_cpp[["c"]] <- 0.5*prior_phi_cpp[["a"]]
-          if(prior_phi_cpp[["DL_hyper"]]){
-            prior_phi_cpp[["c_vec"]] <- 0.5*prior_phi_cpp[["a_vec"]]
-            prior_phi_cpp[["c_rel_a"]] <- TRUE
-          }
-        }else{
-          if(!is.numeric(dots[["DL_c"]])){
-            # Note: somewhat inconsitent, because if not specified, then c_rel_a by default
-            stop("If you specify DL_c for model DL_plus, then it must be numeric!")
-          }
-          prior_phi_cpp[["c"]] <- rep_len(dots[["DL_c"]], prior_phi_cpp[["n_groups"]])
-          prior_phi_cpp[["c_rel_a"]] <- FALSE
-
+      }else if(is.matrix(DL_a)){
+        if(ncol(DL_a) == 1L | nrow(DL_a) == 1L){
+          DL_a <- as.vector(DL_a)
+        }else if(ncol(DL_a)>2){
+          stop(text)
         }
       }
-    }else if(!exists("DL_plus", dots) ){
-      prior_phi_cpp[["DL_plus"]] <- FALSE
-      prior_phi_cpp[["b"]] <- rep_len(0, prior_phi_cpp[["n_groups"]])
-      prior_phi_cpp[["c"]] <- rep_len(0, prior_phi_cpp[["n_groups"]])
-    }
-
-  }else if(prior == "R2D2"){
-    if(is.character(global_grouping)){
-      if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
-        stop("Argument 'global_grouping' must be one of 'global',
+      
+      if(is.character(global_grouping)){
+        if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
+          stop("Argument 'global_grouping' must be one of 'global',
            'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
+        }
       }
-    }
-
-    if(any(R2D2_a <= 0)) {
-      stop("R2D2_a must be strictly greater than 0!")
-    }
-
-    # out <- list(prior = "GT", PHI_tol = PHI_tol, b = R2D2_b, a = R2D2_a,
-    #             global_grouping = global_grouping, c = "0.5*a", GT_vs = 1/2,
-    #             GT_priorkernel = "exponential", GL_tol = R2D2_tol,...)
-    prior_phi_cpp[["prior"]] <- "GT"
-    prior_phi_cpp[["a"]] <- R2D2_a
-    prior_phi_cpp[["b"]] <- rep_len(R2D2_b, prior_phi_cpp[["n_groups"]])
-    prior_phi_cpp[["c"]] <- "0.5*a"
-    prior_phi_cpp[["GT_vs"]] <- 1/2
-    prior_phi_cpp[["GT_priorkernel"]] <- "exponential"
-    prior_phi_cpp[["GL_tol"]] <- R2D2_tol
-
-  }else if(prior == "SSVS"){
-    if(!(all(SSVS_c0>0) & all(SSVS_c1>0))){
-      stop("'SSVS_c0' and 'SSVS_c1' must be positive numeric values. \n")
-    }
-    if(length(SSVS_p)==2L){
-      prior_phi_cpp[["SSVS_s_a"]] <- SSVS_p[1]
-      prior_phi_cpp[["SSVS_s_b"]] <- SSVS_p[2]
-      prior_phi_cpp[["SSVS_p"]] <- rep_len(0.5, n) # initial value
-      prior_phi_cpp[["SSVS_hyper"]] <- TRUE
-    }else if(length(SSVS_p)==1L){
-      prior_phi_cpp[["SSVS_p"]] <- rep_len(SSVS_p, n)
-      prior_phi_cpp[["SSVS_s_a"]] <- prior_phi_cpp[["SSVS_s_b"]] <- as.numeric(NA)
-      prior_phi_cpp[["SSVS_hyper"]] <- FALSE
-    }else{
-      stop("SSVS_p must be either numeric vector of length 1L or 2L!")
-    }
-    # out <- list(prior = prior, PHI_tol = PHI_tol, SSVS_c0=SSVS_c0, SSVS_c1=SSVS_c1,
-    #             semiautomatic=SSVS_semiautomatic, SSVS_s_a=SSVS_sa,
-    #             SSVS_s_b=SSVS_sb, SSVS_p = SSVS_p, SSVS_hyper = SSVS_hyper,
-    #             global_grouping = global_grouping)
-    prior_phi_cpp[["SSVS_tau0"]] <- rep_len(SSVS_c0, n)
-    prior_phi_cpp[["SSVS_tau1"]] <- rep_len(SSVS_c1, n)
-    general_settings[["SSVS_semiautomatic"]] <- SSVS_semiautomatic
-    # in case of semiautomatic "SSVS_tau0/1" will be scaled in bvar_wrapper())
-
-  }else if(prior == "normal"){
-    if(!(all(normal_sds>0))){
-      stop("'normal_sds' must be positive. \n")
-    }
-    # out <- list(prior = prior, PHI_tol = PHI_tol, V_i=normal_sds^2) # note to myself: bvar expects variances!
-    prior_phi_cpp[["V_i"]] <- rep_len(normal_sds^2, n)
-  }else if(prior == "HMP"){
-    # out <- list(prior = prior, PHI_tol = PHI_tol, lambda_1 = HMP_lambda1, lambda_2 = HMP_lambda2)
-    prior_phi_cpp[["lambda_1"]] <- HMP_lambda1
-    prior_phi_cpp[["lambda_2"]] <- HMP_lambda2
-  }else if(prior == "HS"){
-    if(is.character(global_grouping)){
-      if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
-        stop("Argument 'global_grouping' must be one of 'global',
+      # out <- list(prior = prior, PHI_tol = PHI_tol, a = DL_a, global_grouping = global_grouping,
+      #             GL_tol = DL_tol, ...)
+      prior_phi_cpp[["a"]] <- DL_a
+      prior_phi_cpp[["GL_tol"]] <- DL_tol
+      
+      if(all(is.numeric(prior_phi_cpp[["a"]]))&is.null(dim(prior_phi_cpp[["a"]]))){
+        prior_phi_cpp[["DL_hyper"]] <- FALSE
+        prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a"]], prior_phi_cpp[["n_groups"]])
+      }else if(is.matrix(prior_phi_cpp[["a"]])){
+        prior_phi_cpp[["DL_hyper"]] <- TRUE
+        prior_phi_cpp[["a_vec"]] <- prior_phi_cpp[["a"]][,1]
+        prior_phi_cpp[["a_weight"]] <- prior_phi_cpp[["a"]][,2]
+        prior_phi_cpp[["norm_consts"]] <- lgamma(prior_phi_cpp[["a_vec"]])
+        prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a_vec"]][1], prior_phi_cpp[["n_groups"]])
+      }else if(any(c("1/K", "1/n") %in% prior_phi_cpp[["a"]]) &
+               length(prior_phi_cpp[["a"]]) == 1){
+        prior_phi_cpp[["DL_hyper"]] <- FALSE
+        if(prior_phi_cpp[["a"]] == "1/K") {
+          prior_phi_cpp[["a"]] <- rep(1/K, prior_phi_cpp[["n_groups"]])
+        }else if(prior_phi_cpp[["a"]] == "1/n") {
+          prior_phi_cpp[["a"]] <- rep(1/n, prior_phi_cpp[["n_groups"]])
+        }
+      }else{
+        stop("Something went wrong specifying DL_a!")
+      }
+      
+      if(exists("DL_plus", dots)){
+        if(!is.logical(dots[["DL_plus"]])){
+          stop("Try without DL_plus, or make sure it evaluates to a logical of unit length!")
+        }
+        prior_phi_cpp[["DL_plus"]] <- dots[["DL_plus"]]
+        if(prior_phi_cpp[["DL_plus"]]){
+          if(!exists("DL_b", dots)){
+            prior_phi_cpp[["b"]] <- rep_len(0.5, prior_phi_cpp[["n_groups"]])
+          }else{
+            prior_phi_cpp[["b"]] <- rep_len(dots[["DL_b"]], prior_phi_cpp[["n_groups"]])
+          }
+          if(!exists("DL_c", dots)){
+            prior_phi_cpp[["c"]] <- 0.5*prior_phi_cpp[["a"]]
+            if(prior_phi_cpp[["DL_hyper"]]){
+              prior_phi_cpp[["c_vec"]] <- 0.5*prior_phi_cpp[["a_vec"]]
+              prior_phi_cpp[["c_rel_a"]] <- TRUE
+            }
+          }else{
+            if(!is.numeric(dots[["DL_c"]])){
+              # Note: somewhat inconsitent, because if not specified, then c_rel_a by default
+              stop("If you specify DL_c for model DL_plus, then it must be numeric!")
+            }
+            prior_phi_cpp[["c"]] <- rep_len(dots[["DL_c"]], prior_phi_cpp[["n_groups"]])
+            prior_phi_cpp[["c_rel_a"]] <- FALSE
+            
+          }
+        }
+      }else if(!exists("DL_plus", dots) ){
+        prior_phi_cpp[["DL_plus"]] <- FALSE
+        prior_phi_cpp[["b"]] <- rep_len(0, prior_phi_cpp[["n_groups"]])
+        prior_phi_cpp[["c"]] <- rep_len(0, prior_phi_cpp[["n_groups"]])
+      }
+      
+    }else if(prior == "R2D2"){
+      if(is.character(global_grouping)){
+        if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
+          stop("Argument 'global_grouping' must be one of 'global',
            'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
+        }
       }
-    }
-    # out <- list(prior = prior, PHI_tol = PHI_tol, global_grouping = global_grouping)
-  }else if(prior == "NG"){
-    if(is.character(global_grouping)){
-      if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
-        stop("Argument 'global_grouping' must be one of 'global',
+      
+      if(any(R2D2_a <= 0)) {
+        stop("R2D2_a must be strictly greater than 0!")
+      }
+      
+      # out <- list(prior = "GT", PHI_tol = PHI_tol, b = R2D2_b, a = R2D2_a,
+      #             global_grouping = global_grouping, c = "0.5*a", GT_vs = 1/2,
+      #             GT_priorkernel = "exponential", GL_tol = R2D2_tol,...)
+      prior_phi_cpp[["prior"]] <- "GT"
+      prior_phi_cpp[["a"]] <- R2D2_a
+      prior_phi_cpp[["b"]] <- rep_len(R2D2_b, prior_phi_cpp[["n_groups"]])
+      prior_phi_cpp[["c"]] <- "0.5*a"
+      prior_phi_cpp[["GT_vs"]] <- 1/2
+      prior_phi_cpp[["GT_priorkernel"]] <- "exponential"
+      prior_phi_cpp[["GL_tol"]] <- R2D2_tol
+      
+    }else if(prior == "SSVS"){
+      if(!(all(SSVS_c0>0) & all(SSVS_c1>0))){
+        stop("'SSVS_c0' and 'SSVS_c1' must be positive numeric values. \n")
+      }
+      if(length(SSVS_p)==2L){
+        prior_phi_cpp[["SSVS_s_a"]] <- SSVS_p[1]
+        prior_phi_cpp[["SSVS_s_b"]] <- SSVS_p[2]
+        prior_phi_cpp[["SSVS_p"]] <- rep_len(0.5, n) # initial value
+        prior_phi_cpp[["SSVS_hyper"]] <- TRUE
+      }else if(length(SSVS_p)==1L){
+        prior_phi_cpp[["SSVS_p"]] <- rep_len(SSVS_p, n)
+        prior_phi_cpp[["SSVS_s_a"]] <- prior_phi_cpp[["SSVS_s_b"]] <- as.numeric(NA)
+        prior_phi_cpp[["SSVS_hyper"]] <- FALSE
+      }else{
+        stop("SSVS_p must be either numeric vector of length 1L or 2L!")
+      }
+      # out <- list(prior = prior, PHI_tol = PHI_tol, SSVS_c0=SSVS_c0, SSVS_c1=SSVS_c1,
+      #             semiautomatic=SSVS_semiautomatic, SSVS_s_a=SSVS_sa,
+      #             SSVS_s_b=SSVS_sb, SSVS_p = SSVS_p, SSVS_hyper = SSVS_hyper,
+      #             global_grouping = global_grouping)
+      prior_phi_cpp[["SSVS_tau0"]] <- rep_len(SSVS_c0, n)
+      prior_phi_cpp[["SSVS_tau1"]] <- rep_len(SSVS_c1, n)
+      general_settings[["SSVS_semiautomatic"]] <- SSVS_semiautomatic
+      # in case of semiautomatic "SSVS_tau0/1" will be scaled in bvar_wrapper())
+      
+    }else if(prior == "normal"){
+      if(!(all(normal_sds>0))){
+        stop("'normal_sds' must be positive. \n")
+      }
+      # out <- list(prior = prior, PHI_tol = PHI_tol, V_i=normal_sds^2) # note to myself: bvar expects variances!
+      prior_phi_cpp[["V_i"]] <- rep_len(normal_sds^2, n)
+    }else if(prior == "HMP"){
+      # out <- list(prior = prior, PHI_tol = PHI_tol, lambda_1 = HMP_lambda1, lambda_2 = HMP_lambda2)
+      prior_phi_cpp[["lambda_1"]] <- HMP_lambda1
+      prior_phi_cpp[["lambda_2"]] <- HMP_lambda2
+    }else if(prior == "HS"){
+      if(is.character(global_grouping)){
+        if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
+          stop("Argument 'global_grouping' must be one of 'global',
            'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
+        }
       }
+      # out <- list(prior = prior, PHI_tol = PHI_tol, global_grouping = global_grouping)
+    }else if(prior == "NG"){
+      if(is.character(global_grouping)){
+        if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
+          stop("Argument 'global_grouping' must be one of 'global',
+           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
+        }
+      }
+      # out <- list(prior = "GT", PHI_tol = PHI_tol, a = NG_a, b = NG_b, c = NG_c, GT_vs = 1,
+      #             GT_priorkernel = "normal",
+      #             GL_tol = NG_tol, global_grouping = global_grouping)
+      prior_phi_cpp[["prior"]] <- "GT"
+      prior_phi_cpp[["a"]] <- NG_a
+      prior_phi_cpp[["b"]] <- rep_len(NG_b, prior_phi_cpp[["n_groups"]])
+      prior_phi_cpp[["c"]] <- NG_c
+      prior_phi_cpp[["GT_vs"]] <- 1
+      prior_phi_cpp[["GT_priorkernel"]] <- "normal"
+      prior_phi_cpp[["GL_tol"]] <- NG_tol
     }
-    # out <- list(prior = "GT", PHI_tol = PHI_tol, a = NG_a, b = NG_b, c = NG_c, GT_vs = 1,
-    #             GT_priorkernel = "normal",
-    #             GL_tol = NG_tol, global_grouping = global_grouping)
-    prior_phi_cpp[["prior"]] <- "GT"
-    prior_phi_cpp[["a"]] <- NG_a
-    prior_phi_cpp[["b"]] <- rep_len(NG_b, prior_phi_cpp[["n_groups"]])
-    prior_phi_cpp[["c"]] <- NG_c
-    prior_phi_cpp[["GT_vs"]] <- 1
-    prior_phi_cpp[["GT_priorkernel"]] <- "normal"
-    prior_phi_cpp[["GL_tol"]] <- NG_tol
-  }
-
-  if(prior_phi_cpp[["prior"]] == "GT"){
-
-    if(is.matrix(prior_phi_cpp[["a"]])){
-      if(ncol(prior_phi_cpp[["a"]])==2L){
-        prior_phi_cpp[["GT_hyper"]] <- TRUE
-      }else if(ncol(prior_phi_cpp[["a"]])==1L){
+    
+    if(prior_phi_cpp[["prior"]] == "GT"){
+      
+      if(is.matrix(prior_phi_cpp[["a"]])){
+        if(ncol(prior_phi_cpp[["a"]])==2L){
+          prior_phi_cpp[["GT_hyper"]] <- TRUE
+        }else if(ncol(prior_phi_cpp[["a"]])==1L){
+          prior_phi_cpp[["GT_hyper"]] <- FALSE
+          prior_phi_cpp[["a"]] <- as.vector(prior_phi_cpp[["a"]])
+        }else if(ncol(prior_phi_cpp[["a"]])>2){
+          stop("The easiest way to specify 'R2D2_a', 'NG_a' or 'GT_a' is a single postive number!")
+        }
+      }else if(is.null(dim(prior_phi_cpp[["a"]]))){
         prior_phi_cpp[["GT_hyper"]] <- FALSE
-        prior_phi_cpp[["a"]] <- as.vector(prior_phi_cpp[["a"]])
-      }else if(ncol(prior_phi_cpp[["a"]])>2){
-        stop("The easiest way to specify 'R2D2_a', 'NG_a' or 'GT_a' is a single postive number!")
       }
-    }else if(is.null(dim(prior_phi_cpp[["a"]]))){
-      prior_phi_cpp[["GT_hyper"]] <- FALSE
-    }
-
-    if(prior_phi_cpp[["GT_hyper"]]){
-      prior_phi_cpp[["a_vec"]] <- prior_phi_cpp[["a"]][,1]
-      prior_phi_cpp[["a_weight"]] <- prior_phi_cpp[["a"]][,2]
-      prior_phi_cpp[["norm_consts"]] <- lgamma(prior_phi_cpp[["a_vec"]])
-      prior_phi_cpp[["a"]] <- sample(prior_phi_cpp[["a_vec"]], prior_phi_cpp[["n_groups"]], replace = TRUE, prob = prior_phi_cpp[["a_weight"]]) # initialize a
-    }else{
-      prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a"]], prior_phi_cpp[["n_groups"]])
-    }
-
-    if(is.character(prior_phi_cpp[["c"]])){
-      prior_phi_cpp[["c_rel_a"]] <- TRUE # then c is always proportion of a (e.g. for R2D2 c=0.5a)
-      # if GT_hyper, compute first c_vec, because the c will eventually be assigned the initial value
-      if(base::isTRUE(prior_phi_cpp[["GT_hyper"]])){
-        myc2 <- gsub("a","prior_phi_cpp$a_vec", prior_phi_cpp[["c"]])
-        prior_phi_cpp[["c_vec"]] <- eval(str2lang(myc2))
+      
+      if(prior_phi_cpp[["GT_hyper"]]){
+        prior_phi_cpp[["a_vec"]] <- prior_phi_cpp[["a"]][,1]
+        prior_phi_cpp[["a_weight"]] <- prior_phi_cpp[["a"]][,2]
+        prior_phi_cpp[["norm_consts"]] <- lgamma(prior_phi_cpp[["a_vec"]])
+        prior_phi_cpp[["a"]] <- sample(prior_phi_cpp[["a_vec"]], prior_phi_cpp[["n_groups"]], replace = TRUE, prob = prior_phi_cpp[["a_weight"]]) # initialize a
+      }else{
+        prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a"]], prior_phi_cpp[["n_groups"]])
       }
-      mya <- prior_phi_cpp[["a"]]
-      myc <- gsub("a","mya", prior_phi_cpp[["c"]])
-      prior_phi_cpp[["c"]] <- eval(str2lang(myc))
-    }else if(is.numeric(prior_phi_cpp[["c"]])){
-      prior_phi_cpp[["c_rel_a"]] <- FALSE
-      prior_phi_cpp[["c"]] <- rep_len(prior_phi_cpp[["c"]], prior_phi_cpp[["n_groups"]])
+      
+      if(is.character(prior_phi_cpp[["c"]])){
+        prior_phi_cpp[["c_rel_a"]] <- TRUE # then c is always proportion of a (e.g. for R2D2 c=0.5a)
+        # if GT_hyper, compute first c_vec, because the c will eventually be assigned the initial value
+        if(base::isTRUE(prior_phi_cpp[["GT_hyper"]])){
+          myc2 <- gsub("a","prior_phi_cpp$a_vec", prior_phi_cpp[["c"]])
+          prior_phi_cpp[["c_vec"]] <- eval(str2lang(myc2))
+        }
+        mya <- prior_phi_cpp[["a"]]
+        myc <- gsub("a","mya", prior_phi_cpp[["c"]])
+        prior_phi_cpp[["c"]] <- eval(str2lang(myc))
+      }else if(is.numeric(prior_phi_cpp[["c"]])){
+        prior_phi_cpp[["c_rel_a"]] <- FALSE
+        prior_phi_cpp[["c"]] <- rep_len(prior_phi_cpp[["c"]], prior_phi_cpp[["n_groups"]])
+      }
     }
   }
   prior_phi_cpp <- validate_baysesianVARs_prior_phi_cpp(prior_phi_cpp)

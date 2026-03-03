@@ -226,12 +226,14 @@ bvar <- function(data,
   colnames(Y_tmp) <- make.names(colnames(Y_tmp))
   # embed: get lagged values
   X <- embed(Y_tmp, dimension = lags + 1)[, -(1:M)]
-  colnames(X) <- paste0(colnames(Y_tmp), ".l", sort(rep(1:lags,M)))
+  if(lags > 0L){
+    colnames(X) <- paste0(colnames(Y_tmp), ".l", sort(rep(1:lags,M)))
+  }
   if(is.numeric(prior_intercept)){
     X <- cbind(X,1)
     colnames(X)[ncol(X)] <- c("intercept")
   }
-  Y <- Y_tmp[-c(1:lags), ]
+  Y <- if(lags > 0L) Y_tmp[-c(1:lags), ] else Y_tmp
 
   Tobs <- Traw - lags
   n <- K*M
@@ -286,7 +288,9 @@ bvar <- function(data,
     intercept <- 1L
   }
   PHI0 <- matrix(0, K+intercept, M) # prior mean of intercept is 0
-  PHI0[1:K,] <- prior_phi[["general_settings"]][["PHI0"]]
+  if(lags>0L){
+    PHI0[1:K,] <- prior_phi[["general_settings"]][["PHI0"]] 
+  }
 
   # Initialize PHI --------
 
@@ -298,10 +302,16 @@ bvar <- function(data,
     # exists even when OLS estimate does not exist (in situations where Tobs < K)
     # N(0, 10^3) on PHI, and invWish(I, M+2) on Sigma
     XX <- crossprod(X)
-    V_post_flat <- chol2inv(chol(diag(1/rep(10^3, (K+intercept))) + XX))
-    PHI_flat <- V_post_flat %*% (diag(1/rep(10^3, (K+intercept)))%*%PHI0 + t(X)%*%Y)
-    S_post <- diag(M) + crossprod(Y - X%*%PHI_flat) + t(PHI_flat - PHI0) %*%
-      diag(1/rep(10^3, (K+intercept))) %*% (PHI_flat - PHI0)
+    if((K+intercept) > 0L){
+      V_post_flat <- chol2inv(chol(diag(1/rep(10^3, (K+intercept)), nrow = K+intercept) + XX)) 
+    }
+    PHI_flat <- if((K+intercept) > 0L) {
+      V_post_flat %*% (diag(1/rep(10^3, (K+intercept)), nrow = K+intercept)%*%PHI0 + t(X)%*%Y)
+    } else {
+      matrix(0, 0, M)
+    }
+    S_post <- diag(M) + crossprod(Y - X%*%PHI_flat) + crossprod((PHI_flat - PHI0),
+      diag(1/rep(10^3, (K+intercept)), nrow = K+intercept) )%*% (PHI_flat - PHI0)
     Sigma_flat <- (S_post)/(M +2 + Tobs - M - 1)
     U <- chol(Sigma_flat)
     D <- diag(U)^2
@@ -417,28 +427,30 @@ bvar <- function(data,
   res[["bench"]] <- bench
   dimnames(res[["PHI"]])[1] <- list(colnames(X))
   dimnames(res[["PHI"]])[2] <- list(colnames(Y))
-  phinames <- as.vector((vapply(seq_len(M), function(i) paste0(colnames(Y)[i], "~", colnames(X[,1:(ncol(X)-intercept)])), character(K))))
-  if(prior_phi[["prior_phi_cpp"]][["prior"]] %in% c("DL","DL_h", "GT")){
-
-    rownames(res[["phi_hyperparameter"]]) <- c(paste0("a",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
-                                          paste0("xi",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
-                                          paste0("lambda: ", phinames),
-                                          paste0("psi: ", phinames))
-
-  }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HS"){
-
-    rownames(res[["phi_hyperparameter"]]) <- c(paste0("zeta", 1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
-                                          paste0("varpi", 1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
-                                          paste0("theta: ", phinames),
-                                          paste0("nu: ", phinames))
-  }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "SSVS"){
-
-    rownames(res[["phi_hyperparameter"]]) <- c(paste0("gamma: ", phinames), paste0("p_i: ", phinames))#
-
-  }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HMP"){
-
-    rownames(res[["phi_hyperparameter"]]) <- c("lambda_1", "lambda_2")
-
+  if(lags > 0L){
+    phinames <- as.vector((vapply(seq_len(M), function(i) paste0(colnames(Y)[i], "~", colnames(X[,1:(ncol(X)-intercept)])), character(K))))
+    if(prior_phi[["prior_phi_cpp"]][["prior"]] %in% c("DL","DL_h", "GT")){
+      
+      rownames(res[["phi_hyperparameter"]]) <- c(paste0("a",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
+                                                 paste0("xi",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
+                                                 paste0("lambda: ", phinames),
+                                                 paste0("psi: ", phinames))
+      
+    }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HS"){
+      
+      rownames(res[["phi_hyperparameter"]]) <- c(paste0("zeta", 1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
+                                                 paste0("varpi", 1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
+                                                 paste0("theta: ", phinames),
+                                                 paste0("nu: ", phinames))
+    }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "SSVS"){
+      
+      rownames(res[["phi_hyperparameter"]]) <- c(paste0("gamma: ", phinames), paste0("p_i: ", phinames))#
+      
+    }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HMP"){
+      
+      rownames(res[["phi_hyperparameter"]]) <- c("lambda_1", "lambda_2")
+      
+    } 
   }
 
   if(prior_sigma[["prior_sigma_cpp"]][["type"]]=="cholesky"){

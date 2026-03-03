@@ -503,30 +503,32 @@ List bvar_cpp(const arma::mat& Y,
     }
 
     //----1) Draw PHI (reduced form VAR coefficients)
-    if(sigma_type == "cholesky"){
-      //arma::mat PHI_old = PHI; // zombie???
-      try{
-        sample_PHI(PHI, PHI0, Y, X, U, d_sqrt, V_prior, M);
-      } catch(const std::exception &e){
-        Rcpp::stop("sample_PHI() failed in run %i: %s", rep+1, e.what());
-      } catch(...){
-        Rprintf("\nsample_PHI() failed in run %i: Rethrowing exception:", rep+1);
-        throw;
+    if(K>0){
+      if(sigma_type == "cholesky"){
+        //arma::mat PHI_old = PHI; // zombie???
+        try{
+          sample_PHI(PHI, PHI0, Y, X, U, d_sqrt, V_prior, M);
+        } catch(const std::exception &e){
+          Rcpp::stop("sample_PHI() failed in run %i: %s", rep+1, e.what());
+        } catch(...){
+          Rprintf("\nsample_PHI() failed in run %i: Rethrowing exception:", rep+1);
+          throw;
+        }
+      }else if(sigma_type == "factor"){
+        try{
+          sample_PHI_factor(PHI, PHI0, Y, X, logvar.cols(0,M-1), V_prior,
+                            armafacload, armafac, huge);
+        } catch(const std::exception &e){
+          Rcpp::stop("sample_PHI_factor() failed in run %i: %s", rep+1, e.what());
+        } catch(...){
+          Rprintf("\nsample_PHI_factor() failed in run %i: Rethrowing exception:", rep+1);
+          throw;
+        }
       }
-    }else if(sigma_type == "factor"){
-      try{
-        sample_PHI_factor(PHI, PHI0, Y, X, logvar.cols(0,M-1), V_prior,
-                          armafacload, armafac, huge);
-      } catch(const std::exception &e){
-        Rcpp::stop("sample_PHI_factor() failed in run %i: %s", rep+1, e.what());
-      } catch(...){
-        Rprintf("\nsample_PHI_factor() failed in run %i: Rethrowing exception:", rep+1);
-        throw;
+      
+      if(!PHI.is_finite()){
+        Rcpp::stop("non-finite PHI in rep %i.", rep+1);
       }
-    }
-
-    if(!PHI.is_finite()){
-      Rcpp::stop("non-finite PHI in rep %i.", rep+1);
     }
 
     if(priorPHI == "DL" || priorPHI == "R2D2" || priorPHI == "NG" || priorPHI == "GT"){
