@@ -88,8 +88,10 @@ void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
                        const bool& huge){
 
   const int M = Y.n_cols;
+  const int r = fac.n_rows;
 
-  const arma::mat Y_hat = Y - arma::trans(facload*fac); // conditioning on factors leads to independent equations
+  const arma::mat Y_hat = (r > 0) ? Y - arma::trans(facload*fac) : Y; // conditioning on factors leads to independent equations
+  
   const arma::mat normalizer = exp(-logvaridi/2.);
 
   for(int j = 0; j < M; j++){

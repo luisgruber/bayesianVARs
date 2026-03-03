@@ -827,7 +827,7 @@ List bvar_cpp(const arma::mat& Y,
           u_hyperparameter_draws(span((n_U+2),(u_hyperparameter_size-1)), (rep+1-burnin)/thin - 1)= nu_U;
 
         }
-      }else if(sigma_type == "factor"){
+      }else if(sigma_type == "factor" && factors > 0){
         facload_draws.slice((rep+1-burnin)/thin - 1) = armafacload;
         fac_draws.slice((rep+1-burnin)/thin - 1) = armafac.cols(tvp_keep_start ,armafac.n_cols-1);
       }
