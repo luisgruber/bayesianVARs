@@ -9,6 +9,7 @@
   ahead = 1L,
   each = 1L,
   stable = TRUE,
+  stable_lim = 1,
   simulate_predictive = TRUE,
   LPL = FALSE,
   Y_obs = NA,
@@ -28,6 +29,11 @@ been stored during MCMC sampling.}
 
 \item{stable}{logical indicating whether to consider only those draws from
 the posterior that fulfill the 'stable' criterion. Default is \code{TRUE}.}
+
+\item{stable_lim}{postive numerical less-than or equal to 1. Only those
+posterior draws are used for prediction for which all eigenvalues of the
+companion form matrix have modulus less than \code{stable_lim}, see
+\code{\link[=stable_bvar]{stable_bvar()}}. Only used if \code{stable=TRUE}.}
 
 \item{simulate_predictive}{logical, indicating whether the posterior
 predictive distribution should be simulated.}
@@ -75,8 +81,8 @@ log-predictive-likelihood for a subset of variables (if \code{LPL=TRUE} and
 }
 \description{
 Simulates from (out-of-sample) predictive density for Bayesian VARs estimated
-via \code{\link[=bvar]{bvar()}} and computes log predictive likelhoods if ex-post
-observed data is supplied.
+via \code{\link[=bvar]{bvar()}} and computes log predictive likelhoods if ex-post observed
+data is supplied.
 }
 \examples{
 # Access a subset of the usmacro_growth dataset
@@ -107,5 +113,6 @@ predictions$LPL_VoI
 }
 }
 \seealso{
-\code{\link[=stable_bvar]{stable_bvar()}}, \code{\link[=plot.bayesianVARs_predict]{plot.bayesianVARs_predict()}}, \code{\link[=pairs.bayesianVARs_predict]{pairs.bayesianVARs_predict()}}.
+\code{\link[=stable_bvar]{stable_bvar()}}, \code{\link[=plot.bayesianVARs_predict]{plot.bayesianVARs_predict()}},
+\code{\link[=pairs.bayesianVARs_predict]{pairs.bayesianVARs_predict()}}.
 }

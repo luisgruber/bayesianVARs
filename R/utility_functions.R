@@ -2325,8 +2325,8 @@ specify_prior_phi <- function(data = NULL,
 #' Predict method for Bayesian VARs
 #'
 #' Simulates from (out-of-sample) predictive density for Bayesian VARs estimated
-#' via [`bvar()`] and computes log predictive likelhoods if ex-post
-#' observed data is supplied.
+#' via [`bvar()`] and computes log predictive likelhoods if ex-post observed
+#' data is supplied.
 #'
 #' @param object A `bayesianVARs_bvar` object, obtained from [`bvar()`].
 #' @param ahead Integer vector (or coercible to such), indicating the number of
@@ -2336,6 +2336,10 @@ specify_prior_phi <- function(data = NULL,
 #'   been stored during MCMC sampling.
 #' @param stable logical indicating whether to consider only those draws from
 #'   the posterior that fulfill the 'stable' criterion. Default is \code{TRUE}.
+#' @param stable_lim postive numerical less-than or equal to 1. Only those
+#'   posterior draws are used for prediction for which all eigenvalues of the
+#'   companion form matrix have modulus less than `stable_lim`, see
+#'   [`stable_bvar()`]. Only used if `stable=TRUE`. 
 #' @param simulate_predictive logical, indicating whether the posterior
 #'   predictive distribution should be simulated.
 #' @param LPL logical indicating whether `ahead`-step-ahead log predictive
@@ -2349,7 +2353,8 @@ specify_prior_phi <- function(data = NULL,
 #'   predictive likelihood shall be computed.
 #' @param ... Currently ignored!
 #'
-#' @seealso [`stable_bvar()`], [plot.bayesianVARs_predict()], [pairs.bayesianVARs_predict()].
+#' @seealso [`stable_bvar()`], [plot.bayesianVARs_predict()],
+#'   [pairs.bayesianVARs_predict()].
 #'
 #' @return Object of class `bayesianVARs_predict`, a list that may contain the
 #'   following elements:
@@ -2404,8 +2409,8 @@ specify_prior_phi <- function(data = NULL,
 #' predictions$LPL_VoI
 #' }
 predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TRUE,
-                        simulate_predictive = TRUE, LPL = FALSE, Y_obs = NA,
-                        LPL_VoI = NA, ...){
+                        stable_lim = 1, simulate_predictive = TRUE, LPL = FALSE, 
+                        Y_obs = NA, LPL_VoI = NA, ...){
 
   factor <- object$sigma_type == "factor"
   ahead <- sort(as.integer(ahead))
@@ -2419,7 +2424,7 @@ predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TR
       cat("'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
           draws that do not fulfill the stable criterion.\n")
       ndraws <- dim(object$PHI)[3]
-      object <- stable_bvar(object, quiet = TRUE)
+      object <- stable_bvar(object, lim = stable_lim, quiet = TRUE)
       cat("Using the remaining ", dim(object$PHI)[3]," stable posterior draws for prediction!\n", sep = "")
     }
   }
