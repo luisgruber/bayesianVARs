@@ -1056,11 +1056,11 @@ specify_prior_sigma <- function(data=NULL,
   prior_sigma_cpp <- new_baysesianVARs_prior_sigma_cpp()
 
   if(is.null(data) & !is.numeric(M)){
-    stop("\nEither provide 'data', the data for the VAR to be estimated, or 'M', the dimensionality of the data (number of time series)!\n")
+    stop("Either provide 'data', the data for the VAR to be estimated, or 'M', the dimensionality of the data (number of time series)!")
   }
 
   if(M<2 | M%%1!=0){
-    stop("\nArgument 'M' must be an integer greater or equal to 2.\n")
+    stop("Argument 'M' must be an integer greater or equal to 2.")
   }
   M <- as.integer(M)
   general_settings <- list(M = M, factor_starttau2 =  matrix(as.numeric(NA), 1,1),
@@ -1068,14 +1068,14 @@ specify_prior_sigma <- function(data=NULL,
 
   if(!is.null(data)){
     if(ncol(data) != M){
-      warning(paste0("\nArgument 'M' does not coincide with 'ncol(data)'. Setting M=", ncol(data),"!\n"))
+      warning(paste0("Argument 'M' does not coincide with 'ncol(data)'. Setting M=", ncol(data),"!"))
       M <- ncol(data)
     }
   }
 
   optionals <- list(...)
   if(length(optionals)>0){
-    warning(paste0("\nYou provided an additional argument. Additional argument:\n", if(is.null(names(optionals))) NULL else paste0(names(optionals),"="), optionals ))
+    warning(paste0("You provided an additional argument. Additional argument:\n", if(is.null(names(optionals))) NULL else paste0(names(optionals),"="), optionals ))
   }
 
   # error checks 'type'
@@ -1089,7 +1089,7 @@ specify_prior_sigma <- function(data=NULL,
 
   if(type == "factor"){
     if(!quiet){
-      cat("\nSince argument 'type' is specified with 'factor', all arguments starting with 'cholesky_' are being ignored.\n")
+      cat("'type=factor': Arguments starting with 'cholesky_' are being ignored.\n")
     }
 
     # error checks for 'factor_factors'
@@ -1292,7 +1292,7 @@ specify_prior_sigma <- function(data=NULL,
     if (!all(factor_heteroskedastic[M+seq_len(factor_factors)])) {
       if (factor_interweaving == 2L || factor_interweaving == 4L) {
         if(!quiet){
-          cat("\nCannot do deep factor_interweaving if (some) factor_factors are homoskedastic. Setting 'factor_interweaving' to 3.\n")
+          cat("Cannot do deep factor_interweaving if (some) factor_factors are homoskedastic. Setting 'factor_interweaving' to 3.\n")
         }
         prior_sigma_cpp[["factor_interweaving"]] <- 3L
       }
@@ -1302,7 +1302,7 @@ specify_prior_sigma <- function(data=NULL,
       if (any(is.na(factor_priorhomoskedastic))) {
         factor_priorhomoskedastic <- matrix(c(1.1, 0.055), byrow = TRUE, nrow = M, ncol = 2)
         if(!quiet){
-          cat(paste0("\nArgument 'factor_priorhomoskedastic' must be a matrix with dimension c(M, 2) if some of the
+          cat(paste0("Argument 'factor_priorhomoskedastic' must be a matrix with dimension c(M, 2) if some of the
 		  elements of 'factor_heteroskedastic' are FALSE. Setting factor_priorhomoskedastic to a matrix with
 		  all rows equal to c(", factor_priorhomoskedastic[1], ", ", factor_priorhomoskedastic[2], ").\n"))
         }
@@ -1323,7 +1323,7 @@ specify_prior_sigma <- function(data=NULL,
   }else if(type == "cholesky"){
 
     if(!quiet){
-      cat("\nSince argument 'type' is specified with 'cholesky', all arguments starting with 'factor_' are being ignored.\n")
+      cat("'type=cholesky': Arguments starting with 'factor_' are being ignored.\n")
     }
 
     n_U <- (M^2-M)/2 # number of free off diagonal elements in U
@@ -1395,12 +1395,12 @@ specify_prior_sigma <- function(data=NULL,
     # error checks cholesky_priorhomoscedastic
     if(!cholesky_heteroscedastic){
       ph_error <- paste0("cholesky_priorHomoscedastic must be either a numeric matrix of dimension c(M,2),
-             or a numeric vector of length 2, where all entries are greater than 0. \n")
+             or a numeric vector of length 2, where all entries are greater than 0.")
       if(length(cholesky_priorhomoscedastic)==1L){
         if(is.na(cholesky_priorhomoscedastic)){
           cholesky_priorhomoscedastic <- c(.01,.01)
           if(!quiet){
-            cat("\nArgument 'cholesky_priorhomoscedastic' not specified. Setting both shape and rate of inverse gamma prior equal to 0.01.\n")
+            cat("Argument 'cholesky_priorhomoscedastic' not specified. Setting both shape and rate of inverse gamma prior equal to 0.01.\n")
           }
         }else stop(ph_error)
       }
@@ -1425,7 +1425,7 @@ specify_prior_sigma <- function(data=NULL,
     # error checks for cholesky_U_prior
     cholesky_U_prior <- cholesky_U_prior[1]
     if(!(cholesky_U_prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "NG", "HS"))){
-      stop("Argument 'cholesky_U_prior' must be one of 'DL', 'SSVS', 'HMP' or 'normal'. \n")
+      stop("Argument 'cholesky_U_prior' must be one of 'DL', 'SSVS', 'HMP' or 'normal'.")
     }
     prior_sigma_cpp[["cholesky_U_prior"]] <- cholesky_U_prior
 
@@ -1436,7 +1436,7 @@ specify_prior_sigma <- function(data=NULL,
     general_settings[["cholesky_U_tol"]] <- cholesky_U_tol
 
     if(cholesky_U_prior == "DL"){
-      text <- c("Argument 'cholesky_DL_a' must be either a single positive numeric or '1/n'. \n ")
+      text <- c("Argument 'cholesky_DL_a' must be either a single positive numeric or '1/n'. ")
       if(is.numeric(cholesky_DL_a) & any(cholesky_DL_a<=0)) stop(text)
       if(is.character(cholesky_DL_a)){#"hyperprior",
         if(length(cholesky_DL_a)>1 | !(cholesky_DL_a %in% c("1/n")) ){
@@ -1532,7 +1532,7 @@ specify_prior_sigma <- function(data=NULL,
 
     }else if(cholesky_U_prior == "normal"){
       if(!(all(cholesky_normal_sds>0))){
-        stop("'cholesky_normal_sds' must be positive. \n")
+        stop("'cholesky_normal_sds' must be positive.")
       }
       prior_sigma_cpp[["cholesky_V_i"]] <- rep_len(cholesky_normal_sds^2, n_U) # bvar expects variances!
 
@@ -2002,15 +2002,15 @@ specify_prior_phi <- function(data = NULL,
   dots <- list(...)
 
   if(!(prior %in% c("DL", "HMP", "SSVS", "normal", "R2D2", "SL", "HS", "NG")) & (lags > 0L)){
-    stop("Argument 'prior' must be one of 'DL', 'HS', 'NG', 'SSVS', 'HMP' or 'normal'. \n")
+    stop("Argument 'prior' must be one of 'DL', 'HS', 'NG', 'SSVS', 'HMP' or 'normal'.")
   }
 
   if(is.null(data) & is.null(M)){
-    stop("\nBoth 'data' and 'M' are missing! (One of them has to be specified.)\n")
+    stop("Both 'data' and 'M' are missing! (One of them has to be specified.)")
   }
   if(!is.null(data) & (!identical(ncol(data), as.integer(M)))){
     M <- ncol(data)
-    warning(paste0("\nArgument 'M' does not align with 'ncol(data)'. Setting 'M'=", M,"!\n"))
+    warning(paste0("Argument 'M' does not align with 'ncol(data)'. Setting 'M'=", M,"!"))
   }
 
   lags <- as.integer(lags)
@@ -2027,14 +2027,14 @@ specify_prior_phi <- function(data = NULL,
       if(is.character(global_grouping)){
         if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
           stop("Argument 'global_grouping' must be one of 'global',
-           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
+           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'.")
         }
       }
       
       if(all(is.numeric(global_grouping))){
         i_mat <- global_grouping
         if(!(identical(dim(i_mat), as.integer(c(K,M))) & all(is.numeric(i_mat))) )
-          stop("\nArgument 'global_grouping' is not of dimension 'c(lags*M,M)'!\n")
+          stop("Argument 'global_grouping' is not of dimension 'c(lags*M,M)'!")
       }else if(global_grouping=="global"){
         i_mat <- matrix(1, K, M)
       }else if(global_grouping=="fol"){
@@ -2078,18 +2078,18 @@ specify_prior_phi <- function(data = NULL,
     
     
     if(any(priormean<0)){
-      stop("\nAt least one element in 'priormean' is negative!\n")
+      stop("At least one element in 'priormean' is negative!")
     }
     if(length(priormean)>1L){
       if(is.vector(priormean)){
-        if(length(priormean)!=M) stop("\n'length(priormean)' does not equal 'M'.\n")
+        if(length(priormean)!=M) stop("'length(priormean)' does not equal 'M'.")
         priormean <- as.vector(priormean)
         PHI0 <- matrix(0, K, M)
         PHI0[1:M, 1:M] <- diag(priormean)
       }
       if(is.matrix(priormean)){
-        if(ncol(priormean)!=M) stop("\n'ncol(priormean)' does not equal 'M'!\n")
-        if(nrow(priormean)!=K) stop("\n'nrow(priormean)' does not equal 'lags*M'!\n")
+        if(ncol(priormean)!=M) stop("'ncol(priormean)' does not equal 'M'!")
+        if(nrow(priormean)!=K) stop("'nrow(priormean)' does not equal 'lags*M'!")
         PHI0 <- priormean
       }
     }else if(length(priormean) == 1L){
@@ -2105,7 +2105,7 @@ specify_prior_phi <- function(data = NULL,
     
     if(prior == "DL"){
       
-      text <- c("Argument 'DL_a' should be a single positive numeric. For more advanced options read the function documentation. \n ")
+      text <- c("Argument 'DL_a' should be a single positive numeric. For more advanced options read the function documentation.  ")
       
       if(any(DL_a <= 0)) {
         stop(text)
@@ -2126,7 +2126,7 @@ specify_prior_phi <- function(data = NULL,
       if(is.character(global_grouping)){
         if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
           stop("Argument 'global_grouping' must be one of 'global',
-           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
+           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'.")
         }
       }
       # out <- list(prior = prior, PHI_tol = PHI_tol, a = DL_a, global_grouping = global_grouping,
@@ -2192,7 +2192,7 @@ specify_prior_phi <- function(data = NULL,
       if(is.character(global_grouping)){
         if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
           stop("Argument 'global_grouping' must be one of 'global',
-           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
+           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'.")
         }
       }
       
@@ -2213,7 +2213,7 @@ specify_prior_phi <- function(data = NULL,
       
     }else if(prior == "SSVS"){
       if(!(all(SSVS_c0>0) & all(SSVS_c1>0))){
-        stop("'SSVS_c0' and 'SSVS_c1' must be positive numeric values. \n")
+        stop("'SSVS_c0' and 'SSVS_c1' must be positive numeric values.")
       }
       if(length(SSVS_p)==2L){
         prior_phi_cpp[["SSVS_s_a"]] <- SSVS_p[1]
@@ -2238,7 +2238,7 @@ specify_prior_phi <- function(data = NULL,
       
     }else if(prior == "normal"){
       if(!(all(normal_sds>0))){
-        stop("'normal_sds' must be positive. \n")
+        stop("'normal_sds' must be positive.")
       }
       # out <- list(prior = prior, PHI_tol = PHI_tol, V_i=normal_sds^2) # note to myself: bvar expects variances!
       prior_phi_cpp[["V_i"]] <- rep_len(normal_sds^2, n)
@@ -2250,7 +2250,7 @@ specify_prior_phi <- function(data = NULL,
       if(is.character(global_grouping)){
         if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
           stop("Argument 'global_grouping' must be one of 'global',
-           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
+           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'.")
         }
       }
       # out <- list(prior = prior, PHI_tol = PHI_tol, global_grouping = global_grouping)
@@ -2258,7 +2258,7 @@ specify_prior_phi <- function(data = NULL,
       if(is.character(global_grouping)){
         if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
           stop("Argument 'global_grouping' must be one of 'global',
-           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'. \n")
+           'equation-wise', 'covariate-wise', 'olcl-lagwise' or 'fol'.")
         }
       }
       # out <- list(prior = "GT", PHI_tol = PHI_tol, a = NG_a, b = NG_b, c = NG_c, GT_vs = 1,
@@ -2420,7 +2420,7 @@ predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TR
           draws that do not fulfill the stable criterion.\n")
       ndraws <- dim(object$PHI)[3]
       object <- stable_bvar(object, quiet = TRUE)
-      cat("\n",dim(object$PHI)[3],"/",ndraws," stable posterior draws remaining for prediction!\n", sep = "")
+      cat("Using the remaining ", dim(object$PHI)[3]," stable posterior draws for prediction!\n", sep = "")
     }
   }
 
@@ -2454,7 +2454,7 @@ predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TR
       if(all(is.character(LPL_VoI))){
         VoI <- which(variables %in% LPL_VoI)
         if(length(LPL_VoI) != length(VoI)){
-          stop("Cannot find variables of interest specified in 'LPL_VoI' in the data! \n")
+          stop("Cannot find variables of interest specified in 'LPL_VoI' in the data!")
         }
       }else if(all(is.numeric(LPL_VoI))){
         VoI <- as.integer(LPL_VoI)
@@ -2497,7 +2497,7 @@ predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TR
     if(LPL_subset){
       if(any(is.na(ret$LPL_sub_draws))){
         nrnas <- apply(ret$LPL_sub_draws,1,function(x) length(which(is.na(x))))
-        warning(paste0(paste0("For t+", ahead," ", nrnas, " draws had to be discarded for the computation of LPL_Voi due to numerical issues!\n")))
+        warning(paste0(paste0("For t+", ahead," ", nrnas, " draws had to be discarded for the computation of LPL_Voi due to numerical issues!")))
         LPL_VoI <- rep_len(NA, length(ahead))
         for(e in seq_along(ahead)){
           numericalnormalizer2 <- max(ret$LPL_sub_draws[e,], na.rm = TRUE) - 700
@@ -2532,9 +2532,9 @@ predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TR
 predict_old <- function(object, n.ahead, stable = TRUE, LPL = FALSE, Y_obs = NA, LPL_VoI = NA, ...){
 
   if(stable){
-    cat("\nArgument 'stable' is 'TRUE'. Therfore, only stable draws are considered for prediction.\n")
+    cat("Argument 'stable' is 'TRUE'. Therfore, only stable draws are considered for prediction.\n")
     object <- stable_bvar(object, quiet = TRUE)
-    cat("\n",dim(object$PHI)[1],"stable posterior draws remaining for prediction!\n")
+    cat(dim(object$PHI)[1],"stable posterior draws remaining for prediction!\n")
   }
 
   # relevant mod settings
@@ -2556,7 +2556,7 @@ predict_old <- function(object, n.ahead, stable = TRUE, LPL = FALSE, Y_obs = NA,
       if(all(is.character(LPL_VoI))){
         VoI <- which(variables %in% LPL_VoI)
         if(length(LPL_VoI) != length(VoI)){
-          stop("Cannot find variables of interest specified in 'LPL_VoI' in the data! \n")
+          stop("Cannot find variables of interest specified in 'LPL_VoI' in the data!")
         }
       }else if(all(is.numeric(LPL_VoI))){
         VoI <- LPL_VoI

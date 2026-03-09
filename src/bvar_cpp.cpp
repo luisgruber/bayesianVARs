@@ -488,18 +488,19 @@ List bvar_cpp(const arma::mat& Y,
   }
   //-----------------------------------SAMPLER--------------------------------//
   const int tot = draws + burnin;
-
-  if(progressbar){
-    //Rprintf("\r %i / %i",
-    //        rep+1, tot);
-    Rprintf("\r###  %i / %i ### (%3.0f%%) ###",
-            0, tot, 100.*0);
-  }
+  // number of digits needed for printing progress
+  const int printwidth = std::floor(std::log10(tot + .1))+ 1;
+  
   for(int rep = 0; rep < tot; rep++){
 
     // Check for user interrupts
     if (rep % 256 == 0) {
       Rcpp::checkUserInterrupt();
+    }
+    
+    if(progressbar){
+      Rprintf("\r###  %*i / %*i ### (%3.0f%%) ###",
+              printwidth, rep, printwidth, tot, 100.*rep/tot);
     }
 
     //----1) Draw PHI (reduced form VAR coefficients)
@@ -834,14 +835,11 @@ List bvar_cpp(const arma::mat& Y,
         fac_draws.slice((rep+1-burnin)/thin - 1) = armafac.cols(tvp_keep_start ,armafac.n_cols-1);
       }
     }
-
-    if(progressbar){
-      //Rprintf("\r %i / %i",
-      //        rep+1, tot);
-      Rprintf("\r###  %i / %i ### (%3.0f%%) ###",
-              rep+1, tot, 100.*(rep+1)/tot);
-    }
-
+  }
+  
+  if(progressbar){
+    Rprintf("\r###  %*i / %*i ### (%3.0f%%) ###\n",
+            printwidth, tot, printwidth, tot, 100.);
   }
 
   List out = List::create(

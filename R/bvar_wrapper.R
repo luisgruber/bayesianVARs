@@ -213,15 +213,15 @@ bvar <- function(data,
   Traw <- nrow(data)
   Y_tmp <- as.matrix(data)
   if (any(is.na(Y_tmp))){
-    stop("\nNAs in data.\n")
+    stop("NAs in data.")
   }
   if (ncol(Y_tmp) < 2) {
-    stop("The matrix 'data' should contain at least two variables. \n")
+    stop("The matrix 'data' should contain at least two variables.")
   }
   if (is.null(colnames(Y_tmp))) {
     colnames(Y_tmp) <- paste("y", 1:ncol(Y_tmp), sep = "")
     warning(paste("No column names supplied in data, using:",
-                  paste(colnames(Y_tmp), collapse = ", "), ", instead.\n"))
+                  paste(colnames(Y_tmp), collapse = ", "), ", instead."))
   }
   colnames(Y_tmp) <- make.names(colnames(Y_tmp))
   # embed: get lagged values
@@ -241,16 +241,16 @@ bvar <- function(data,
 # Input checks ------------------------------------------------------------
 
   if(!inherits(prior_phi, "bayesianVARs_prior_phi")){
-    stop("\nArgument 'prior_phi' must be of class 'bayesianVARs_prior_phi'. Please use helper function 'specify_prior_phi()'!\n")
+    stop("Argument 'prior_phi' must be of class 'bayesianVARs_prior_phi'. Please use helper function 'specify_prior_phi()'!")
   }
-  if(prior_phi[["general_settings"]][["M"]] != M) stop(paste0("\nObject 'prior_phi' is specified for ", prior_phi[["general_settings"]][["M"]], "time series. 'data', however, consists of ", M, "time series!\n"))
-  if(prior_phi[["general_settings"]][["lags"]] != lags) stop("\nLag-length 'lags' does not coincide with lag-length specified in object 'prior_phi'!\n")
+  if(prior_phi[["general_settings"]][["M"]] != M) stop(paste0("Object 'prior_phi' is specified for ", prior_phi[["general_settings"]][["M"]], "time series. 'data', however, consists of ", M, "time series!"))
+  if(prior_phi[["general_settings"]][["lags"]] != lags) stop("Lag-length 'lags' does not coincide with lag-length specified in object 'prior_phi'!")
 
   if(!inherits(prior_sigma, "bayesianVARs_prior_sigma")){
-    stop("\nArgument 'prior_sigma' must be of class 'bayesianVARs_prior_sigma'. Please use helper function 'specify_prior_sigma()'!\n")
+    stop("Argument 'prior_sigma' must be of class 'bayesianVARs_prior_sigma'. Please use helper function 'specify_prior_sigma()'!")
   }
   if(prior_sigma[["general_settings"]][["M"]] != M){
-    stop(paste0("\n'prior_sigma' is specified for ", prior_sigma[["general_settings"]][["M"]], " timeseries. 'data', however, consits of ",M," timeseries!\n"))
+    stop(paste0("'prior_sigma' is specified for ", prior_sigma[["general_settings"]][["M"]], " timeseries. 'data', however, consits of ",M," timeseries!"))
   }
 
 # Indicator matrix --------------------------------------------------------
@@ -271,7 +271,7 @@ bvar <- function(data,
 
   if(is.logical(prior_intercept)){
     if(any(prior_intercept == TRUE)){
-      stop(paste0("\nArgument 'prior_intercept' must be one of 'FALSE', a single numeric greater than 0, or a vector of length M.\n"))
+      stop(paste0("Argument 'prior_intercept' must be one of 'FALSE', a single numeric greater than 0, or a vector of length M."))
     }
     intercept <- 0L
     priorIntercept <- vector("numeric")
@@ -282,7 +282,7 @@ bvar <- function(data,
     }else if(length(prior_intercept)==M){
       priorIntercept <- prior_intercept
     }else{
-      stop(paste0("\nArgument 'prior_intercept' must be one of 'FALSE', a single numeric greater than 0, or a vector of length ", M, ".\n"))
+      stop(paste0("Argument 'prior_intercept' must be one of 'FALSE', a single numeric greater than 0, or a vector of length ", M, "."))
     }
 
     intercept <- 1L
@@ -398,7 +398,9 @@ bvar <- function(data,
   # }
 
   if(!quiet){
-    cat("\nCalling MCMC sampler for a ", prior_sigma[["prior_sigma_cpp"]][["type"]], "-VAR(",lags,") for ",M, " series of length ", Traw, ".\n", sep = "")
+    cat("Calling MCMC sampler for a ", prior_sigma[["prior_sigma_cpp"]][["type"]], 
+        "-VAR(",lags,") for ",M, " series of length ", Traw, ".\n", sep = "")
+    flush.console()
   }
 
   bench <- system.time(res <- bvar_cpp(Y,
@@ -587,11 +589,15 @@ bvar <- function(data,
 #' stable_mod <- stable_bvar(mod)
 #' 
 stable_bvar <- function(object, lim = 1, quiet = FALSE){
-
+  
+  if(lim < 0 | lim > 1){
+    stop("'lim' must be a positive value less-than or equal to 1.")
+  }
+  
   draws <- dim(object[["PHI"]])[3]
 
   if(!quiet){
-    cat("\nOriginal 'bayesianVARs_bvar' object consists of",draws, "posterior draws.\n")
+    cat("Original 'bayesianVARs_bvar' object consists of",draws, "posterior draws.\n")
   }
 
   stable_indicator <- vapply(
@@ -603,7 +609,7 @@ stable_bvar <- function(object, lim = 1, quiet = FALSE){
     FUN.VALUE = logical(1L)
   )
   if(!quiet){
-    cat("\nDetected",sum(!stable_indicator), "unstable draws.\n")
+    cat("Detected",sum(!stable_indicator), "unstable draws.\n")
   }
 
   object[["PHI"]] <- object[["PHI"]][,,stable_indicator, drop = FALSE]
@@ -634,7 +640,7 @@ stable_bvar <- function(object, lim = 1, quiet = FALSE){
   }
 
   if(!quiet){
-    cat("\nRemaining draws:",dim(object[["PHI"]])[3], "!\n")
+    cat("Remaining draws: ",dim(object[["PHI"]])[3], "!\n", sep = "")
   }
 
   class(object) <- c(oldClass(object), "bayesianVARs_bvar_stable")
