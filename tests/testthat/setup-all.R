@@ -7,7 +7,7 @@ burnin <- 10L
 # Mainly PHI specifications -----------------------------------------------
 
 thin_values <- c(1,3)
-lag_values <- c(0L,1L,2L,3L)
+lag_values <- c(0L,1L,3L)
 PHI_priors <- c("normal","HMP", "SSVS", "NG", "DL", "R2D2", "HS") #"HMP"
 intercept_values <- c(0,10)
 sv_keep <- c("all","last")
