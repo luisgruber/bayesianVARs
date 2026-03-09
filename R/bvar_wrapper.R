@@ -560,11 +560,16 @@ bvar <- function(data,
 #' `stable_bvar()` detects and discards all posterior draws of an
 #' \code{bayesianVARs_bvar} object that do not fulfill the stability condition:
 #' A VAR(p) model is considered as stable only if the eigenvalues of the
-#' companion form matrix lie inside the unit circle.
+#' companion form matrix lie inside the unit circle, i.e. have modulus less than
+#' 1, see Lütkepohl (2005).
 #'
 #' @param object A \code{bayesianVARs_bvar} object obtained via [`bvar()`].
 #'
 #' @param quiet logical indicating whether informative output should be omitted.
+#'
+#' @references Lütkepohl, H. (2005). Stable Vector Autoregressive Processes. In:
+#'   New Introduction to Multiple Time Series Analysis. Springer, Berlin,
+#'   Heidelberg. \doi{doi.org/10.1007/978-3-540-27752-1_2}.
 #'
 #' @return An object of type `bayesianVARs_bvar`.
 #' @export
@@ -578,7 +583,7 @@ bvar <- function(data,
 #'
 #' # Discard "unstable" draws
 #' stable_mod <- stable_bvar(mod)
-#'
+#' 
 stable_bvar <- function(object, quiet = FALSE){
 
   draws <- dim(object[["PHI"]])[3]
