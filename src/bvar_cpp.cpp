@@ -494,7 +494,7 @@ List bvar_cpp(const arma::mat& Y,
   for(int rep = 0; rep < tot; rep++){
 
     // Check for user interrupts
-    if (rep % 256 == 0) {
+    if (rep % 16 == 0) {
       Rcpp::checkUserInterrupt();
     }
     
