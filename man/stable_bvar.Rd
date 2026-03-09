@@ -4,10 +4,14 @@
 \alias{stable_bvar}
 \title{Stable posterior draws}
 \usage{
-stable_bvar(object, quiet = FALSE)
+stable_bvar(object, lim = 1, quiet = FALSE)
 }
 \arguments{
 \item{object}{A \code{bayesianVARs_bvar} object obtained via \code{\link[=bvar]{bvar()}}.}
+
+\item{lim}{positive numerical less-than or equal to 1. Posterior draws for
+which all eigenvalues of the companion form matrix have modulus less than
+\code{lim} are kept and the remaining ones are discarded.}
 
 \item{quiet}{logical indicating whether informative output should be omitted.}
 }
@@ -17,8 +21,9 @@ An object of type \code{bayesianVARs_bvar}.
 \description{
 \code{stable_bvar()} detects and discards all posterior draws of an
 \code{bayesianVARs_bvar} object that do not fulfill the stability condition:
-A VAR(p) model is considered as stable only if the eigenvalues of the
-companion form matrix lie inside the unit circle.
+A VAR(p) model is considered as stable only if all eigenvalues of the
+companion form matrix lie inside the unit circle, i.e. have modulus less than
+1, see Lütkepohl (2005).
 }
 \examples{
 # Access a subset of the usmacro_growth dataset
@@ -30,4 +35,9 @@ mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 # Discard "unstable" draws
 stable_mod <- stable_bvar(mod)
 
+}
+\references{
+Lütkepohl, H. (2005). Stable Vector Autoregressive Processes. In:
+New Introduction to Multiple Time Series Analysis. Springer, Berlin,
+Heidelberg. \doi{doi.org/10.1007/978-3-540-27752-1_2}.
 }

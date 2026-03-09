@@ -559,12 +559,14 @@ bvar <- function(data,
 #'
 #' `stable_bvar()` detects and discards all posterior draws of an
 #' \code{bayesianVARs_bvar} object that do not fulfill the stability condition:
-#' A VAR(p) model is considered as stable only if the eigenvalues of the
+#' A VAR(p) model is considered as stable only if all eigenvalues of the
 #' companion form matrix lie inside the unit circle, i.e. have modulus less than
 #' 1, see Lütkepohl (2005).
 #'
 #' @param object A \code{bayesianVARs_bvar} object obtained via [`bvar()`].
-#'
+#' @param lim positive numerical less-than or equal to 1. Posterior draws for
+#'   which all eigenvalues of the companion form matrix have modulus less than
+#'   `lim` are kept and the remaining ones are discarded.
 #' @param quiet logical indicating whether informative output should be omitted.
 #'
 #' @references Lütkepohl, H. (2005). Stable Vector Autoregressive Processes. In:
@@ -584,7 +586,7 @@ bvar <- function(data,
 #' # Discard "unstable" draws
 #' stable_mod <- stable_bvar(mod)
 #' 
-stable_bvar <- function(object, quiet = FALSE){
+stable_bvar <- function(object, lim = 1, quiet = FALSE){
 
   draws <- dim(object[["PHI"]])[3]
 
@@ -595,7 +597,7 @@ stable_bvar <- function(object, quiet = FALSE){
   stable_indicator <- vapply(
     seq.int(draws), FUN = function(i) {
       comp <- get_companion(object[["PHI"]][,,i])
-      bool <- if(max(Mod(eigen(comp, only.values = TRUE)[["values"]]))<1) TRUE else FALSE
+      bool <- if(max(Mod(eigen(comp, only.values = TRUE)[["values"]]))<lim) TRUE else FALSE
       bool
     },
     FUN.VALUE = logical(1L)
