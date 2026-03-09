@@ -288,6 +288,7 @@ Rcpp::List out_of_sample(const int& each,
   //                                sv_phi, sv_sigma);
 
   // predict future observations
+  int interrupt = 0;
   for(int r=0; r<posterior_draws; ++r){
     rr = r;
     Sigma_comp.zeros();
@@ -322,6 +323,9 @@ Rcpp::List out_of_sample(const int& each,
       // initialize homoscedastic logvar_preds
       logvar_pred = logvar_T.col(r);
       for(int j=0; j<each; ++j){
+        if(++interrupt % 1024 == 0){
+          Rcpp::checkUserInterrupt();
+        }
         if(anySV){
           // draw from predictive of logvariances
           rand_vec_logvar.imbue(R::norm_rand);
@@ -413,9 +417,12 @@ arma::cube insample(const arma::mat& X,
   arma::mat facload_mat;
 
   arma::rowvec logvar_tmp;
-
+  int interrupt=0;
   for(int t=0; t<T; ++t){
     for(int r=0; r<nsave; ++r){
+      if(++interrupt % 1024 == 0){
+        Rcpp::checkUserInterrupt();
+      }
       if(factor){
         facload_mat = facload.slice(r);
       }else{
@@ -453,8 +460,12 @@ Rcpp::NumericVector vcov_cpp(const bool& factor, const arma::cube& facload,
   arma::vec u_vec;
   arma::mat facload_mat;
 
+  int interrupt=0;
   for(int i=0; i<nsave; ++i){
     for(int t=0; t<T; ++t){
+      if(++interrupt % 1024 == 0){
+        Rcpp::checkUserInterrupt();
+      }
       if(factor){
         facload_mat = facload.slice(i);
       }else{
