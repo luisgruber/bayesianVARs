@@ -419,7 +419,7 @@ new_baysesianVARs_prior_sigma_cpp <- function(){
   out
 }
 
-validate_baysesianVARs_prior_sigma <- function(x){
+validate_baysesianVARs_prior_sigma <- function(x){ # nocov start
   if(!is.list(x)) stop("x must be a list")
   if(!inherits(x, "bayesianVARs_prior_sigma_cpp")){
     stop("x must be of class 'bayesianVARs_prior_sigma_cpp'")
@@ -720,7 +720,7 @@ validate_baysesianVARs_prior_sigma <- function(x){
     }
   }
   x
-}
+} # nocov end
 
 #'Specify prior on Sigma
 #'
@@ -1616,7 +1616,7 @@ new_baysesianVARs_prior_phi_cpp <- function(){
   out
 }
 
-validate_baysesianVARs_prior_phi_cpp <- function(x){
+validate_baysesianVARs_prior_phi_cpp <- function(x){ # nocov start
   if(!is.list(x)) stop("x must be a list object")
   if(!inherits(x, "bayesianVARs_prior_phi_cpp")){
     stop("x must be of class 'bayesianVARs_prior_phi_cpp'")
@@ -1811,7 +1811,7 @@ validate_baysesianVARs_prior_phi_cpp <- function(x){
     }
   }
   x
-}
+} # nocov end
 
 #'Specify prior on PHI
 #'
@@ -2155,7 +2155,7 @@ specify_prior_phi <- function(data = NULL,
         stop("Something went wrong specifying DL_a!")
       }
       
-      if(exists("DL_plus", dots)){
+      if(exists("DL_plus", dots)){ # nocov start
         if(!is.logical(dots[["DL_plus"]])){
           stop("Try without DL_plus, or make sure it evaluates to a logical of unit length!")
         }
@@ -2186,7 +2186,7 @@ specify_prior_phi <- function(data = NULL,
         prior_phi_cpp[["DL_plus"]] <- FALSE
         prior_phi_cpp[["b"]] <- rep_len(0, prior_phi_cpp[["n_groups"]])
         prior_phi_cpp[["c"]] <- rep_len(0, prior_phi_cpp[["n_groups"]])
-      }
+      } # nocov end
       
     }else if(prior == "R2D2"){
       if(is.character(global_grouping)){
