@@ -14,6 +14,7 @@
   LPL = FALSE,
   Y_obs = NA,
   LPL_VoI = NA,
+  quiet = FALSE,
   ...
 )
 }
@@ -49,6 +50,8 @@ single time-series of length \code{length(ahead)}.}
 \item{LPL_VoI}{either integer vector or character vector of column-names
 indicating for which subgroup of time-series in \code{object$Yraw} a joint log
 predictive likelihood shall be computed.}
+
+\item{quiet}{logical indicating whether informative output should be omitted.}
 
 \item{...}{Currently ignored!}
 }

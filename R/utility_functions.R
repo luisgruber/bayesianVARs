@@ -2351,6 +2351,7 @@ specify_prior_phi <- function(data = NULL,
 #' @param LPL_VoI either integer vector or character vector of column-names
 #'   indicating for which subgroup of time-series in `object$Yraw` a joint log
 #'   predictive likelihood shall be computed.
+#' @param quiet logical indicating whether informative output should be omitted.
 #' @param ... Currently ignored!
 #'
 #' @seealso [`stable_bvar()`], [plot.bayesianVARs_predict()],
@@ -2410,7 +2411,7 @@ specify_prior_phi <- function(data = NULL,
 #' }
 predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TRUE,
                         stable_lim = 1, simulate_predictive = TRUE, LPL = FALSE, 
-                        Y_obs = NA, LPL_VoI = NA, ...){
+                        Y_obs = NA, LPL_VoI = NA, quiet = FALSE, ...){
 
   factor <- object$sigma_type == "factor"
   ahead <- sort(as.integer(ahead))
@@ -2421,11 +2422,15 @@ predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TR
 
   if(stable){
     if(!inherits(object, "bayesianVARs_bvar_stable")){
-      cat("'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
+      if(!quiet){
+        cat("'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
           draws that do not fulfill the stable criterion.\n")
+      }
       ndraws <- dim(object$PHI)[3]
       object <- stable_bvar(object, lim = stable_lim, quiet = TRUE)
-      cat("Using the remaining ", dim(object$PHI)[3]," stable posterior draws for prediction!\n", sep = "")
+      if(!quiet){
+        cat("Using the remaining ", dim(object$PHI)[3]," stable posterior draws for prediction!\n", sep = "") 
+      }
     }
   }
 
