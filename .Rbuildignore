@@ -16,3 +16,4 @@
 ^pkgdown$
 ^vignettes/\.quarto$
 ^vignettes/*_files$
+^cleanup.
