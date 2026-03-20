@@ -1,5 +1,7 @@
 # bayesianVARs (development version)
 
+* new tests
+* tidier messages
 * added the possibility of estimating a VAR(0) (VAR with zero lags) and of specifying 0 factors for the factor error specification.
 * improved error handling; among other things replaced Rf_error() with Rcpp::stop().
 
