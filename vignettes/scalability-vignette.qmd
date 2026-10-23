@@ -21,7 +21,9 @@ library(bayesianVARs)
 **This vignette only deals with the computational complexity of the implemented algorithms. It does not cover sampling efficiency in terms of mixing.**
 <!-- ::: -->
 
-bayesianVARs' `bvar()` implements state of the art Markov Chain Monte Carlo (MCMC) algorithms for posterior estimation of Bayesian vectorautoregressions (VARs). The computational complexity of those algorithms depends on the configuration of the error variance-covariance matrix which is specified through the function argument `prior_sigma`. This argument expects a `bayesianVARs_prior_sigma` object which can be conveniently created using the helper function `specify_prior_sigma()`.
+bayesianVARs' `bvar()` implements state of the art Markov Chain Monte Carlo (MCMC) algorithms for posterior estimation of Bayesian vectorautoregressions (VARs). The computational complexity is mainly driven by the computation of the covariance-matrix of the full conditional posterior of the coefficients, which boils down to inverting a possibly huge matrix. Naively inverting the covariance-matrix of the full conditional posterior of the coefficients as a whole is of complexity $O(M^6p^3)$, where $M$ is the number of time series and $p$ the number of lags. This complexity can be reduced to $O(M^4p^3)$ or $O(pM^2n^2)$, where $n$ is the number of observations, by exploiting the structure of the error variance-covariance matrix. The configuration of the error variance-covariance matrix is specified through the function argument `prior_sigma`. This argument expects a `bayesianVARs_prior_sigma` object which can be conveniently created using the helper function `specify_prior_sigma()`. 
+
+<!-- bayesianVARs' `bvar()` implements state of the art Markov Chain Monte Carlo (MCMC) algorithms for posterior estimation of Bayesian vectorautoregressions (VARs). The computational complexity -- which is mainly driven by the computation of the covariance-matrix of the full conditional posterior of the coefficients what boils down to inverting a possibly huge matrix -- of those algorithms depends on the configuration of the error variance-covariance matrix which is specified through the function argument `prior_sigma`. This argument expects a `bayesianVARs_prior_sigma` object which can be conveniently created using the helper function `specify_prior_sigma()`. Naively inverting the covariance-matrix of the full conditional posterior of the coefficients as whole is of complexity $O(M^6p^3)$, where $M$ is the number of time series and $p$ the number of lags.  -->
 
 ## Factor specification 
 
@@ -43,7 +45,7 @@ mod_f1 <- bvar(Y, draws = 50L, burnin = 5L, prior_sigma = prior_sigma_f,
             quiet = TRUE)
 ```
 
-For the factor specification bayesianVARs implements the conditional equation per equation algorithm described in @kastner_sparse_2020. Using default settings, **this algorithm is of complexity $O(M^4p^3)$**, where $M$ is the number of time series and $p$ the number of lags. 
+For the factor specification bayesianVARs implements the conditional equation per equation algorithm described in @kastner_sparse_2020. Using default settings, **this algorithms' complexity of inversion is of $O(M^4p^3)$**. 
 
 ## Factor specifcation in huge dimensions
 
@@ -56,7 +58,7 @@ mod_f2 <- bvar(Y, draws = 50L, burnin = 5L, prior_sigma = prior_sigma_f,
                expert_huge = TRUE, quiet = TRUE)
 ```
 
-Using this sampler-configuration, **the algorithm is of complexity $O(pM^2n^2)$**, where $n$ is the number of observations. Therefore, it can be expected that setting `expert_huge = TRUE` **only speeds up computations in scenarios where $pM > n$**, i.e. the number of VAR coefficients per equations exceeds the number of observations.
+Using this sampler-configuration, **the complexity of inversion is of $O(pM^2n^2)$**, where $n$ is the number of observations. Therefore, it can be expected that setting `expert_huge = TRUE` **only speeds up computations in scenarios where $pM > n$**, i.e. the number of VAR coefficients per equations exceeds the number of observations.
 
 ## Cholesky specification
 
@@ -72,7 +74,7 @@ mod_c <- bvar(Y, draws = 50L, burnin = 5L, prior_sigma = prior_sigma_c,
             quiet = TRUE)
 ```
 
-For the Cholesky specification bayesianVARs implements the correct triangular algorithm described in @carrieroCorrigendumLargeBayesian2022. **This algorithm is of complexity $O(M^4p^3)$**, i.e. it has the same complexity like the standard conditional equation per equation algorithm for the factor specification, see [Factor specification](#factor-specification).
+For the Cholesky specification bayesianVARs implements the correct triangular algorithm described in @carrieroCorrigendumLargeBayesian2022. **This algorithms' complexity of inversion is of $O(M^4p^3)$**, i.e. it has the same complexity like the standard conditional equation per equation algorithm for the factor specification, see [Factor specification](#factor-specification). However, compared to algorithm for the factor specification which updates the VAR coefficients in one block using a sequence of $M$ equations, it a) scales less favorable with respect to $n$, because it uses a sequence of $M$ systems of $M-j+1$ equations for $j=1\dots,M$, and b) blocks the update of the coefficients equation by equation implying potentially slower mixing [for more details, see @carrieroCorrigendumLargeBayesian2022].
 
 ## Empirical demonstration
 
