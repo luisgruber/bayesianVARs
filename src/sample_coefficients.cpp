@@ -1,4 +1,5 @@
 #include <RcppArmadillo.h>
+#include "univariate_regression.h"
 
 using namespace Rcpp;
 using namespace arma;
@@ -21,65 +22,6 @@ double do_rgig(double lambda, double chi, double psi) {
     return as<double>(fun(1, lambda, chi, psi));
 }
 
-// univariate_regression_update updates the coefficientes of an univariate
-// linear regression with known variance equaling one, i.e. both the dependent
-// and the independent variables have to be scaled with the regression variance.
-void univariate_regression_update(arma::vec& coef_draw,
-                    const arma::vec& prior_mean,
-                    const arma::vec& prior_variance,
-                    const arma::vec& y_norm,
-                    const arma::mat& X_norm,
-                    const bool& typeU,
-                    const bool& huge){
-
-  const int K = prior_variance.size(); // coef_draw.size() will not work if typeU==true
-  const int T = y_norm.size();
-
-  arma::vec coef_draw_tmp(K);
-
-  if(huge){
-
-    arma::vec u(K); u.imbue(R::norm_rand); // 
-    u %= arma::sqrt(prior_variance);
-    if(!typeU){
-      u += prior_mean;
-    }
-    arma::vec delta(T); delta.imbue(R::norm_rand);
-
-    arma::vec v = X_norm*u + delta;
-    const arma::mat X_norm_pv = X_norm.each_row() % prior_variance.as_row();
-    arma::vec w = arma::solve(X_norm_pv*X_norm.t() + arma::eye(T,T), y_norm - v);
-    coef_draw_tmp = u + X_norm_pv.t()*w;
-
-  }else{
-    arma::mat Omega_post = X_norm.t()*X_norm;
-    Omega_post.diag() += 1./prior_variance;
-
-    arma::mat Omega_post_chol =  chol(Omega_post, "upper");
-    arma::mat Omega_post_chol_inv = arma::inv(trimatu(Omega_post_chol));
-
-    arma::vec coef_post = X_norm.t()*y_norm;
-    if(!typeU) { // U has by construction prior_mean of zero
-      coef_post += prior_mean / prior_variance;
-    }
-    coef_post = Omega_post_chol_inv * Omega_post_chol_inv.t() * coef_post;
-
-    arma::colvec rnormvec(K);
-    rnormvec.imbue(R::norm_rand);
-
-    coef_draw_tmp = coef_post + Omega_post_chol_inv*rnormvec;
-  }
-
-  if(typeU){
-    //pad draw with zeros (and one 1 for the diagonal element)
-    coef_draw.zeros();
-    coef_draw.subvec(0,K-1) = coef_draw_tmp;
-    coef_draw(K) = 1.;
-  }else{
-    coef_draw = coef_draw_tmp;
-  }
-}
-
 //Kastner and Huber 2019 JoF equation per equation
 void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
                        const arma::mat& Y, const arma::mat& X,
@@ -100,12 +42,16 @@ void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
     arma::vec y_norm = Y_hat.col(j) % normalizer.col(j);
     arma::vec PHI_j = PHI.unsafe_col(j);
     try{
-      univariate_regression_update(PHI_j, PHI_prior.col(j), V_prior.col(j),
-                                   y_norm, X_norm, false, huge);
+      PHI_j = huge ? sample_coef_blm_known1var_large_p_small_n(y_norm, X_norm,
+                                                               PHI_prior.col(j),
+                                                               1./V_prior.col(j)) :
+                     sample_coef_blm_known1var(X_norm.t()*y_norm, X_norm.t()*X_norm,
+                                               PHI_prior.col(j),
+                                               1./V_prior.col(j));
     } catch(const std::exception& e) {
-      Rcpp::stop("univariate_regression_update() failed in %ith eqation: %s", j+1, e.what());
+      Rcpp::stop("sample_coef_blm_known1var() failed in %ith eqation: %s", j+1, e.what());
     } catch (...) {
-      Rprintf("\nunivariate_regression_update() failed in %ith eqation. Rethrowing exception:", j+1);
+      Rprintf("\nsample_coef_blm_known1var() failed in %ith eqation. Rethrowing exception:", j+1);
       throw;
     }
 
@@ -134,12 +80,14 @@ void sample_PHI(arma::mat& PHI, const arma::mat PHI_prior, const arma::mat Y,
     arma::vec PHI_j = PHI.unsafe_col(j);
     // generate posterior draw
     try{
-      univariate_regression_update(PHI_j, PHI_prior.col(j), V_prior.col(j),
-                                   Y_new, X_new, false, false);
+      PHI_j = sample_coef_blm_known1var(X_new.t()*Y_new, X_new.t()*X_new,
+                                PHI_prior.col(j),
+                                1./V_prior.col(j));
+      
     } catch(const std::exception& e) {
-      Rcpp::stop("univariate_regression_update() failed in %ith eqation:\n%s", j+1, e.what());
+      Rcpp::stop("sample_coef_blm_known1var() failed in %ith eqation:\n%s", j+1, e.what());
     } catch (...) {
-      Rprintf("\nunivariate_regression_update() failed in %ith eqation. Rethrowing exception:", j+1);
+      Rprintf("\nsample_coef_blm_known1var() failed in %ith eqation. Rethrowing exception:", j+1);
       throw;
     }
   }
@@ -162,22 +110,24 @@ void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const
   int M = Ytilde.n_cols;
 
   int ind = 0;
-  arma::vec prior_mean(1); // proxy needed for univariate_regression_update
+  // arma::vec prior_mean(1); // proxy needed for univariate_regression_update
   for(int i = 1; i < M; i++){
 
     // create matrix with covariables (residuals of preceeding equations)
     arma::mat Z = Ytilde.cols(0, i-1);
     Z = -1 * (Z.each_col() / d_sqrt.col(i));
+    arma::vec prior_mean(i, arma::fill::zeros); // proxy needed for univariate_regression_update
     // create 'dependent' variable
     arma::vec c = Ytilde.col(i) / d_sqrt.col(i);
     // update free off-diagonal elements in column i
     arma::vec U_j = U.unsafe_col(i);
     try{
-      univariate_regression_update(U_j, prior_mean, V_i.subvec(ind, ind+i-1), c, Z, true, false);  
+      arma::vec tmp = sample_coef_blm_known1var(Z.t()*c, Z.t()*Z, prior_mean, 1./V_i.subvec(ind, ind+i-1));
+      U_j.subvec(0,i-1) = tmp;
     } catch (const std::exception& e) {
-      Rcpp::stop("univariate_regression_update() failed in equation %i: %s", i+1, e.what());
+      Rcpp::stop("sample_coef_blm_known1var() failed in equation %i: %s", i+1, e.what());
     } catch (...) {
-      Rprintf("\nunivariate_regression_update() failed in equation %i. Rethrowing exception:", i+1);
+      Rprintf("\nsample_coef_blm_known1var() failed in equation %i. Rethrowing exception:", i+1);
       throw;
     }
     
