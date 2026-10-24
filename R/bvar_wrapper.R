@@ -349,41 +349,42 @@ bvar <- function(data,
 
 # startvals ---------------------------------------------------------------
 
-  # Note to myself: for prior_sigma$prior_sigma_cpp$type=="factor", result does not depend on starting value of PHI
-  startvals[["PHI"]] <- if(exists("PHI", startvals)) startvals[["PHI"]] else PHI_flat
-  startvals[["U"]] <- if(!prior_sigma[["prior_sigma_cpp"]][["type"]]=="cholesky") matrix(0,1,1) else if(exists("U", startvals)) startvals[["U"]] else L_flat
-  startvals[["sv_para"]] <- matrix(0,1,1)
-  startvals[["sv_logvar"]] <- matrix(0,1,1)
-  startvals[["sv_logvar0"]] <- numeric(1L)
-  startvals[["factor_startval"]] <- list(facload = matrix(0,1,1), fac = matrix(0,1,1), tau2 = matrix(0,1,1))
-
-  if(prior_sigma[["prior_sigma_cpp"]][["type"]] == "cholesky"){
-    startvals[["sv_para"]] <- matrix(data= c(rep(-10,M), rep(0.9,M), rep(0.2,M)), #, rep(-10,M)
-                                         nrow = 3, ncol = M, byrow = TRUE)
-    startvals[["sv_logvar0"]] <- rep(-10,M)
-    startvals[["sv_logvar"]] <- matrix(rep(-10, Tobs*M), Tobs,M)
-  }else if(prior_sigma[["prior_sigma_cpp"]][["type"]] == "factor"){
-    startfacload <- matrix(rnorm(M*prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], sd = .5)^2, nrow=M, ncol=prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
-    startfac <- matrix(rnorm(prior_sigma[["prior_sigma_cpp"]][["factor_factors"]]*Tobs, 0, sd=.1), nrow=prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
-    startpara <- rbind(mu = c(rep(-3, M) + rnorm(M), rep(0, prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])),
-                      phi = c(rep(.8, M), rep(.8, prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])) + pmin(rnorm(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], sd=.06), .095),
-                      sigma = rep(.1, M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]]) + rgamma(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], 1, 10))
-    startlogvar <- matrix(startpara["mu",][1] + rnorm(Tobs*(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])), Tobs, M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
-    startlogvar[,M+which(prior_sigma[["prior_sigma_cpp"]][["sv_heteroscedastic"]][-c(1:M)]==FALSE)] <- 0 # !!! important, needed for factorstochvol: if factor is assumed to be homoscedastic, the corresponding column in logvar has to be 0!!!
-    startlogvar0 <- startpara["mu",][1] + rnorm(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
-    starttau2 <- if(!prior_sigma[["prior_sigma_cpp"]][["factor_ngprior"]]){ # if prior is 'normal'
-      prior_sigma[["general_settings"]][["factor_starttau2"]]
-    }else{
-      matrix(1, nrow = M, ncol = prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
-    }
-    startvals[["factor_startval"]] <- list(facload = startfacload,
-                                          fac = startfac,
-                                          tau2 = starttau2)
-    startvals[["sv_para"]] <- startpara
-    startvals[["sv_logvar0"]] <- startlogvar0
-    startvals[["sv_logvar"]] <- startlogvar
-  }
-
+  # # Note to myself: for prior_sigma$prior_sigma_cpp$type=="factor", result does not depend on starting value of PHI
+  # startvals[["PHI"]] <- if(exists("PHI", startvals)) startvals[["PHI"]] else PHI_flat
+  # startvals[["U"]] <- if(!prior_sigma[["prior_sigma_cpp"]][["type"]]=="cholesky") matrix(0,1,1) else if(exists("U", startvals)) startvals[["U"]] else L_flat
+  # startvals[["sv_para"]] <- matrix(0,1,1)
+  # startvals[["sv_logvar"]] <- matrix(0,1,1)
+  # startvals[["sv_logvar0"]] <- numeric(1L)
+  # startvals[["factor_startval"]] <- list(facload = matrix(0,1,1), fac = matrix(0,1,1), tau2 = matrix(0,1,1))
+  # 
+  # if(prior_sigma[["prior_sigma_cpp"]][["type"]] == "cholesky"){
+  #   startvals[["sv_para"]] <- matrix(data= c(rep(-10,M), rep(0.9,M), rep(0.2,M)), #, rep(-10,M)
+  #                                        nrow = 3, ncol = M, byrow = TRUE)
+  #   startvals[["sv_logvar0"]] <- rep(-10,M)
+  #   startvals[["sv_logvar"]] <- matrix(rep(-10, Tobs*M), Tobs,M)
+  # }else if(prior_sigma[["prior_sigma_cpp"]][["type"]] == "factor"){
+  #   startfacload <- matrix(rnorm(M*prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], sd = .5)^2, nrow=M, ncol=prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+  #   startfac <- matrix(rnorm(prior_sigma[["prior_sigma_cpp"]][["factor_factors"]]*Tobs, 0, sd=.1), nrow=prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+  #   startpara <- rbind(mu = c(rep(-3, M) + rnorm(M), rep(0, prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])),
+  #                     phi = c(rep(.8, M), rep(.8, prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])) + pmin(rnorm(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], sd=.06), .095),
+  #                     sigma = rep(.1, M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]]) + rgamma(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], 1, 10))
+  #   startlogvar <- matrix(startpara["mu",][1] + rnorm(Tobs*(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])), Tobs, M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+  #   startlogvar[,M+which(prior_sigma[["prior_sigma_cpp"]][["sv_heteroscedastic"]][-c(1:M)]==FALSE)] <- 0 # !!! important, needed for factorstochvol: if factor is assumed to be homoscedastic, the corresponding column in logvar has to be 0!!!
+  #   startlogvar0 <- startpara["mu",][1] + rnorm(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+  #   starttau2 <- if(!prior_sigma[["prior_sigma_cpp"]][["factor_ngprior"]]){ # if prior is 'normal'
+  #     prior_sigma[["general_settings"]][["factor_starttau2"]]
+  #   }else{
+  #     matrix(1, nrow = M, ncol = prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+  #   }
+  #   startvals[["factor_startval"]] <- list(facload = startfacload,
+  #                                         fac = startfac,
+  #                                         tau2 = starttau2)
+  #   startvals[["sv_para"]] <- startpara
+  #   startvals[["sv_logvar0"]] <- startlogvar0
+  #   startvals[["sv_logvar"]] <- startlogvar
+  # }
+  startvals <- get_startvals(prior_phi = prior_phi, prior_sigma = prior_sigma,
+                             intercept = intercept, nobs = Traw)
   ######### expert settings
   
   if(expert_huge & prior_sigma[["prior_sigma_cpp"]][["type"]] != "factor"){
@@ -432,11 +433,11 @@ bvar <- function(data,
   if(lags > 0L){
     phinames <- as.vector((vapply(seq_len(M), function(i) paste0(colnames(Y)[i], "~", colnames(X[,1:(ncol(X)-intercept)])), character(K))))
     if(prior_phi[["prior_phi_cpp"]][["prior"]] %in% c("DL","DL_h", "GT")){
-      
+      isexpkern <- (prior_phi[["prior_phi_cpp"]][["GT_priorkernel"]] == "exponential") | (prior_phi[["prior_phi_cpp"]][["prior"]] == "DL")
       rownames(res[["phi_hyperparameter"]]) <- c(paste0("a",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
                                                  paste0("xi",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
                                                  paste0("lambda: ", phinames),
-                                                 paste0("psi: ", phinames))
+                                                 if(isexpkern) paste0("psi: ", phinames) else NULL)
       
     }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HS"){
       
@@ -465,11 +466,11 @@ bvar <- function(data,
     }
     rownames(res[["U"]]) <- lnames
     if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] %in% c("DL", "GT")){
-
+      isexpkernU <- (prior_sigma[["prior_sigma_cpp"]][["cholesky_GT_priorkernel"]] == "exponential") | (prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "DL")
       rownames(res[["u_hyperparameter"]]) <- c("a",
                                           "xi",
                                           paste0("lambda: ", lnames),
-                                          paste0("psi: ", lnames))
+                                          if(isexpkernU) paste0("psi: ", lnames) else NULL)
 
     }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "HS"){
       rownames(res[["u_hyperparameter"]]) <- c("zeta",

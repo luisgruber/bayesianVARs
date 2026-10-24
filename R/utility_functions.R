@@ -1578,7 +1578,7 @@ specify_prior_sigma <- function(data=NULL,
   }
   prior_sigma_cpp <- validate_baysesianVARs_prior_sigma(prior_sigma_cpp)
   out <- list(general_settings = general_settings, prior_sigma_cpp = prior_sigma_cpp)
-  class(out) <- "bayesianVARs_prior_sigma"
+  class(out) <- c("bayesianVARs_prior_sigma", "bayesianVARs_prior")
   return(out)
 }
 
@@ -2315,10 +2315,171 @@ specify_prior_phi <- function(data = NULL,
   }
   prior_phi_cpp <- validate_baysesianVARs_prior_phi_cpp(prior_phi_cpp)
   out <- list(prior_phi_cpp = prior_phi_cpp, general_settings = general_settings)
-  class(out) <- "bayesianVARs_prior_phi"
+  class(out) <- c("bayesianVARs_prior_phi", "bayesianVARs_prior")
   out
 }
 
+new_startvals <- function(){
+  out <- list(
+    phi = list(PHI = matrix(0, 1, 1),
+               lambda = numeric(1L),
+               psi = numeric(1L),
+               xi = numeric(1L),
+               a = numeric(1L),
+               theta_hs = numeric(1L),
+               zeta_hs = numeric(1L),
+               nu = numeric(1L),
+               varpi = numeric(1L),
+               p_i = numeric(1L),
+               gammas = numeric(1L),
+               lambda_1 = numeric(1L),
+               lambda_2 = numeric(1L)
+    ),
+    sigma = list(U = matrix(0, 1, 1),
+                 lambda_U = numeric(1L),
+                 psi_U = numeric(1L),
+                 xi_U = numeric(1L),
+                 a_U = numeric(1L),
+                 theta_hs_U = numeric(1L),
+                 zeta_hs_U = numeric(1L),
+                 nu_U = numeric(1L),
+                 varpi_U = numeric(1L),
+                 p_i_U = numeric(1L),
+                 gammas_U = numeric(1L),
+                 lambda_3 = numeric(1L),
+                 facload = matrix(0, 1, 1),
+                 fac = matrix(0, 1, 1),
+                 tau2 = matrix(0, 1, 1),
+                 sv_logvar = matrix(0, 1, 1),
+                 sv_para = matrix(0, 1, 1),
+                 sv_logvar0 = matrix(0, 1, 1)
+    )
+  )
+  class(out) <- "bayesianVARs_startvals"
+  out
+}
+
+get_startvals <- function(prior_phi, prior_sigma, intercept,
+                                             data = NULL, nobs = nrow(data)){
+  if(!inherits(prior_phi, "bayesianVARs_prior_phi")){
+    stop("Argument 'prior_phi' must be of class 'bayesianVARs_prior_phi'. Please use helper function 'specify_prior_phi()'!")
+  }
+  if(!inherits(prior_sigma, "bayesianVARs_prior_sigma")){
+    stop("Argument 'prior_sigma' must be of class 'bayesianVARs_prior_sigma'. Please use helper function 'specify_prior_sigma()'!")
+  }
+  
+  startvals <- new_startvals()
+  
+  intercept <- intercept > 0
+  phi_prior <- prior_phi[["prior_phi_cpp"]][["prior"]]
+  p <- prior_phi[["general_settings"]][["lags"]]
+  M <- prior_phi[["general_settings"]][["M"]]
+  n <- p*M^2
+  n_groups <- prior_phi$prior_phi_cpp$n_groups
+  PHI_start <- matrix(1e-10, p*M+intercept, M)
+  # diag(PHI_start) <- 0.5
+  startvals[["phi"]][["PHI"]] <- PHI_start
+  # if DL | GT
+  if(phi_prior %in% c("DL", "GT")){
+    startvals[["phi"]][["lambda"]] <- rep(1/n, n)
+    if(prior_phi[["prior_phi_cpp"]][["GT_priorkernel"]] == "exponential" | phi_prior == "DL"){
+      startvals[["phi"]][["psi"]] <- rep(1, n) # must be 1 in case of NG prior
+    }
+    # if(phi_prior != "DL" | prior_phi[["prior_phi_cpp"]][["DL_plus"]]){ # needed as dummy
+      startvals[["phi"]][["xi"]] <- rep(0.5, n_groups) 
+    # }
+    startvals[["phi"]][["a"]] <- prior_phi[["prior_phi_cpp"]][["a"]]
+  } else if(phi_prior == "HS"){
+    startvals[["phi"]][["theta_hs"]] <- rep(1/n, n)
+    startvals[["phi"]][["zeta_hs"]] <- rep(10, n_groups)
+    startvals[["phi"]][["nu"]] <- rep(1, n)
+    startvals[["phi"]][["varpi"]] <- rep(1, n_groups)
+  } else if (phi_prior == "SSVS") {
+    startvals[["phi"]][["p_i"]] <- prior_phi[["prior_phi_cpp"]][["SSVS_p"]]
+    startvals[["phi"]][["gammas"]] <- rep(0, n)
+  } else if (phi_prior == "HMP") {
+    startvals[["phi"]][["lambda_1"]] <- 0.04
+    startvals[["phi"]][["lambda_2"]] <- 0.0016
+  } else if(phi_prior == "normal") {
+    # nothing to do
+  } 
+  # else {
+  #   stop("prior_phi[['prior_phi_cpp']][['prior']] ", phi_prior,
+  #        " does not exist!")
+  # }
+  
+  sigma_type <- prior_sigma[["prior_sigma_cpp"]][["type"]]
+  anySV <- any(prior_sigma[["prior_sigma_cpp"]][["sv_heteroscedastic"]])
+  # if(sigma_type == "factor" | anySV) {
+    if(is.null(data) & is.null(nobs)){
+      stop("One of 'data' or 'nobs' needs to be supplied!")
+    } 
+    if(is.null(nobs)){
+      nobs <- nrow(data)
+    }
+    Tobs <- nobs - prior_phi[["general_settings"]][["lags"]]
+  # }
+  
+  if(sigma_type == "cholesky") {
+    startvals[["sigma"]][["U"]] <- diag(M)
+    cholesky_U_prior <- prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]]
+    n_U <- as.integer(0.5*(M^2-M))
+    if(cholesky_U_prior %in% c("DL", "GT")){
+      startvals[["sigma"]][["lambda_U"]] <- rep(1/n_U, n_U)
+      if(cholesky_U_prior == "DL" | prior_sigma[["prior_sigma_cpp"]][["cholesky_GT_priorkernel"]] == "exponential"){
+        startvals[["sigma"]][["psi_U"]] <- rep(1, n_U)
+      }
+      # if(cholesky_U_prior != "DL" | prior_sigma[["prior_sigma_cpp"]][["cholesky_DL_plus"]]){
+        startvals[["sigma"]][["xi_U"]] <- 0.5
+      # }
+      startvals[["sigma"]][["a_U"]] <- prior_sigma[["prior_sigma_cpp"]][["cholesky_a"]]
+    } else if(cholesky_U_prior == "HS"){
+      startvals[["sigma"]][["theta_hs_U"]] <- rep(1/n_U, n_U)
+      startvals[["sigma"]][["zeta_hs_U"]] <- 10
+      startvals[["sigma"]][["nu_U"]] <- rep(1, n_U)
+      startvals[["sigma"]][["varpi_U"]] <- 1
+    } else if (cholesky_U_prior == "SSVS") {
+      startvals[["sigma"]][["p_i_U"]] <- prior_sigma[["prior_sigma_cpp"]][["cholesky_SSVS_p"]]
+      startvals[["sigma"]][["gammas_U"]] <- rep(0, n_U)
+    } else if (cholesky_U_prior == "HMP") {
+      startvals[["sigma"]][["lambda_3"]] <- 0.001
+    } else if(cholesky_U_prior == "normal") {
+      # nothing to do
+    } 
+    # else {
+    #   stop("prior_sigma[['prior_sigma_cpp']]['cholesky_U_prior']] ", cholesky_U_prior,
+    #        " does not exist!")
+    # }
+    if(anySV){
+        startvals[["sigma"]][["sv_para"]] <- matrix(data= c(rep(-10,M), rep(0.9,M), rep(0.2,M)), #, rep(-10,M)
+                                         nrow = 3, ncol = M, byrow = TRUE)
+        startvals[["sigma"]][["sv_logvar0"]] <- rep(-10,M)
+    }
+    startvals[["sigma"]][["sv_logvar"]] <- matrix(rep(-10, Tobs*M), Tobs,M)
+  } else if (sigma_type == "factor") {
+    # factors <- prior_sigma[["prior_sigma_cpp"]][["factor_factors"]]
+    startvals[["sigma"]][["facload"]] <- matrix(rnorm(M*prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], sd = .5)^2, nrow=M, ncol=prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+    startvals[["sigma"]][["fac"]] <- matrix(rnorm(prior_sigma[["prior_sigma_cpp"]][["factor_factors"]]*Tobs, 0, sd=.1), nrow=prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+    startvals[["sigma"]][["tau2"]] <- if(!prior_sigma[["prior_sigma_cpp"]][["factor_ngprior"]]){ # if prior is 'normal'
+      prior_sigma[["general_settings"]][["factor_starttau2"]]
+    }else{
+      matrix(1, nrow = M, ncol = prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+    }
+    startpara <- rbind(mu = c(rep(-3, M) + rnorm(M), rep(0, prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])),
+                       phi = c(rep(.8, M), rep(.8, prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])) + pmin(rnorm(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], sd=.06), .095),
+                       sigma = rep(.1, M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]]) + rgamma(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], 1, 10))
+    startlogvar <- matrix(startpara["mu",][1] + rnorm(Tobs*(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])), Tobs, M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+    startlogvar[,M+which(prior_sigma[["prior_sigma_cpp"]][["sv_heteroscedastic"]][-c(1:M)]==FALSE)] <- 0 # !!! important, needed for factorstochvol: if factor is assumed to be homoscedastic, the corresponding column in logvar has to be 0!!!
+    startvals[["sigma"]][["sv_logvar"]] <- startlogvar
+    if(anySV){
+      startvals[["sigma"]][["sv_para"]] <- startpara
+      startvals[["sigma"]][["sv_logvar0"]] <- startpara["mu",][1] + rnorm(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
+    }
+  } else {
+    stop("prior_sigma[['prior_sigma_cpp']][['type']] ", sigma_type, "does not exist!")
+  }
+ return(startvals)
+}
 
 # Predict methods ---------------------------------------------------------
 
