@@ -201,12 +201,15 @@ void sample_V_i_GT(arma::vec& V_i, const arma::vec coefs, arma::vec& psi,
   const arma::vec coefs_squared = arma::square(coefs);
   arma::uvec::iterator it;
   for(it = ind.begin(); it != ind.end(); ++it){
+    // For R2d2exp vs must be 1/2, for NG psi must be 1
+    double lambdascale = vs;
     // sample auxiliary scaling parameters
     if(priorkernel == "exponential"){
-      psi(*it) = 1./do_rgig(-0.5, 1, coefs_squared(*it)/(lambda(*it)*vs)); //For R2d2exp vs must be 1/2
+      psi(*it) = 1./do_rgig(-0.5, 1, coefs_squared(*it)/(lambda(*it)*vs)); 
+      lambdascale *= psi(*it);
     }
     // sample local scales
-    lambda(*it) = do_rgig(a - 0.5, coefs_squared(*it)/(psi(*it)*vs), 2*xi); // For R2d2exp vs must be 1/2, for NG psi must be 1
+    lambda(*it) = do_rgig(a - 0.5, coefs_squared(*it)/lambdascale, 2*xi); 
   }
   double zeta = arma::accu(lambda(ind));
   if(tol>0){
@@ -218,10 +221,9 @@ void sample_V_i_GT(arma::vec& V_i, const arma::vec coefs, arma::vec& psi,
   //sample global scale
   xi = R::rgamma(b+n*a, 1./(2*c/a + zeta));
 
+  V_i(ind) = lambda(ind)*vs;
   if(priorkernel == "exponential"){
-    V_i(ind) = psi(ind)%lambda(ind)*vs;
-  }else if(priorkernel == "normal"){
-    V_i(ind) = lambda(ind)*vs;
+    V_i(ind) %= psi(ind);
   }
 
   if(hyper){
