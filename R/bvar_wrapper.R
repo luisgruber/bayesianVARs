@@ -65,7 +65,8 @@
 #'@param quiet logical value indicating whether information about the progress
 #'  during sampling should be displayed during sampling (default is
 #'  \code{TRUE}).
-#'@param startvals optional list with starting values.
+#'@param startvals `bayesianVARs_startvals` object. Best use constructor
+#'  [get_startvals()].
 #'
 #'@section MCMC algorithm: To sample efficiently the reduced-form VAR
 #'  coefficients assuming a **factor structure for the errors**, the equation
@@ -85,8 +86,7 @@
 #'  variables are sampled using package \code{\link[stochvol]{stochvol}}'s
 #'  \code{\link[stochvol]{update_fast_sv}} function. The precision parameters,
 #'  i.e. the free off-diagonal elements in \eqn{\boldsymbol{U}}, can be sampled
-#'  using Bayesian linear regression methods, see Cogley and
-#'  Sargent (2005).
+#'  using Bayesian linear regression methods, see Cogley and Sargent (2005).
 #'
 #'@references  Gruber, L. and Kastner, G. (2025). Forecasting macroeconomic data
 #'  with Bayesian VARs: Sparse or dense? It depends! \emph{International Journal
@@ -186,7 +186,8 @@ bvar <- function(data,
                  sv_keep = "last",
                  expert_huge = FALSE,
                  quiet=FALSE,
-                 startvals = list()
+                 startvals = get_startvals(prior_phi, prior_sigma, 
+                                           prior_intercept, data)
                       ){
 
 
@@ -252,6 +253,9 @@ bvar <- function(data,
   if(prior_sigma[["general_settings"]][["M"]] != M){
     stop(paste0("'prior_sigma' is specified for ", prior_sigma[["general_settings"]][["M"]], " timeseries. 'data', however, consits of ",M," timeseries!"))
   }
+  if(!inherits(startvals, "bayesianVARs_startvals")){
+    stop("Argument 'startvals' must be of class 'bayesianVARs_startvals'. Please use helper function 'get_startvals()'!")
+  }
 
 # Indicator matrix --------------------------------------------------------
 
@@ -294,6 +298,7 @@ bvar <- function(data,
 
   # Initialize PHI --------
 
+  #? move computations (in case of SSVS_semiautomatic) to specify_prior_phi(), startvals are now handled with get_startvals()
   if(prior_phi[["prior_phi_cpp"]][["prior"]] == "SSVS" | !exists("PHI", startvals) | (!exists("U", startvals) & prior_sigma[["prior_sigma_cpp"]][["type"]] == "cholesky")){
     # Note: if startvals are provided and if(!prior_phi[["general_settings"]][["SSVS_semiautomatic"]]) then
     # the following computations are redundant
@@ -349,42 +354,9 @@ bvar <- function(data,
 
 # startvals ---------------------------------------------------------------
 
-  # # Note to myself: for prior_sigma$prior_sigma_cpp$type=="factor", result does not depend on starting value of PHI
-  # startvals[["PHI"]] <- if(exists("PHI", startvals)) startvals[["PHI"]] else PHI_flat
-  # startvals[["U"]] <- if(!prior_sigma[["prior_sigma_cpp"]][["type"]]=="cholesky") matrix(0,1,1) else if(exists("U", startvals)) startvals[["U"]] else L_flat
-  # startvals[["sv_para"]] <- matrix(0,1,1)
-  # startvals[["sv_logvar"]] <- matrix(0,1,1)
-  # startvals[["sv_logvar0"]] <- numeric(1L)
-  # startvals[["factor_startval"]] <- list(facload = matrix(0,1,1), fac = matrix(0,1,1), tau2 = matrix(0,1,1))
-  # 
-  # if(prior_sigma[["prior_sigma_cpp"]][["type"]] == "cholesky"){
-  #   startvals[["sv_para"]] <- matrix(data= c(rep(-10,M), rep(0.9,M), rep(0.2,M)), #, rep(-10,M)
-  #                                        nrow = 3, ncol = M, byrow = TRUE)
-  #   startvals[["sv_logvar0"]] <- rep(-10,M)
-  #   startvals[["sv_logvar"]] <- matrix(rep(-10, Tobs*M), Tobs,M)
-  # }else if(prior_sigma[["prior_sigma_cpp"]][["type"]] == "factor"){
-  #   startfacload <- matrix(rnorm(M*prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], sd = .5)^2, nrow=M, ncol=prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
-  #   startfac <- matrix(rnorm(prior_sigma[["prior_sigma_cpp"]][["factor_factors"]]*Tobs, 0, sd=.1), nrow=prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
-  #   startpara <- rbind(mu = c(rep(-3, M) + rnorm(M), rep(0, prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])),
-  #                     phi = c(rep(.8, M), rep(.8, prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])) + pmin(rnorm(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], sd=.06), .095),
-  #                     sigma = rep(.1, M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]]) + rgamma(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]], 1, 10))
-  #   startlogvar <- matrix(startpara["mu",][1] + rnorm(Tobs*(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])), Tobs, M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
-  #   startlogvar[,M+which(prior_sigma[["prior_sigma_cpp"]][["sv_heteroscedastic"]][-c(1:M)]==FALSE)] <- 0 # !!! important, needed for factorstochvol: if factor is assumed to be homoscedastic, the corresponding column in logvar has to be 0!!!
-  #   startlogvar0 <- startpara["mu",][1] + rnorm(M + prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
-  #   starttau2 <- if(!prior_sigma[["prior_sigma_cpp"]][["factor_ngprior"]]){ # if prior is 'normal'
-  #     prior_sigma[["general_settings"]][["factor_starttau2"]]
-  #   }else{
-  #     matrix(1, nrow = M, ncol = prior_sigma[["prior_sigma_cpp"]][["factor_factors"]])
-  #   }
-  #   startvals[["factor_startval"]] <- list(facload = startfacload,
-  #                                         fac = startfac,
-  #                                         tau2 = starttau2)
-  #   startvals[["sv_para"]] <- startpara
-  #   startvals[["sv_logvar0"]] <- startlogvar0
-  #   startvals[["sv_logvar"]] <- startlogvar
-  # }
-  startvals <- get_startvals(prior_phi = prior_phi, prior_sigma = prior_sigma,
-                             intercept = intercept, nobs = Traw)
+  # everything is done withing get_startvals()
+  # add some checks, whether startvals is compatible with other specifications
+  
   ######### expert settings
   
   if(expert_huge & prior_sigma[["prior_sigma_cpp"]][["type"]] != "factor"){
@@ -495,15 +467,61 @@ bvar <- function(data,
   res[["sigma_type"]] <- prior_sigma[["prior_sigma_cpp"]][["type"]]
   res[["datamat"]] <- data.frame(cbind(Y, X))
   res[["config"]] <- list(draws = draws, burnin = burnin, thin = thin,
-                     sv_keep = sv_keep)
+                     sv_keep = sv_keep, prior_phi = prior_phi,
+                     prior_sigma = prior_sigma, prior_intercept = prior_intercept,
+                     lags = lags, expert_huge = expert_huge)
   class(res[["PHI"]]) <- c("bayesianVARs_coef", "bayesianVARs_draws")
   class(res[["U"]]) <- "bayesianVARs_draws"
   class(res[["facload"]]) <- "bayesianVARs_draws"
   class(res[["fac"]]) <- "bayesianVARs_draws"
   class(res[["sv_para"]]) <- "bayesianVARs_draws"
   class(res[["logvar"]]) <- "bayesianVARs_draws"
+  class(res[["lastdraw"]]) <- c("bayesianVARs_lastdraw", "bayesianVARs_startvals")
   class(res) <- "bayesianVARs_bvar"
   res
+}
+
+#' Update MCMC-chain obtained via bvar()
+#'
+#' `update_bvar()` simulates from the joint posterior distribution of the
+#' parameters and latent variables using the latest state of an existing
+#' `bayesianVARs_bvar` object obtained via [bvar()] as starting values and
+#' returns the posterior draws.
+#'
+#' @param object `bayesianVARs_bvar` object obtained via [bvar()].
+#' @param draws single integer indicating the number of draws.
+#' @param quiet logical value indicating whether information about the progress
+#'   during sampling should be displayed during sampling.
+#'
+#' @returns An object of type 'bayesianVARs_bvar', see [bvar()].
+#' @export
+#'
+#' @examples
+#' # Access a subset of the usmacro_growth dataset
+#' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
+#'
+#' # Estimate a model
+#' mod <- bvar(data, draws = 10L, burnin = 0L, quiet = TRUE)
+#' 
+#' # Update model
+#' mod_new <- update_bvar(mod, draws = 10L, quiet = TRUE)
+#' 
+update_bvar <- function(object, draws = 1000L, quiet = FALSE) {
+  if(!inherits(object, "bayesianVARs_bvar")){
+    stop("'object' must be of type 'bayesianVARs_bvar', see '?bvar()'!")
+  }
+  data <- object[["Yraw"]]
+  p <- object[["config"]][["lags"]]
+  thin <- object[["config"]][["thin"]]
+  prior_intercept <- object[["config"]][["prior_intercept"]]
+  prior_phi <- object[["config"]][["prior_phi"]]
+  prior_sigma <- object[["config"]][["prior_sigma"]]
+  sv_keep <- object[["config"]][["sv_keep"]]
+  expert_huge <- object[["config"]][["expert_huge"]]
+  bvar(data = data, lags = p, draws = draws, burnin = 0L, thin = thin,
+       prior_intercept = prior_intercept, prior_phi = prior_phi,
+       prior_sigma = prior_sigma, sv_keep = sv_keep, expert_huge = expert_huge,
+       quiet = quiet, startvals = object[["lastdraw"]])
 }
 
 #' Extract or Replace Parts of a bayesianVARs_draws object

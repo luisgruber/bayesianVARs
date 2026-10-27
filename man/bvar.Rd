@@ -16,7 +16,7 @@ bvar(
   sv_keep = "last",
   expert_huge = FALSE,
   quiet = FALSE,
-  startvals = list()
+  startvals = get_startvals(prior_phi, prior_sigma, prior_intercept, data)
 )
 }
 \arguments{
@@ -60,7 +60,8 @@ is specified. See section MCMC algorithm below for more details.}
 during sampling should be displayed during sampling (default is
 \code{TRUE}).}
 
-\item{startvals}{optional list with starting values.}
+\item{startvals}{\code{bayesianVARs_startvals} object. Best use constructor
+\code{\link[=get_startvals]{get_startvals()}}.}
 }
 \value{
 An object of type \code{bayesianVARs_bvar}, a list containing the following
@@ -159,8 +160,7 @@ Carriero et al. (2021) is implemented. The SV parameters and latent
 variables are sampled using package \code{\link[stochvol]{stochvol}}'s
 \code{\link[stochvol]{update_fast_sv}} function. The precision parameters,
 i.e. the free off-diagonal elements in \eqn{\boldsymbol{U}}, can be sampled
-using Bayesian linear regression methods, see Cogley and
-Sargent (2005).
+using Bayesian linear regression methods, see Cogley and Sargent (2005).
 }
 
 \examples{
