@@ -138,3 +138,32 @@ test_that("expert_huge", {
                       prior_sigma = specify_prior_sigma(y, type = "cholesky"),
                       expert_huge = TRUE))
 })
+
+test_that("iterative_use", {
+  data <- usmacro_growth[,c("GDPC1","CPIAUCSL","FEDFUNDS")]
+  p <- 2L
+  prior_phi <- specify_prior_phi(data, lags = p)
+  
+  
+  draws <- 10L
+  burnin <- 0L
+  
+  for(type in c("factor", "cholesky")){
+    prior_sigma <- specify_prior_sigma(data, type = type,
+                                       quiet = TRUE) 
+    set.seed(1)
+    res0 <- bvar(data, lags = p, draws = draws, burnin = burnin,
+                 prior_phi = prior_phi, prior_sigma = prior_sigma,
+                 quiet = TRUE)
+    
+    set.seed(1)
+    res2 <- bvar(data, lags = p, draws = 1L, burnin = 0L,
+                 prior_phi = prior_phi, prior_sigma = prior_sigma, quiet = TRUE)
+    for(r in seq_len(draws-1)){
+      res2 <- bvar(data, lags = p, draws = 1L, burnin = 0L,
+                   prior_phi = prior_phi, prior_sigma = prior_sigma,
+                   startvals = res2[["lastdraw"]], quiet = TRUE)
+    }
+    expect_equal(res2[["lastdraw"]], res0[["lastdraw"]])
+  }
+})
