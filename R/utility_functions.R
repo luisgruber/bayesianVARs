@@ -2359,6 +2359,39 @@ new_startvals <- function(){
   out
 }
 
+#' Specify starting values
+#'
+#' `get_startvals()` can be used to obtain starting values for [bvar()]. If you
+#' want to specify your own starting values, it is recommended to first run
+#' `get_startvals()`, and then adapt the resulting `bayesianVARs_startvals`
+#' object accordingly.
+#'
+#' @param prior_phi `bayesianVARs_prior_phi` object. Best use constructor
+#'   [specify_prior_phi()].
+#' @param prior_sigma `bayesianVARs_prior_sigma` object. Best use constructor
+#'   [specify_prior_sigma()].
+#' @param intercept single logical or numeric indicating whether a constant term
+#'   (intercept) will be included. In case of numeric input, a value of 0 is
+#'   interpreted as `FALSE` and a positive non-zero value as `TRUE`.
+#' @param data  Optional. Data matrix.
+#' @param nobs single integer, indicating the number of observations of `data`.
+#'
+#' @returns Object of class `bayesianVARs_startvals.`
+#' @export
+#'
+#' @examples
+#' # Access a subset of the usmacro_growth dataset
+#' data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
+#'
+#' # Specify priors
+#' prior_phi <- specify_prior_phi(data, lags = 1L)
+#' prior_sigma <- specify_prior_sigma(data, quiet = TRUE)
+#'
+#' # Get starting values
+#' startvals <- get_startvals(prior_phi, prior_sigma, intercept = 10, data = data)
+#' # Estimate a model
+#' mod <- bvar(data, lags = 1L, prior_intercept = 10, draws = 10L, burnin = 0L, startvals = startvals, quiet = TRUE)
+#' 
 get_startvals <- function(prior_phi, prior_sigma, intercept,
                                              data = NULL, nobs = nrow(data)){
   if(!inherits(prior_phi, "bayesianVARs_prior_phi")){
