@@ -782,13 +782,8 @@ List bvar_cpp(const arma::mat& Y,
     //-------Store draws after burnin
     if(rep >= burnin && ( (rep+1-burnin) % thin == 0 )){
       
-      const bool islastdraw = (rep+1-burnin) == (draws - draws%thin);
-
       PHI_draws.slice((rep+1-burnin)/thin - 1) = PHI;
       logvar_draws.slice((rep+1-burnin)/thin - 1) = logvar.rows(tvp_keep_start ,logvar.n_rows-1);
-      if(islastdraw) {
-        logvar_lastdraw = logvar;
-      }
       sv_para_draws.slice(((rep+1-burnin)/thin - 1)) = sv_para;
       V_prior_draws.slice((rep+1-burnin)/thin - 1) = V_prior;
 
@@ -800,15 +795,6 @@ List bvar_cpp(const arma::mat& Y,
         if(priorPHI == "DL" || GT_priorkernel == "exponential"){
           phi_hyperparameter_draws(span((2*n_groups+n),(phi_hyperparameter_size-1)), (rep+1-burnin)/thin - 1) = psi; 
         }
-
-        // if(priorPHI == "GT" ){
-        //
-        //   phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(0,(n_groups-1))) = a;
-        //   phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_groups,(2*n_groups-1))) = xi;
-        //   phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span(2*n_groups,(2*n_groups+n-1))) = lambda;
-        //   phi_hyperparameter_draws((rep+1-burnin)/thin - 1, span((2*n_groups+n),(phi_hyperparameter_size-1))) = psi;
-        //
-        // }
 
       }else if(priorPHI == "HS"){
 
@@ -840,19 +826,6 @@ List bvar_cpp(const arma::mat& Y,
             u_hyperparameter_draws(span(n_U+2,u_hyperparameter_size-1), (rep+1-burnin)/thin - 1) = psi_U;
           }
 
-          // u_hyperparameter_draws((rep+1-burnin)/thin - 1, 0) = a_U;
-          // u_hyperparameter_draws((rep+1-burnin)/thin - 1, span(1,n_U)) = psi_U.as_row();
-          // u_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_U+1,2*n_U)) = lambda_U.as_row();
-          // u_hyperparameter_draws((rep+1-burnin)/thin - 1, u_hyperparameter_size-1) = xi_U;
-          // else if(priorU == "GT"){
-          //
-          //   u_hyperparameter_draws((rep+1-burnin)/thin - 1, 0) = a_U;
-          //   u_hyperparameter_draws((rep+1-burnin)/thin - 1, 1) = xi_U;
-          //   u_hyperparameter_draws((rep+1-burnin)/thin - 1, span(2,n_U+1)) = psi_U;
-          //   u_hyperparameter_draws((rep+1-burnin)/thin - 1, span(n_U+2,u_hyperparameter_size-1)) = lambda_U;
-          //
-          // }
-
         }else if(priorU == "SSVS"){
 
           u_hyperparameter_draws(span(0, (n_U-1)), (rep+1-burnin)/thin - 1) = gammas_U;
@@ -873,9 +846,6 @@ List bvar_cpp(const arma::mat& Y,
       }else if(sigma_type == "factor" && factors > 0){
         facload_draws.slice((rep+1-burnin)/thin - 1) = armafacload;
         fac_draws.slice((rep+1-burnin)/thin - 1) = armafac.cols(tvp_keep_start ,armafac.n_cols-1);
-        if(islastdraw) {
-          fac_lastdraw = armafac;
-        }
       }
     }
   }
@@ -896,8 +866,41 @@ List bvar_cpp(const arma::mat& Y,
     Named("facload") = facload_draws_rcpp,
     Named("fac") = fac_draws_rcpp,
     Named("lastdraw") = List::create(
-      Named("logvar") = rcpp_logvar_lastdraw,
-      Named("fac") = rcpp_fac_lastdraw
+      Named("phi") = List::create(
+        Named("PHI") = PHI_in,
+        Named("lambda") = lambda_in,
+        Named("psi") = psi_in,
+        Named("xi") = xi_in,
+        Named("a") = a_in,
+        Named("theta_hs") = theta_hs_in,
+        Named("zeta_hs") = zeta_hs_in,
+        Named("nu") = nu_in,
+        Named("varpi") = varpi_in,
+        Named("p_i") = p_i_in,
+        Named("gammas") = gammas_in,
+        Named("lambda_1") = lambda_1,
+        Named("lambda_2") = lambda_2 
+      ),
+      Named("sigma") = List::create(
+        Named("U") = U_in,
+        Named("lambda_U") = lambda_U_in,
+        Named("psi_U") = psi_U_in,
+        Named("xi_U") = xi_U,
+        Named("a_U") = a_U,
+        Named("theta_hs_U") = theta_hs_U_in,
+        Named("zeta_hs_U") = zeta_hs_U,
+        Named("nu_U") = nu_U_in,
+        Named("varpi_U") = varpi_U,
+        Named("p_i_U") = p_i_U_in,
+        Named("gammas_U") = gammas_U_in,
+        Named("lambda_3") = lambda_3,
+        Named("facload") = facload,
+        Named("fac") = fac,
+        Named("tau2") = tau2,
+        Named("sv_logvar") = logvar_in,
+        Named("sv_para")= sv_para_in,
+        Named("sv_logvar0") = logvar0_in
+      )
     )
   );
 
