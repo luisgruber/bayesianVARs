@@ -47,6 +47,7 @@ prior_sigma <- specify_prior_sigma(data, quiet = TRUE)
 # Get starting values
 startvals <- get_startvals(prior_phi, prior_sigma, intercept = 10, data = data)
 # Estimate a model
-mod <- bvar(data, lags = 1L, prior_intercept = 10, draws = 10L, burnin = 0L, startvals = startvals, quiet = TRUE)
+mod <- bvar(data, lags = 1L, prior_intercept = 10, draws = 10L, burnin = 0L, 
+            startvals = startvals, quiet = TRUE)
 
 }

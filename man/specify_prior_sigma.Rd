@@ -43,7 +43,7 @@ specify_prior_sigma(
   cholesky_NG_tol = 0,
   cholesky_SSVS_c0 = 0.001,
   cholesky_SSVS_c1 = 1,
-  cholesky_SSVS_p = 0.5,
+  cholesky_SSVS_a = 0.5,
   cholesky_HMP_lambda3 = c(0.01, 0.01),
   cholesky_normal_sds = 10,
   expert_sv_offset = 0,
@@ -289,11 +289,11 @@ standard deviation of the slab component. \code{cholesky_SSVS_c1} has only
 to be specified if \code{choleksy_U_prior="SSVS"}. It should be that
 \eqn{SSVS_{c0} \ll SSVS_{c1}}!}
 
-\item{cholesky_SSVS_p}{Either a single positive number in the range \verb{(0,1)}
+\item{cholesky_SSVS_a}{Either a single positive number in the range \verb{(0,1)}
 indicating the (fixed) prior inclusion probability of each coefficient. Or
 numeric vector of length 2 with positive entries indicating the shape
 parameters of the Beta distribution. In that case a Beta hyperprior is
-placed on the prior inclusion probability. \code{cholesky_SSVS_p} has only to be
+placed on the prior inclusion probability. \code{cholesky_SSVS_a} has only to be
 specified if \code{choleksy_U_prior="SSVS"}.}
 
 \item{cholesky_HMP_lambda3}{numeric vector of length 2. Both entries must be

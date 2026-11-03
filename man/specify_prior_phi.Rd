@@ -23,7 +23,7 @@ specify_prior_phi(
   SSVS_c0 = 0.01,
   SSVS_c1 = 100,
   SSVS_semiautomatic = TRUE,
-  SSVS_p = 0.5,
+  SSVS_a = 0.5,
   HMP_lambda1 = c(0.01, 0.01),
   HMP_lambda2 = c(0.01, 0.01),
   normal_sds = 10,
@@ -141,11 +141,11 @@ deviation of the slab component. \code{SSVS_c0} has only to be specified if
 posterior of PHI under a FLAT conjugate (dependent Normal-Wishart prior).
 \code{SSVS_semiautomatic} has only to be specified if \code{prior="SSVS"}.}
 
-\item{SSVS_p}{Either a single positive number in the range \code{(0,1)}
+\item{SSVS_a}{Either a single positive number in the range \code{(0,1)}
 indicating the (fixed) prior inclusion probability of each coefficient. Or
 numeric vector of length 2 with positive entries indicating the shape
 parameters of the Beta distribution. In that case a Beta hyperprior is
-placed on the prior inclusion probability. \code{SSVS_p} has only to be
+placed on the prior inclusion probability. \code{SSVS_a} has only to be
 specified if \code{prior="SSVS"}.}
 
 \item{HMP_lambda1}{numeric vector of length 2. Both entries must be positive.

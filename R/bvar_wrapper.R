@@ -241,20 +241,32 @@ bvar <- function(data,
 
 # Input checks ------------------------------------------------------------
 
-  if(!inherits(prior_phi, "bayesianVARs_prior_phi")){
-    stop("Argument 'prior_phi' must be of class 'bayesianVARs_prior_phi'. Please use helper function 'specify_prior_phi()'!")
-  }
+  # if(!inherits(prior_phi, "bayesianVARs_prior_phi")){
+  #   stop("Argument 'prior_phi' must be of class 'bayesianVARs_prior_phi'. Please use helper function 'specify_prior_phi()'!")
+  # }
+  prior_phi <- validate_baysesianVARs_prior_phi(prior_phi)
   if(prior_phi[["general_settings"]][["M"]] != M) stop(paste0("Object 'prior_phi' is specified for ", prior_phi[["general_settings"]][["M"]], "time series. 'data', however, consists of ", M, "time series!"))
   if(prior_phi[["general_settings"]][["lags"]] != lags) stop("Lag-length 'lags' does not coincide with lag-length specified in object 'prior_phi'!")
 
-  if(!inherits(prior_sigma, "bayesianVARs_prior_sigma")){
-    stop("Argument 'prior_sigma' must be of class 'bayesianVARs_prior_sigma'. Please use helper function 'specify_prior_sigma()'!")
-  }
+  # if(!inherits(prior_sigma, "bayesianVARs_prior_sigma")){
+  #   stop("Argument 'prior_sigma' must be of class 'bayesianVARs_prior_sigma'. Please use helper function 'specify_prior_sigma()'!")
+  # }
+  prior_sigma <- validate_baysesianVARs_prior_sigma(prior_sigma)
   if(prior_sigma[["general_settings"]][["M"]] != M){
     stop(paste0("'prior_sigma' is specified for ", prior_sigma[["general_settings"]][["M"]], " timeseries. 'data', however, consits of ",M," timeseries!"))
   }
   if(!inherits(startvals, "bayesianVARs_startvals")){
     stop("Argument 'startvals' must be of class 'bayesianVARs_startvals'. Please use helper function 'get_startvals()'!")
+  }
+  
+  startvals <- validate_bayesianVARs_startvals(startvals)
+  
+  if(expert_huge & prior_sigma[["prior_sigma_cpp"]][["type"]] != "factor" & !quiet){
+    cat("'expert_huge=TRUE' ignored. This setting is only available for a factor specification for the errors. See '?specify_prior_sigma'.\n")
+  }
+  
+  if(!expert_huge & prior_sigma[["prior_sigma_cpp"]][["type"]] == "factor" & (K+(prior_intercept>0))>= (1.2*Tobs) & !quiet) {
+    cat("Consider setting 'expert_huge=TRUE', because number of covariates per equation is larger that number of observations!\n")
   }
 
 # Indicator matrix --------------------------------------------------------
@@ -268,10 +280,8 @@ bvar <- function(data,
   # add indicator for intercept
   i_mat <- rbind(i_mat, i_intercept)
   mode(i_mat) <- "integer"
-  i_vec <- as.vector(i_mat)
 
-
-# PHI settings ------------------------------------------------------------
+# prior_intercept ---------------------------------------------------------
 
   if(is.logical(prior_intercept)){
     if(any(prior_intercept == TRUE)){
@@ -280,11 +290,12 @@ bvar <- function(data,
     intercept <- 0L
     priorIntercept <- vector("numeric")
   }else{
-    prior_intercept <- prior_intercept^2 # transform to variances
+    # prior_intercept <- prior_intercept^2 # transform to variances
+    priorIntercept <- prior_intercept^2 # cpp expects variances
     if(length(prior_intercept)==1L){
-      priorIntercept <- rep(prior_intercept, M)
+      priorIntercept <- rep(priorIntercept, M)
     }else if(length(prior_intercept)==M){
-      priorIntercept <- prior_intercept
+      priorIntercept <- priorIntercept
     }else{
       stop(paste0("Argument 'prior_intercept' must be one of 'FALSE', a single numeric greater than 0, or a vector of length ", M, "."))
     }
@@ -296,10 +307,11 @@ bvar <- function(data,
     PHI0[1:K,] <- prior_phi[["general_settings"]][["PHI0"]] 
   }
 
-  # Initialize PHI --------
 
-  #? move computations (in case of SSVS_semiautomatic) to specify_prior_phi(), startvals are now handled with get_startvals()
-  if(prior_phi[["prior_phi_cpp"]][["prior"]] == "SSVS" | !exists("PHI", startvals) | (!exists("U", startvals) & prior_sigma[["prior_sigma_cpp"]][["type"]] == "cholesky")){
+# prior_phi adjustments for empirical priors ------------------------------
+  
+  #? move computations (in case of SSVS_semiautomatic) to specify_prior_phi(): no, because specify_prior_phi() is independent of prior_intercept
+  if(prior_phi[["prior_phi_cpp"]][["prior"]] == "SSVS" & prior_phi[["general_settings"]][["SSVS_semiautomatic"]]){
     # Note: if startvals are provided and if(!prior_phi[["general_settings"]][["SSVS_semiautomatic"]]) then
     # the following computations are redundant
 
@@ -311,64 +323,30 @@ bvar <- function(data,
       V_post_flat <- chol2inv(chol(diag(1/rep(10^3, (K+intercept)), nrow = K+intercept) + XX)) 
     }
     PHI_flat <- if((K+intercept) > 0L) {
-      V_post_flat %*% (diag(1/rep(10^3, (K+intercept)), nrow = K+intercept)%*%PHI0 + t(X)%*%Y)
+      V_post_flat %*% (diag(1/rep(10^3, (K+intercept)), nrow = K+intercept)%*%PHI0 + crossprod(X,Y))
     } else {
       matrix(0, 0, M)
     }
     S_post <- diag(M) + crossprod(Y - X%*%PHI_flat) + crossprod((PHI_flat - PHI0),
       diag(1/rep(10^3, (K+intercept)), nrow = K+intercept) )%*% (PHI_flat - PHI0)
     Sigma_flat <- (S_post)/(M +2 + Tobs - M - 1)
-    U <- chol(Sigma_flat)
-    D <- diag(U)^2
-    L_inv <- U/sqrt(D)
-    L_flat <- backsolve(L_inv, diag(M))
-  }
-
-  # "empirical" prior settings
-  if(prior_phi[["prior_phi_cpp"]][["prior"]] == "SSVS"){
-
-    if(prior_phi[["general_settings"]][["SSVS_semiautomatic"]]) {
-
-      # standard errors of flat phi posterior estimates
-      sigma_phi <- sqrt(diag(Sigma_flat %x% V_post_flat))
-      # select all, except those of intercept
-      sigma_phi <- sigma_phi[which(i_vec!=0)]
-      if(length(sigma_phi)!=lags*M^2){
-        stop(paste0(length(sigma_phi), " length(sigma_phi)!= lags*M^2"))
-      }
-
-      # scale tau with variances
-      prior_phi[["prior_phi_cpp"]][["SSVS_tau0"]] <- prior_phi[["prior_phi_cpp"]][["SSVS_tau0"]]*sigma_phi
-      prior_phi[["prior_phi_cpp"]][["SSVS_tau1"]] <- prior_phi[["prior_phi_cpp"]][["SSVS_tau1"]]*sigma_phi
+    
+    # standard errors of flat phi posterior estimates, except those of intercept
+    sigma_phi <- sqrt( rep(diag(Sigma_flat), each = K) * rep(diag(V_post_flat[1:K, 1:K]), M))
+    if(length(sigma_phi)!=lags*M^2){
+      stop(paste0(length(sigma_phi), " length(sigma_phi)!= lags*M^2"))
     }
-
-  }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HMP"){
+    # scale tau
+    prior_phi[["prior_phi_cpp"]][["SSVS_tau0"]] <- prior_phi[["general_settings"]][["SSVS_c0"]]*sigma_phi
+    prior_phi[["prior_phi_cpp"]][["SSVS_tau1"]] <- prior_phi[["general_settings"]][["SSVS_c1"]]*sigma_phi
+    prior_phi <- validate_baysesianVARs_prior_phi(prior_phi)
+  }
+  if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HMP"){
     sigma_sq <- MP_sigma_sq(data, 6)
     # prepare prior variances down to lambdas
-    prior_phi[["prior_phi_cpp"]][["V_i_prep"]] <- MP_V_prior_prep(sigma_sq, (K+intercept), M, intercept>0)
+    prior_phi[["prior_phi_cpp"]][["V_i_prep"]] <- MP_V_prior_prep(sigma_sq, K, M, FALSE) # FALSE, because prior on intercept is always treated independently!
+    prior_phi <- validate_baysesianVARs_prior_phi(prior_phi)
   }
-
-# Sigma -------------------------------------------------------------------
-
-  # everything is done within specify_prior_sigma()
-
-# startvals ---------------------------------------------------------------
-
-  # everything is done withing get_startvals()
-  # add some checks, whether startvals is compatible with other specifications
-  
-  ######### expert settings
-  
-  if(expert_huge & prior_sigma[["prior_sigma_cpp"]][["type"]] != "factor"){
-    warning("'expert_huge=TRUE' ignored. This setting is only available for a factor specification for the errors. See '?specify_prior_sigma'.")
-  }
-  # if(!is.null(expert)){
-  #   if(exists("huge", expert)){
-  #     expert[["huge"]] <- expert[["huge"]]
-  #   }else{
-  #     expert[["huge"]] <- FALSE
-  #   }
-  # }
 
   if(!quiet){
     cat("Calling MCMC sampler for a ", prior_sigma[["prior_sigma_cpp"]][["type"]], 
@@ -392,7 +370,6 @@ bvar <- function(data,
                                        prior_sigma[["prior_sigma_cpp"]],
                                        startvals,
                                        i_mat,
-                                       i_vec,
                                        !quiet,
                                        prior_phi[["general_settings"]][["PHI_tol"]],
                                        prior_sigma[["general_settings"]][["cholesky_U_tol"]],
@@ -406,26 +383,29 @@ bvar <- function(data,
     phinames <- as.vector((vapply(seq_len(M), function(i) paste0(colnames(Y)[i], "~", colnames(X[,1:(ncol(X)-intercept)])), character(K))))
     if(prior_phi[["prior_phi_cpp"]][["prior"]] %in% c("DL","DL_h", "GT")){
       isexpkern <- (prior_phi[["prior_phi_cpp"]][["GT_priorkernel"]] == "exponential") | (prior_phi[["prior_phi_cpp"]][["prior"]] == "DL")
-      rownames(res[["phi_hyperparameter"]]) <- c(paste0("a",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
-                                                 paste0("xi",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
+      isahyper <- prior_phi[["prior_phi_cpp"]][["DL_hyper"]] | prior_phi[["prior_phi_cpp"]][["GT_hyper"]]
+      isxi <- prior_phi[["prior_phi_cpp"]][["DL_plus"]] | (prior_phi[["prior_phi_cpp"]][["prior"]] == "GT")
+      rownames(res[["phi_hyperparameter"]]) <- c(if(isahyper) paste0("a",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]) else NULL,
+                                                 if(isxi) paste0("xi",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]) else NULL,
                                                  paste0("lambda: ", phinames),
                                                  if(isexpkern) paste0("psi: ", phinames) else NULL)
-      
+
     }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HS"){
-      
-      rownames(res[["phi_hyperparameter"]]) <- c(paste0("zeta", 1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
+      rownames(res[["phi_hyperparameter"]]) <- c(paste0("xi", 1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
                                                  paste0("varpi", 1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
-                                                 paste0("theta: ", phinames),
-                                                 paste0("nu: ", phinames))
+                                                 paste0("lambda: ", phinames),
+                                                 paste0("psi: ", phinames))
     }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "SSVS"){
-      
-      rownames(res[["phi_hyperparameter"]]) <- c(paste0("gamma: ", phinames), paste0("p_i: ", phinames))#
-      
+
+      isahyper <- prior_phi[["prior_phi_cpp"]][["SSVS_hyper"]]
+      rownames(res[["phi_hyperparameter"]]) <- c(if(isahyper) paste0("a",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]) else NULL,
+                                                 paste0("lambda: ", phinames))#
+
     }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HMP"){
-      
+
       rownames(res[["phi_hyperparameter"]]) <- c("lambda_1", "lambda_2")
-      
-    } 
+
+    }
   }
 
   if(prior_sigma[["prior_sigma_cpp"]][["type"]]=="cholesky"){
@@ -439,18 +419,22 @@ bvar <- function(data,
     rownames(res[["U"]]) <- lnames
     if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] %in% c("DL", "GT")){
       isexpkernU <- (prior_sigma[["prior_sigma_cpp"]][["cholesky_GT_priorkernel"]] == "exponential") | (prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "DL")
-      rownames(res[["u_hyperparameter"]]) <- c("a",
-                                          "xi",
+      isahyperU <- prior_sigma[["prior_sigma_cpp"]][["cholesky_DL_hyper"]] | prior_sigma[["prior_sigma_cpp"]][["cholesky_GT_hyper"]]
+      isxi <- prior_sigma[["prior_sigma_cpp"]][["cholesky_DL_plus"]] | (prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "GT")
+      rownames(res[["u_hyperparameter"]]) <- c(if(isahyperU)"a" else NULL,
+                                          if(isxi) "xi" else NULL,
                                           paste0("lambda: ", lnames),
                                           if(isexpkernU) paste0("psi: ", lnames) else NULL)
 
     }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "HS"){
-      rownames(res[["u_hyperparameter"]]) <- c("zeta",
+      rownames(res[["u_hyperparameter"]]) <- c("xi",
                                           "varpi",
-                                          paste0("theta: ", lnames),
-                                          paste0("nu: ", lnames))
+                                          paste0("lambda: ", lnames),
+                                          paste0("psi: ", lnames))
     }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "SSVS"){
-      rownames(res[["u_hyperparameter"]]) <- c(paste0("gamma: ", lnames), paste0("p_i: ", lnames))
+      isahyperU <- prior_sigma[["prior_sigma_cpp"]][["cholesky_SSVS_hyper"]]
+      rownames(res[["u_hyperparameter"]]) <- c(if(isahyperU) "a" else NULL,
+                                               paste0("lambda: ", lnames))
     }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "HMP"){
       rownames(res[["u_hyperparameter"]]) <- c("lambda_3")
     }
@@ -518,10 +502,11 @@ update_bvar <- function(object, draws = 1000L, quiet = FALSE) {
   prior_sigma <- object[["config"]][["prior_sigma"]]
   sv_keep <- object[["config"]][["sv_keep"]]
   expert_huge <- object[["config"]][["expert_huge"]]
-  bvar(data = data, lags = p, draws = draws, burnin = 0L, thin = thin,
-       prior_intercept = prior_intercept, prior_phi = prior_phi,
-       prior_sigma = prior_sigma, sv_keep = sv_keep, expert_huge = expert_huge,
-       quiet = quiet, startvals = object[["lastdraw"]])
+  res <- bvar(data = data, lags = p, draws = draws, burnin = 0L, thin = thin,
+              prior_intercept = prior_intercept, prior_phi = prior_phi,
+              prior_sigma = prior_sigma, sv_keep = sv_keep, expert_huge = expert_huge,
+              quiet = quiet, startvals = object[["lastdraw"]])
+  res
 }
 
 #' Extract or Replace Parts of a bayesianVARs_draws object
