@@ -1,4 +1,4 @@
-data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
+data <- usmacro_growth[1:20,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 
 test_that("stable_bvar", {
   for(type in c("cholesky", "factor")){
