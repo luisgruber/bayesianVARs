@@ -122,7 +122,6 @@ void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const
     // update free off-diagonal elements in column i
     arma::vec U_j = U.unsafe_col(i);
     try{
-      univariate_regression_update(U_j, prior_mean, V_i.subvec(ind, ind+i-1), c, Z, true, false);
       arma::vec tmp = sample_coef_blm_known1var(Z.t()*c, Z.t()*Z, prior_mean, 1./V_i.subvec(ind, ind+i-1));
       U_j.subvec(0,i-1) = tmp;
     } catch (const std::exception& e) {
