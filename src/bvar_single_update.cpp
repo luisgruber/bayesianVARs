@@ -6,22 +6,21 @@
 void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior, 
                  arma::vec& V_i, arma::vec& V_i_long, arma::vec& a, arma::vec& c, 
                  arma::vec& psi, arma::vec& lambda, arma::vec& xi, 
-                 arma::vec& gammas, arma::vec& p_i, arma::vec& theta_hs, 
-                 arma::vec& zeta_hs, arma::vec& nu, arma::vec& varpi, 
+                 arma::vec& varpi, 
                  double& lambda_1, double& lambda_2,
                  arma::mat& U, arma::vec& u, arma::mat& d_sqrt, arma::vec& V_i_U,
                  double& a_U, const double b_U, double& c_U, arma::vec& psi_U, 
-                 arma::vec& lambda_U, double& xi_U, arma::vec& gammas_U, 
-                 arma::vec& p_i_U, double& lambda_3, arma::vec& theta_hs_U, 
-                 double& zeta_hs_U, arma::vec& nu_U, double& varpi_U, 
+                 arma::vec& lambda_U, double& xi_U, 
+                 double& lambda_3,
+                 double& varpi_U, 
                  arma::mat& armafacload, arma::mat& armafac, arma::mat& armatau2, 
                  arma::vec& armalambda2, arma::mat& logvar, arma::vec& logvar0, 
                  arma::mat& sv_para, arma::umat& mixind,
                  const int rep, const int burnin, const arma::mat& Y, 
                  const arma::mat& X, const int K, const int T, const int M, 
-                 const int n_ol, const int n_cl, const arma::ivec& i_vec,
+                 const int n_ol, const int n_cl,
                  const arma::ivec& i_vec_small, const arma::uvec& i_ocl,
-                 const arma::uvec& i_ol, const arma::uvec& i_cl, arma::ivec& groups, 
+                 const arma::uvec& i_ol, const arma::uvec& i_cl, const arma::ivec& groups, 
                  const arma::mat& PHI0, const std::string priorPHI,
                  const double PHI_tol, const double GL_tol, const bool DL_hyper, 
                  const bool DL_plus, const bool GT_hyper, const arma::vec& b, 
@@ -93,7 +92,7 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
     for (int ii = 0; ii<K; ii++) {
       for (int jj = 0; jj<M; jj++){
         if(PHI_diff(ii,jj) == 0) {
-          
+
           if(R::rbinom( 1, 0.5 )==0){
             PHI(ii,jj) = PHI0(ii,jj) + PHI_tol;//eps(ii,jj);//PHI_tol;
             PHI_diff(ii,jj) = PHI_tol;
@@ -119,12 +118,10 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
   if(priorPHI == "DL" || priorPHI== "R2D2" || priorPHI=="SSVS" ||
      priorPHI =="HS" || priorPHI== "NG" || priorPHI == "GT" ){
     
-    arma::ivec::iterator g;
     int j=0;
-    
-    for(g=groups.begin(); g!=groups.end(); ++g){
+    for(arma::ivec::const_iterator g=groups.begin(); g!=groups.end(); ++g){
       arma::uvec ind = arma::find(i_vec_small == *g);
-      arma::uvec indplus = arma::find(i_vec == *g);
+      // arma::uvec indplus = arma::find(i_vec == *g);
       
       if(priorPHI=="DL"){
         
@@ -138,16 +135,16 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
                       a_vec, a_weight, c_vec, GT_hyper, c_rel_a);
       }else if(priorPHI == "SSVS"){
         
-        if(rep > 0.1*burnin || SSVS_hyper){
+        if(rep >= 0.1*burnin || SSVS_hyper){
           
-          sample_V_i_SSVS_beta(V_i, gammas, p_i, PHI_diff(i_ocl), tau_0,
+          sample_V_i_SSVS_beta(V_i, lambda, a(j), PHI_diff(i_ocl), tau_0,
                                tau_1, SSVS_s_a, SSVS_s_b, SSVS_hyper, ind);
           
         }
         
       }else if(priorPHI == "HS"){
         
-        sample_V_i_HS(V_i, PHI_diff(i_ocl), theta_hs, zeta_hs(j), nu, varpi(j), ind);
+        sample_V_i_HS(V_i, PHI_diff(i_ocl), lambda, xi(j), psi, varpi(j), ind);
         
       }
       j++;
@@ -155,9 +152,9 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
     
   }else if(priorPHI == "HMP"){
     
-    if(rep > 0.1*burnin){
+    if(rep >= 0.1*burnin){
       sample_V_i_HMP(lambda_1, lambda_2, V_i, s_r_1(0), s_r_1(1), s_r_2(0),
-                     s_r_2(1), PHI_diff(i_ocl), V_i_prep(i_ocl), n_ol, n_cl,
+                     s_r_2(1), PHI_diff(i_ocl), V_i_prep, n_ol, n_cl,
                      i_ol, i_cl);
     }
   }
@@ -264,7 +261,7 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
 
     }else if(priorU == "SSVS"){
 
-      sample_V_i_SSVS_beta(V_i_U, gammas_U, p_i_U, u, tau_0_U, tau_1_U, SSVS_s_a_U,
+      sample_V_i_SSVS_beta(V_i_U, lambda_U, a_U, u, tau_0_U, tau_1_U, SSVS_s_a_U,
                            SSVS_s_b_U, SSVS_hyper_U, ind_U);
 
     }else if(priorU == "HMP"){
@@ -272,7 +269,7 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
       sample_V_i_U_HMP(lambda_3, V_i_U, s_r_3(0), s_r_3(1), u);
     }else if(priorU == "HS"){
 
-      sample_V_i_HS(V_i_U, u, theta_hs_U, zeta_hs_U, nu_U, varpi_U, ind_U);
+      sample_V_i_HS(V_i_U, u, lambda_U, xi_U, psi_U, varpi_U, ind_U);
 
     }
 

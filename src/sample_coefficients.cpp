@@ -115,9 +115,9 @@ void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
 
 // sample_PHI samples VAR coefficients using the corrected triangular
 // algorithm as in Carrier, Chan, Clark & Marcellino (2021)
-void sample_PHI(arma::mat& PHI, const arma::mat PHI_prior, const arma::mat Y,
-                const arma::mat X, const arma::mat U, const arma::mat d_sqrt,
-                const arma::mat V_prior, const int M) {
+void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
+                const arma::mat& X, const arma::mat& U, const arma::mat& d_sqrt,
+                const arma::mat& V_prior, const int M) {
 
   for(int j = 0; j < M; j++){
 
@@ -187,25 +187,24 @@ void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const
 
 }
 
-void sample_V_i_GT(arma::vec& V_i, const arma::vec coefs, arma::vec& psi,
+void sample_V_i_GT(arma::vec& V_i, const arma::vec& coefs, arma::vec& psi,
                    arma::vec& lambda, double& xi, double& a, const double b,
-                   double& c, arma::uvec ind, const double tol,
+                   double& c, const arma::uvec& ind, const double tol,
                    const std::string priorkernel,
-                   const double vs, const arma::vec norm_consts,
-                   const arma::vec a_vec, const arma::vec a_weight,
-                   const arma::vec c_vec, const bool hyper, const bool c_rel_a){
+                   const double vs, const arma::vec& norm_consts,
+                   const arma::vec& a_vec, const arma::vec& a_weight,
+                   const arma::vec& c_vec, const bool hyper, const bool c_rel_a){
 
   const int n = ind.size();
   const int gridlength = a_vec.size();
   arma::vec logprobs(gridlength);
   const arma::vec coefs_squared = arma::square(coefs);
-  arma::uvec::iterator it;
-  for(it = ind.begin(); it != ind.end(); ++it){
-    // For R2d2exp vs must be 1/2, for NG psi must be 1
+  for(arma::uvec::const_iterator it = ind.begin(); it != ind.end(); ++it){
+    // For R2d2exp vs must be 1/2, for NG 1
     double lambdascale = vs;
     // sample auxiliary scaling parameters
     if(priorkernel == "exponential"){
-      psi(*it) = 1./do_rgig(-0.5, 1, coefs_squared(*it)/(lambda(*it)*vs)); 
+      psi(*it) = 1./do_rgig(-0.5, 1, coefs_squared(*it)/(lambda(*it)*vs));
       lambdascale *= psi(*it);
     }
     // sample local scales
@@ -246,37 +245,35 @@ void sample_V_i_GT(arma::vec& V_i, const arma::vec coefs, arma::vec& psi,
   }
 }
 
-void sample_V_i_HS(arma::vec& V_i, const arma::vec coefs, arma::vec& theta,
-                   double& zeta, arma::vec& nu, double& varpi ,arma::uvec ind){
+void sample_V_i_HS(arma::vec& V_i, const arma::vec& coefs, arma::vec& lambda,
+                   double& xi, arma::vec& psi, double& varpi, const arma::uvec& ind){
 
   int n = ind.size();
-  arma::uvec::iterator it;
-  for(it = ind.begin(); it != ind.end(); ++it){
+  for(arma::uvec::const_iterator it = ind.begin(); it != ind.end(); ++it){
     // R::rgamma uses scale!!!!
-    theta(*it) = 1./(R::rgamma(1, 1./( 1/nu(*it) + (coefs(*it)*coefs(*it))/(2*zeta) )));
-    nu(*it) = 1./(R::rgamma(1, 1./(1 + 1./theta(*it)) ));
+    lambda(*it) = 1./(R::rgamma(1, 1./( 1/psi(*it) + (coefs(*it)*coefs(*it))/(2*xi) )));
+    psi(*it) = 1./(R::rgamma(1, 1./(1 + 1./lambda(*it)) ));
   }
-  zeta = 1./(R::rgamma((n+1)/2., 1./(1./varpi + 0.5*arma::accu(square(coefs(ind))/theta(ind))) ));
-  varpi = 1./(R::rgamma(1, 1./(1 + 1/zeta) ));
-  V_i(ind) = theta(ind)*zeta;
+  xi = 1./(R::rgamma((n+1)/2., 1./(1./varpi + 0.5*arma::accu(square(coefs(ind))/lambda(ind))) ));
+  varpi = 1./(R::rgamma(1, 1./(1 + 1/xi) ));
+  V_i(ind) = lambda(ind)*xi;
 
 }
 
-void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
+void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, double& a ,
                    const double b, double& c,
-                   const arma::vec a_vec, const arma::vec a_weight,
-                   arma::vec& psi, arma::vec& lambda, double& xi, arma::uvec ind,
-                   const bool hyper,const arma::vec norm_consts,
+                   const arma::vec& a_vec, const arma::vec& a_weight,
+                   arma::vec& psi, arma::vec& lambda, double& xi, const arma::uvec& ind,
+                   const bool hyper,const arma::vec& norm_consts,
                    const double tol, const bool DL_plus,
-                   const arma::vec c_vec, const bool c_rel_a){ //, bool hyper
+                   const arma::vec& c_vec, const bool c_rel_a){ //, bool hyper
 
   const int n = ind.size();
   arma::vec coefs_abs = arma::abs(coefs);
   int gridlength = a_vec.size();
   arma::vec logprobs(gridlength);
 
-  arma::uvec::iterator it;
-  for(it = ind.begin(); it != ind.end(); ++it){
+  for(arma::uvec::const_iterator it = ind.begin(); it != ind.end(); ++it){
     //important: joint update of p(lambda,psi|...): first lambda, than psi!!! (is wrong in Bhattacharya et al 2015!)
     lambda(*it) = do_rgig(a-1., 2*coefs_abs(*it), 2*xi);
     psi(*it) =  do_rgig(0.5, (coefs(*it)*coefs(*it)) /
@@ -317,40 +314,47 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec coefs, double& a ,
 
 }
 
-void sample_V_i_SSVS_beta(arma::vec& V_i, arma::vec& gammas, arma::vec& p_i,
-                     const arma::vec coeffs, const arma::vec tau_0,
-                     const arma::vec tau_1, const double s_a, const double s_b,
-                     const bool hyper, arma::uvec ind){
+void sample_V_i_SSVS_beta(arma::vec& V_i, arma::vec& lambda, double& a,
+                     const arma::vec& coeffs, const arma::vec& tau_0,
+                     const arma::vec& tau_1, const double s_a, const double s_b,
+                     const bool hyper, const arma::uvec& ind){
 
   int n = ind.size();
   // Compute conditional posterior inclusion probability
   // taking logs is much stabler!!!
-  arma::vec u_i1 = -log(tau_1) - 0.5 * square((coeffs)/tau_1) + log(p_i);
-  arma::vec u_i2 = -log(tau_0) - 0.5 * square((coeffs)/tau_0) + log(1 - p_i);
-  arma::vec logdif = u_i2 - u_i1;
-  arma::vec gst = 1/(1 + exp(logdif)); // == exp(u_i1)/(exp(u_i2) + exp(u_i1))
+  // arma::vec u_i1 = -log(tau_1(ind)) - 0.5 * square((coeffs(ind))/tau_1(ind)) + std::log(a);
+  // arma::vec u_i2 = -log(tau_0(ind)) - 0.5 * square((coeffs(ind))/tau_0(ind)) + std::log(1.0 - a);
+  // arma::vec logdif = u_i2 - u_i1;
+  // arma::vec gst = 1.0/(1.0 + exp(logdif)); // == exp(u_i1)/(exp(u_i2) + exp(u_i1))
 
-  arma::uvec::iterator it;
   //double j = 0;
-  for(it = ind.begin(); it != ind.end(); ++it){
-
-    // Draw gammas
-    gammas(*it) = R::rbinom(1,gst(*it));
+  for(arma::uvec::const_iterator it = ind.begin(); it != ind.end(); ++it){
+    // taking squares
+    const double phi2_i = coeffs(*it)*coeffs(*it);
+    const double tau2_1_i = tau_1(*it)*tau_1(*it);
+    const double tau2_0_i = tau_0(*it)*tau_0(*it);
+    // Compute conditional posterior inclusion probability
+    // taking logs is much stabler!!!
+    const double u_i1 = -std::log(tau_1(*it)) - 0.5 * phi2_i/tau2_1_i + std::log(a);
+    const double u_i2 = -log(tau_0(*it)) - 0.5 * phi2_i/tau2_0_i + std::log(1.0 - a);
+    const double logdif = u_i2 - u_i1;
+    const double gst = 1.0/(1.0 + exp(logdif)); // == exp(u_i1)/(exp(u_i2) + exp(u_i1))
+    // Draw lambda
+    lambda(*it) = R::rbinom(1,gst);
 
     // Compute prior variances
-    if(gammas(*it)==1){
-      V_i(*it) = tau_1(*it)*tau_1(*it);
+    if(lambda(*it)==1){
+      V_i(*it) = tau2_1_i;
     }else{
-      V_i(*it) = tau_0(*it)*tau_0(*it);
+      V_i(*it) = tau2_0_i;
     }
-
   }
 
   if(hyper){
-    int incl = accu(gammas(ind));
-    double p = R::rbeta(s_a + incl, s_b + n - incl);
+    int incl = accu(lambda(ind));
+    a = R::rbeta(s_a + incl, s_b + n - incl);
     //Rcout << "The value of n : " << n << "\n";
-    p_i(ind).fill(p);
+    // a(ind).fill(p);
   }
 }
 
@@ -360,9 +364,9 @@ void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const do
                     const int& n_ol, const int& n_cl, const arma::uvec& i_ol,
                     const arma::uvec& i_cl){
 
-  lambda_1 = do_rgig(s1 - n_ol/2, sum(square(PHI_diff(i_ol))/V_i_prep(i_ol)),
+  lambda_1 = do_rgig(s1 - 0.5*n_ol, sum(square(PHI_diff(i_ol))/V_i_prep(i_ol)),
                      2*r1 );
-  lambda_2 = do_rgig(s2 - n_cl/2, sum(square(PHI_diff(i_cl))/V_i_prep(i_cl)), 2*r2 );
+  lambda_2 = do_rgig(s2 - 0.5*n_cl, sum(square(PHI_diff(i_cl))/V_i_prep(i_cl)), 2.0*r2 );
 
   V_i(i_ol) = lambda_1 * V_i_prep(i_ol);
   V_i(i_cl) = lambda_2 * V_i_prep(i_cl);
@@ -373,7 +377,7 @@ void sample_V_i_U_HMP(double& lambda_3, arma::vec& V_i_U, const double& s1,
                     const double& r1, const arma::vec& u){
 
   int n = u.size();
-  lambda_3 = do_rgig(s1 - n/2, sum(square(u)), 2*r1 );
+  lambda_3 = do_rgig(s1 - 0.5*n, sum(square(u)), 2*r1 );
   V_i_U.fill(lambda_3);
 
 }
