@@ -12,8 +12,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // bvar_cpp
-List bvar_cpp(const arma::mat& Y, const arma::mat& X, const int& M, const int& T, const int& K, const int& draws, const int& burnin, const int& thin, const std::string& tvp_keep, const int& intercept, const arma::vec priorIntercept, arma::mat& PHI0, const List priorPHI_in, const List priorSigma_in, const List Rstartvals_in, const arma::imat& i_mat, const arma::ivec& i_vec, const bool& progressbar, const double& PHI_tol, const double& L_tol, const bool& huge);
-RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP YSEXP, SEXP XSEXP, SEXP MSEXP, SEXP TSEXP, SEXP KSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP thinSEXP, SEXP tvp_keepSEXP, SEXP interceptSEXP, SEXP priorInterceptSEXP, SEXP PHI0SEXP, SEXP priorPHI_inSEXP, SEXP priorSigma_inSEXP, SEXP Rstartvals_inSEXP, SEXP i_matSEXP, SEXP i_vecSEXP, SEXP progressbarSEXP, SEXP PHI_tolSEXP, SEXP L_tolSEXP, SEXP hugeSEXP) {
+List bvar_cpp(const arma::mat& Y, const arma::mat& X, const int& M, const int& T, const int& K, const int& draws, const int& burnin, const int& thin, const std::string& tvp_keep, const int& intercept, const arma::vec& priorIntercept, arma::mat& PHI0, const List priorPHI_in, const List priorSigma_in, const List Rstartvals_in, const arma::imat& i_mat, const bool& progressbar, const double& PHI_tol, const double& L_tol, const bool& huge);
+RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP YSEXP, SEXP XSEXP, SEXP MSEXP, SEXP TSEXP, SEXP KSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP thinSEXP, SEXP tvp_keepSEXP, SEXP interceptSEXP, SEXP priorInterceptSEXP, SEXP PHI0SEXP, SEXP priorPHI_inSEXP, SEXP priorSigma_inSEXP, SEXP Rstartvals_inSEXP, SEXP i_matSEXP, SEXP progressbarSEXP, SEXP PHI_tolSEXP, SEXP L_tolSEXP, SEXP hugeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -27,18 +27,17 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int& >::type thin(thinSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type tvp_keep(tvp_keepSEXP);
     Rcpp::traits::input_parameter< const int& >::type intercept(interceptSEXP);
-    Rcpp::traits::input_parameter< const arma::vec >::type priorIntercept(priorInterceptSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type priorIntercept(priorInterceptSEXP);
     Rcpp::traits::input_parameter< arma::mat& >::type PHI0(PHI0SEXP);
     Rcpp::traits::input_parameter< const List >::type priorPHI_in(priorPHI_inSEXP);
     Rcpp::traits::input_parameter< const List >::type priorSigma_in(priorSigma_inSEXP);
     Rcpp::traits::input_parameter< const List >::type Rstartvals_in(Rstartvals_inSEXP);
     Rcpp::traits::input_parameter< const arma::imat& >::type i_mat(i_matSEXP);
-    Rcpp::traits::input_parameter< const arma::ivec& >::type i_vec(i_vecSEXP);
     Rcpp::traits::input_parameter< const bool& >::type progressbar(progressbarSEXP);
     Rcpp::traits::input_parameter< const double& >::type PHI_tol(PHI_tolSEXP);
     Rcpp::traits::input_parameter< const double& >::type L_tol(L_tolSEXP);
     Rcpp::traits::input_parameter< const bool& >::type huge(hugeSEXP);
-    rcpp_result_gen = Rcpp::wrap(bvar_cpp(Y, X, M, T, K, draws, burnin, thin, tvp_keep, intercept, priorIntercept, PHI0, priorPHI_in, priorSigma_in, Rstartvals_in, i_mat, i_vec, progressbar, PHI_tol, L_tol, huge));
+    rcpp_result_gen = Rcpp::wrap(bvar_cpp(Y, X, M, T, K, draws, burnin, thin, tvp_keep, intercept, priorIntercept, PHI0, priorPHI_in, priorSigma_in, Rstartvals_in, i_mat, progressbar, PHI_tol, L_tol, huge));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -236,7 +235,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 21},
+    {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 20},
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
     {"_bayesianVARs_compute_parameter_transformations", (DL_FUNC) &_bayesianVARs_compute_parameter_transformations, 5},
     {"_bayesianVARs_find_rotation_cpp", (DL_FUNC) &_bayesianVARs_find_rotation_cpp, 5},
