@@ -62,6 +62,11 @@
 #'@param expert_huge logical value indicating whether to use a specific
 #'  algorithm for huge VARs. Only possible if a factor structure for the errors
 #'  is specified. See section MCMC algorithm below for more details.
+#'@param abs_floor single numeric greater or equal to zero indicating the
+#'  threshold to that certain parameter draws, e.g. the VAR coefficients, with
+#'  magnitude below are raised to (preserving the sign if possible). Exact zeros
+#'  are raised to `abs_floor`. This can prevent numerical issues if heavy
+#'  shrinkage is enforced.
 #'@param quiet logical value indicating whether information about the progress
 #'  during sampling should be displayed during sampling (default is
 #'  \code{TRUE}).
@@ -185,6 +190,7 @@ bvar <- function(data,
                  prior_sigma = specify_prior_sigma(data = data, type = "factor", quiet = TRUE),
                  sv_keep = "last",
                  expert_huge = FALSE,
+                 abs_floor = 1e-100,
                  quiet=FALSE,
                  startvals = get_startvals(prior_phi, prior_sigma, 
                                            prior_intercept, data)
@@ -267,6 +273,14 @@ bvar <- function(data,
   
   if(!expert_huge & prior_sigma[["prior_sigma_cpp"]][["type"]] == "factor" & (K+(prior_intercept>0))>= (1.2*Tobs) & !quiet) {
     cat("Consider setting 'expert_huge=TRUE', because number of covariates per equation is larger that number of observations!\n")
+  }
+  
+  if(length(abs_floor)!=1) {
+    stop("'abs_floor' must be a single numeric greater or equal to 0!")
+  } else {
+    if(!is.numeric(abs_floor) | abs_floor < 0) {
+      stop("'abs_floor' must be a single numeric greater or equal to 0!")
+    }
   }
 
 # Indicator matrix --------------------------------------------------------
@@ -371,11 +385,10 @@ bvar <- function(data,
                                        startvals,
                                        i_mat,
                                        !quiet,
-                                       prior_phi[["general_settings"]][["PHI_tol"]],
-                                       prior_sigma[["general_settings"]][["cholesky_U_tol"]],
-                                       expert_huge
+                                       expert_huge,
+                                       abs_floor
   ))
-
+  
   res[["bench"]] <- bench
   dimnames(res[["PHI"]])[1] <- list(colnames(X))
   dimnames(res[["PHI"]])[2] <- list(colnames(Y))
@@ -389,25 +402,25 @@ bvar <- function(data,
                                                  if(isxi) paste0("xi",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]) else NULL,
                                                  paste0("lambda: ", phinames),
                                                  if(isexpkern) paste0("psi: ", phinames) else NULL)
-
+      
     }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HS"){
       rownames(res[["phi_hyperparameter"]]) <- c(paste0("xi", 1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
                                                  paste0("varpi", 1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
                                                  paste0("lambda: ", phinames),
                                                  paste0("psi: ", phinames))
     }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "SSVS"){
-
+      
       isahyper <- prior_phi[["prior_phi_cpp"]][["SSVS_hyper"]]
       rownames(res[["phi_hyperparameter"]]) <- c(if(isahyper) paste0("a",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]) else NULL,
                                                  paste0("lambda: ", phinames))#
-
+      
     }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HMP"){
-
+      
       rownames(res[["phi_hyperparameter"]]) <- c("lambda_1", "lambda_2")
-
+      
     }
   }
-
+  
   if(prior_sigma[["prior_sigma_cpp"]][["type"]]=="cholesky"){
     lnames <- rep(as.character(NA), (M^2-M)/2)
     ii <- 1
@@ -422,15 +435,15 @@ bvar <- function(data,
       isahyperU <- prior_sigma[["prior_sigma_cpp"]][["cholesky_DL_hyper"]] | prior_sigma[["prior_sigma_cpp"]][["cholesky_GT_hyper"]]
       isxi <- prior_sigma[["prior_sigma_cpp"]][["cholesky_DL_plus"]] | (prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "GT")
       rownames(res[["u_hyperparameter"]]) <- c(if(isahyperU)"a" else NULL,
-                                          if(isxi) "xi" else NULL,
-                                          paste0("lambda: ", lnames),
-                                          if(isexpkernU) paste0("psi: ", lnames) else NULL)
-
+                                               if(isxi) "xi" else NULL,
+                                               paste0("lambda: ", lnames),
+                                               if(isexpkernU) paste0("psi: ", lnames) else NULL)
+      
     }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "HS"){
       rownames(res[["u_hyperparameter"]]) <- c("xi",
-                                          "varpi",
-                                          paste0("lambda: ", lnames),
-                                          paste0("psi: ", lnames))
+                                               "varpi",
+                                               paste0("lambda: ", lnames),
+                                               paste0("psi: ", lnames))
     }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "SSVS"){
       isahyperU <- prior_sigma[["prior_sigma_cpp"]][["cholesky_SSVS_hyper"]]
       rownames(res[["u_hyperparameter"]]) <- c(if(isahyperU) "a" else NULL,
@@ -438,7 +451,7 @@ bvar <- function(data,
     }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "HMP"){
       rownames(res[["u_hyperparameter"]]) <- c("lambda_3")
     }
-
+    
   }
   res[["fac"]] <- aperm(res[["fac"]], c(2,1,3))
   res[["Y"]] <- Y
@@ -451,9 +464,9 @@ bvar <- function(data,
   res[["sigma_type"]] <- prior_sigma[["prior_sigma_cpp"]][["type"]]
   res[["datamat"]] <- data.frame(cbind(Y, X))
   res[["config"]] <- list(draws = draws, burnin = burnin, thin = thin,
-                     sv_keep = sv_keep, prior_phi = prior_phi,
-                     prior_sigma = prior_sigma, prior_intercept = prior_intercept,
-                     lags = lags, expert_huge = expert_huge)
+                          sv_keep = sv_keep, prior_phi = prior_phi,
+                          prior_sigma = prior_sigma, prior_intercept = prior_intercept,
+                          lags = lags, expert_huge = expert_huge, abs_floor = abs_floor)
   class(res[["PHI"]]) <- c("bayesianVARs_coef", "bayesianVARs_draws")
   class(res[["U"]]) <- "bayesianVARs_draws"
   class(res[["facload"]]) <- "bayesianVARs_draws"
@@ -502,10 +515,11 @@ update_bvar <- function(object, draws = 1000L, quiet = FALSE) {
   prior_sigma <- object[["config"]][["prior_sigma"]]
   sv_keep <- object[["config"]][["sv_keep"]]
   expert_huge <- object[["config"]][["expert_huge"]]
+  abs_floor <- object[["config"]][["abs_floor"]]
   res <- bvar(data = data, lags = p, draws = draws, burnin = 0L, thin = thin,
               prior_intercept = prior_intercept, prior_phi = prior_phi,
               prior_sigma = prior_sigma, sv_keep = sv_keep, expert_huge = expert_huge,
-              quiet = quiet, startvals = object[["lastdraw"]])
+              abs_floor = abs_floor, quiet = quiet, startvals = object[["lastdraw"]])
   res
 }
 

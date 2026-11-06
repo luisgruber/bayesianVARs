@@ -379,7 +379,6 @@ new_baysesianVARs_prior_sigma_cpp <- function(){
               cholesky_a = numeric(1L),
               cholesky_b = numeric(1L),
               cholesky_c = numeric(1L),
-              cholesky_GL_tol = numeric(1L),
               cholesky_a_vec = numeric(1L),
               cholesky_a_weight = numeric(1L),
               cholesky_norm_consts = numeric(1L),
@@ -463,13 +462,6 @@ validate_baysesianVARs_prior_sigma_cpp <- function(x){ # nocov start
   }else{
     if(!is.numeric(x[["cholesky_c"]])){
       stop("x[['cholesky_c']] must be a numeric vector")
-    }
-  }
-  if(!exists("cholesky_GL_tol", x)){
-    stop("x must be subsettable with x[['cholesky_GL_tol']]")
-  }else{
-    if(!is.numeric(x[["cholesky_GL_tol"]])){
-      stop("x[['cholesky_GL_tol']] must be a numeric vector")
     }
   }
   if(!exists("cholesky_a_vec", x)){
@@ -741,13 +733,6 @@ validate_baysesianVARs_prior_sigma <- function(x) {
         stop("x[['general_settings]][['factor_starttau2']] must be a numeric matrix")
       }
     }
-    if(!exists("cholesky_U_tol", x[["general_settings"]])) {
-      stop("x must be subsettable with x[['general_settings]][['cholesky_U_tol']]")
-    } else {
-      if(!is.numeric(x[["general_settings"]][["cholesky_U_tol"]]) | length(x[["general_settings"]][["cholesky_U_tol"]]) != 1 | x[["general_settings"]][["cholesky_U_tol"]]< 0) {
-        stop("x[['general_settings]][['cholesky_U_tol']] must be a single numeric greater than or equal to 0")
-      }
-    }
   }
   if(!exists("prior_sigma_cpp", x)) {
     stop("x must be subsettable with x[['prior_sigma_cpp']]")
@@ -891,10 +876,6 @@ validate_baysesianVARs_prior_sigma <- function(x) {
 #'@param cholesky_U_prior character, one of \code{"HS"}, \code{"R2D2"}, `"NG"`,
 #'  \code{"DL"}, \code{"SSVS"}, \code{"HMP"} or \code{"normal"}. Only required
 #'  if `type="cholesky"`.
-#'@param cholesky_U_tol Minimum number that the absolute value of an free
-#'  off-diagonal element of an \eqn{U}-draw can take. Prevents numerical issues
-#'  that can appear when strong shrinkage is enforced if chosen to be greater
-#'  than zero. Only required if `type="cholesky"`.
 #'@param cholesky_heteroscedastic single logical indicating whether time-varying
 #'  (\code{cholesky_heteroscedastic = TRUE}) or constant
 #'  (\code{cholesky_heteroscedastic = FALSE}) variance should be estimated. Only
@@ -933,11 +914,6 @@ validate_baysesianVARs_prior_sigma <- function(x) {
 #'  hyperprior, where the first column contains s support points and the second
 #'  column contains the associated prior probabilities. `cholesky_DL_a` has only
 #'  to be specified if `cholesky_U_prior="DL"`.
-#'@param cholesky_DL_tol Minimum number that a parameter draw of one of the
-#'  shrinking parameters of the Dirichlet Laplace prior can take. Prevents
-#'  numerical issues that can appear when strong shrinkage is enforced if chosen
-#'  to be greater than zero. `DL_tol` has only to be specified if
-#'  `cholesky_U_prior="DL"`.
 #'@param cholesky_R2D2_a (Single) positive real number. The value is interpreted
 #'  as the concentration parameter for the local scales. Smaller values enforce
 #'  heavier shrinkage. A matrix of dimension `c(s,2)` specifies a discrete
@@ -947,11 +923,6 @@ validate_baysesianVARs_prior_sigma <- function(x) {
 #'@param cholesky_R2D2_b single positive number, where greater values indicate
 #'  heavier regularization. \code{cholesky_R2D2_b} has only to be specified if
 #'  \code{cholesky_U_prior="R2D2"}.
-#'@param cholesky_R2D2_tol Minimum number that a parameter draw of one of the
-#'  shrinking parameters of the R2D2 prior can take. Prevents numerical issues
-#'  that can appear when strong shrinkage is enforced if chosen to be greater
-#'  than zero. `cholesky_R2D2_tol` has only to be specified if
-#'  `cholesky_U_prior="R2D2"`.
 #'@param cholesky_NG_a (Single) positive real number. The value is interpreted
 #'  as the concentration parameter for the local scales. Smaller values enforce
 #'  heavier shrinkage. A matrix of dimension `c(s,2)` specifies a discrete
@@ -967,11 +938,6 @@ validate_baysesianVARs_prior_sigma <- function(x) {
 #'  in the case where a discrete hyperprior for NG_a is chosen, a desired
 #'  proportion of let's say 0.2 is achieved by setting NG_c="0.2a" (character
 #'  input!). `cholesky_NG_c` has only to be specified if
-#'  `cholesky_U_prior="NG"`.
-#'@param cholesky_NG_tol Minimum number that a parameter draw of one of the
-#'  shrinking parameters of the normal-gamma prior can take. Prevents numerical
-#'  issues that can appear when strong shrinkage is enforced if chosen to be
-#'  greater than zero. `cholesky_NG_tol` has only to be specified if
 #'  `cholesky_U_prior="NG"`.
 #'@param cholesky_SSVS_c0 single positive number indicating the (unscaled)
 #'  standard deviation of the spike component. \code{cholesky_SSVS_c0} has only
@@ -1063,7 +1029,6 @@ specify_prior_sigma <- function(data=NULL,
                                 factor_priorhomoskedastic = NA,
                                 factor_interweaving = 4,
                                 cholesky_U_prior = c("HS", "DL", "R2D2", "NG", "SSVS", "normal", "HMP"),
-                                cholesky_U_tol = 1e-18,
                                 cholesky_heteroscedastic = TRUE,
                                 cholesky_priormu = c(0,100),
                                 cholesky_priorphi = c(20, 1.5),
@@ -1071,14 +1036,11 @@ specify_prior_sigma <- function(data=NULL,
                                 cholesky_priorh0 = "stationary",
                                 cholesky_priorhomoscedastic = as.numeric(NA),
                                 cholesky_DL_a = "1/n",
-                                cholesky_DL_tol = 0,
                                 cholesky_R2D2_a =0.4,
                                 cholesky_R2D2_b = 0.5,
-                                cholesky_R2D2_tol=0,
                                 cholesky_NG_a = .5,
                                 cholesky_NG_b = .5,
                                 cholesky_NG_c = .5,
-                                cholesky_NG_tol = 0,
                                 cholesky_SSVS_c0 = 0.001,
                                 cholesky_SSVS_c1 = 1,
                                 cholesky_SSVS_a = 0.5,
@@ -1099,8 +1061,7 @@ specify_prior_sigma <- function(data=NULL,
   }
   M <- as.integer(M)
   # note to myself: in case of factor_priorfacloadtype == "normal" factor_starttau2 collects the fixed prior variances (hence a prior specification)
-  general_settings <- list(M = M, factor_starttau2 =  matrix(as.numeric(NA), 1,1),
-                           cholesky_U_tol = numeric(1L))
+  general_settings <- list(M = M, factor_starttau2 =  matrix(as.numeric(NA), 1,1))
 
   if(!is.null(data)){
     if(ncol(data) != M){
@@ -1465,12 +1426,6 @@ specify_prior_sigma <- function(data=NULL,
     }
     prior_sigma_cpp[["cholesky_U_prior"]] <- cholesky_U_prior
 
-    # error checks for 'cholesky_U_tol'
-    if(cholesky_U_tol < 0){
-      stop("Argument 'cholesky_U_tol' (tolerance for the contemporary coefficients) must be >=0.")
-    }
-    general_settings[["cholesky_U_tol"]] <- cholesky_U_tol
-
     if(cholesky_U_prior == "DL"){
       text <- c("Argument 'cholesky_DL_a' must be either a single positive numeric or '1/n'. ")
       if(is.numeric(cholesky_DL_a) & any(cholesky_DL_a<=0)) stop(text)
@@ -1479,8 +1434,6 @@ specify_prior_sigma <- function(data=NULL,
           stop(text)
         }
       }
-
-      prior_sigma_cpp[["cholesky_GL_tol"]] <- cholesky_DL_tol
 
       if(is.numeric(cholesky_DL_a) & length(cholesky_DL_a) == 1L){
         prior_sigma_cpp[["cholesky_a"]] <- cholesky_DL_a
@@ -1543,7 +1496,6 @@ specify_prior_sigma <- function(data=NULL,
       prior_sigma_cpp[["cholesky_c"]] <- "0.5*a"
       prior_sigma_cpp[["cholesky_GT_vs"]] <- 1/2
       prior_sigma_cpp[["cholesky_GT_priorkernel"]] <- "exponential"
-      prior_sigma_cpp[["cholesky_GL_tol"]] <- cholesky_R2D2_tol
 
     }else if(cholesky_U_prior == "NG"){
 
@@ -1553,7 +1505,6 @@ specify_prior_sigma <- function(data=NULL,
       prior_sigma_cpp[["cholesky_c"]] <- cholesky_NG_c
       prior_sigma_cpp[["cholesky_GT_vs"]] <- 1
       prior_sigma_cpp[["cholesky_GT_priorkernel"]] <- "normal"
-      prior_sigma_cpp[["cholesky_GL_tol"]] <- cholesky_NG_tol
 
     }else if(cholesky_U_prior == "SSVS"){
       if(!(cholesky_SSVS_c0>0 & cholesky_SSVS_c1>0)){
@@ -1635,7 +1586,6 @@ new_baysesianVARs_prior_phi_cpp <- function(){
               a = numeric(1L),
               b = numeric(1L),
               c = numeric(1L),
-              GL_tol = numeric(1L),
               a_vec = numeric(1L),
               a_weight = numeric(1L),
               norm_consts = numeric(1L),
@@ -1711,13 +1661,6 @@ validate_baysesianVARs_prior_phi_cpp <- function(x){ # nocov start
   }else{
     if(!is.numeric(x[["c"]])){
       stop("x[['c']] must be a numeric vector")
-    }
-  }
-  if(!exists("GL_tol", x)){
-    stop("x must be subsettable with x[['GL_tol']]")
-  }else{
-    if(!is.numeric(x[["GL_tol"]])){
-      stop("x[['GL_tol']] must be a numeric vector")
     }
   }
   if(!exists("a_vec", x)){
@@ -1880,13 +1823,6 @@ validate_baysesianVARs_prior_phi <- function(x) {
          stop("x[['general_settings']][['PHI0']] must be a numeric matrix")
        }
      }
-     if(!exists("PHI_tol", x[["general_settings"]])) {
-       stop("x must be subsettable with x[['general_settings']][['PHI_tol']]")
-     } else {
-       if(!is.numeric(x[["general_settings"]][["PHI_tol"]]) | length(x[["general_settings"]][["PHI_tol"]]) != 1 | x[["general_settings"]][["PHI_tol"]] < 0) {
-         stop("x[['general_settings']][['PHI_tol']] must be a single numeric greater than or equal to 0")
-       }
-     }
      if(!exists("i_mat", x[["general_settings"]])) {
        stop("x must be subsettable with x[['general_settings']][['i_mat']]")
      } else {
@@ -1960,9 +1896,6 @@ validate_baysesianVARs_prior_phi <- function(x) {
 #'  \code{priormean} is a matrix of dimension \code{c(lags*M,M)}, then each of
 #'  the \eqn{M} columns is assumed to contain \code{lags*M} prior means for the
 #'  VAR coefficients of the respective VAR equations.
-#'@param PHI_tol Minimum number that the absolute value of a VAR coefficient
-#'  draw can take. Prevents numerical issues that can appear when strong
-#'  shrinkage is enforced if chosen to be greater than zero.
 #'@param DL_a (Single) positive real number. The value is interpreted as the
 #'  concentration parameter for the local scales. Smaller values enforce heavier
 #'  shrinkage. If the argument \code{global_grouping} specifies e.g. \code{k}
@@ -1971,11 +1904,6 @@ validate_baysesianVARs_prior_phi <- function(x) {
 #'  \code{c(s,2)} specifies a discrete hyperprior, where the first column
 #'  contains \code{s} support points and the second column contains the
 #'  associated prior probabilities. \code{DL_a} has only to be specified if
-#'  \code{prior="DL"}.
-#'@param DL_tol Minimum number that a parameter draw of one of the shrinking
-#'  parameters of the Dirichlet Laplace prior can take. Prevents numerical
-#'  issues that can appear when strong shrinkage is enforced if chosen to be
-#'  greater than zero. \code{DL_tol} has only to be specified if
 #'  \code{prior="DL"}.
 #'@param R2D2_a (Single) positive real number. The value is interpreted as the
 #'  concentration parameter for the local scales. Smaller values enforce heavier
@@ -1992,10 +1920,6 @@ validate_baysesianVARs_prior_phi <- function(x) {
 #'  \code{NG_b} can be a numeric vector of length \code{k} and the elements
 #'  determine the shape parameter in each group. \code{R2D2_b} has only to be
 #'  specified if \code{prior="R2D2"}.
-#'@param R2D2_tol Minimum number that a parameter draw of one of the shrinking
-#'  parameters of the R2D2 prior can take. Prevents numerical issues that can
-#'  appear when strong shrinkage is enforced if chosen to be greater than zero.
-#'  \code{R2D2_tol} has only to be specified if \code{prior="R2D2"}.
 #'@param NG_a (Single) positive real number. The value is interpreted as the
 #'  concentration parameter for the local scales. Smaller values enforce heavier
 #'  shrinkage. If the argument \code{global_grouping} specifies e.g. \code{k}
@@ -2020,10 +1944,6 @@ validate_baysesianVARs_prior_phi <- function(x) {
 #'  discrete hyperprior for \code{NG_a} is chosen, a desired proportion of let's
 #'  say \code{0.2} is achieved by setting \code{NG_c="0.2*a"} (character input!).
 #'  \code{NG_c} has only to be specified if \code{prior="NG"}.
-#'@param NG_tol  Minimum number that a parameter draw of one of the shrinking
-#'  parameters of the normal-gamma prior can take. Prevents numerical issues
-#'  that can appear when strong shrinkage is enforced if chosen to be greater
-#'  than zero. \code{NG_tol} has only to be specified if \code{prior="NG"}.
 #'@param SSVS_c0 single positive number indicating the (unscaled) standard
 #'  deviation of the spike component. \code{SSVS_c0} has only to be specified if
 #'  \code{prior="SSVS"}. It should be that \eqn{SSVS_{c0} \ll SSVS_{c1}}!
@@ -2098,10 +2018,9 @@ specify_prior_phi <- function(data = NULL,
                               lags = 1L,
                               prior = "HS",
                               priormean = 0,
-                              PHI_tol = 1e-18,
-                              DL_a = "1/K", DL_tol = 0,
-                              R2D2_a = 0.1, R2D2_b = 0.5, R2D2_tol = 0,
-                              NG_a = 0.1, NG_b = 1, NG_c = 1, NG_tol = 0,
+                              DL_a = "1/K",
+                              R2D2_a = 0.1, R2D2_b = 0.5,
+                              NG_a = 0.1, NG_b = 1, NG_c = 1,
                               SSVS_c0 = 0.01, SSVS_c1 = 100,
                               SSVS_semiautomatic = TRUE, SSVS_a=0.5,
                               HMP_lambda1 = c(0.01,0.01), HMP_lambda2 = c(0.01,0.01),
@@ -2130,8 +2049,7 @@ specify_prior_phi <- function(data = NULL,
   K <- lags*M
   n <- K*M
   
-  general_settings <- list(M = M, lags = lags, PHI0 = matrix(0,0,M), PHI_tol = 
-                             numeric(1L), 
+  general_settings <- list(M = M, lags = lags, PHI0 = matrix(0,0,M), 
                            # global_grouping = character(1L), 
                            i_mat = matrix(0L,0,M), SSVS_semiautomatic = logical(1L),
                            SSVS_c1 = numeric(1L), SSVS_c0 = numeric(1L))
@@ -2223,7 +2141,6 @@ specify_prior_phi <- function(data = NULL,
     #                          i_mat = i_mat,
     #                          SSVS_semiautomatic = logical(1L))
     general_settings[["PHI0"]] <- PHI0
-    general_settings[["PHI_tol"]] <- PHI_tol
     general_settings[["i_mat"]] <- i_mat
     
     if(prior == "DL"){
@@ -2253,7 +2170,6 @@ specify_prior_phi <- function(data = NULL,
         }
       }
       prior_phi_cpp[["a"]] <- DL_a
-      prior_phi_cpp[["GL_tol"]] <- DL_tol
       
       if(all(is.numeric(prior_phi_cpp[["a"]]))&is.null(dim(prior_phi_cpp[["a"]]))){
         prior_phi_cpp[["DL_hyper"]] <- FALSE
@@ -2327,7 +2243,6 @@ specify_prior_phi <- function(data = NULL,
       prior_phi_cpp[["c"]] <- "0.5*a"
       prior_phi_cpp[["GT_vs"]] <- 1/2
       prior_phi_cpp[["GT_priorkernel"]] <- "exponential"
-      prior_phi_cpp[["GL_tol"]] <- R2D2_tol
       
     }else if(prior == "SSVS"){
       if(!(all(SSVS_c0>0) & all(SSVS_c1>0))){
@@ -2384,7 +2299,6 @@ specify_prior_phi <- function(data = NULL,
       prior_phi_cpp[["c"]] <- NG_c
       prior_phi_cpp[["GT_vs"]] <- 1
       prior_phi_cpp[["GT_priorkernel"]] <- "normal"
-      prior_phi_cpp[["GL_tol"]] <- NG_tol
     }
     
     if(prior_phi_cpp[["prior"]] == "GT"){

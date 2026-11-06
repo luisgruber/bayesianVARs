@@ -25,7 +25,6 @@ specify_prior_sigma(
   factor_priorhomoskedastic = NA,
   factor_interweaving = 4,
   cholesky_U_prior = c("HS", "DL", "R2D2", "NG", "SSVS", "normal", "HMP"),
-  cholesky_U_tol = 1e-18,
   cholesky_heteroscedastic = TRUE,
   cholesky_priormu = c(0, 100),
   cholesky_priorphi = c(20, 1.5),
@@ -33,14 +32,11 @@ specify_prior_sigma(
   cholesky_priorh0 = "stationary",
   cholesky_priorhomoscedastic = as.numeric(NA),
   cholesky_DL_a = "1/n",
-  cholesky_DL_tol = 0,
   cholesky_R2D2_a = 0.4,
   cholesky_R2D2_b = 0.5,
-  cholesky_R2D2_tol = 0,
   cholesky_NG_a = 0.5,
   cholesky_NG_b = 0.5,
   cholesky_NG_c = 0.5,
-  cholesky_NG_tol = 0,
   cholesky_SSVS_c0 = 0.001,
   cholesky_SSVS_c1 = 1,
   cholesky_SSVS_a = 0.5,
@@ -180,11 +176,6 @@ recommended default.}
 \code{"DL"}, \code{"SSVS"}, \code{"HMP"} or \code{"normal"}. Only required
 if \code{type="cholesky"}.}
 
-\item{cholesky_U_tol}{Minimum number that the absolute value of an free
-off-diagonal element of an \eqn{U}-draw can take. Prevents numerical issues
-that can appear when strong shrinkage is enforced if chosen to be greater
-than zero. Only required if \code{type="cholesky"}.}
-
 \item{cholesky_heteroscedastic}{single logical indicating whether time-varying
 (\code{cholesky_heteroscedastic = TRUE}) or constant
 (\code{cholesky_heteroscedastic = FALSE}) variance should be estimated. Only
@@ -230,12 +221,6 @@ hyperprior, where the first column contains s support points and the second
 column contains the associated prior probabilities. \code{cholesky_DL_a} has only
 to be specified if \code{cholesky_U_prior="DL"}.}
 
-\item{cholesky_DL_tol}{Minimum number that a parameter draw of one of the
-shrinking parameters of the Dirichlet Laplace prior can take. Prevents
-numerical issues that can appear when strong shrinkage is enforced if chosen
-to be greater than zero. \code{DL_tol} has only to be specified if
-\code{cholesky_U_prior="DL"}.}
-
 \item{cholesky_R2D2_a}{(Single) positive real number. The value is interpreted
 as the concentration parameter for the local scales. Smaller values enforce
 heavier shrinkage. A matrix of dimension \code{c(s,2)} specifies a discrete
@@ -245,12 +230,6 @@ to be specified if \code{cholesky_U_prior="R2D2"}.}
 
 \item{cholesky_R2D2_b}{single positive number, where greater values indicate
 heavier regularization. \code{cholesky_R2D2_b} has only to be specified if
-\code{cholesky_U_prior="R2D2"}.}
-
-\item{cholesky_R2D2_tol}{Minimum number that a parameter draw of one of the
-shrinking parameters of the R2D2 prior can take. Prevents numerical issues
-that can appear when strong shrinkage is enforced if chosen to be greater
-than zero. \code{cholesky_R2D2_tol} has only to be specified if
 \code{cholesky_U_prior="R2D2"}.}
 
 \item{cholesky_NG_a}{(Single) positive real number. The value is interpreted
@@ -270,12 +249,6 @@ Expert option would be to set the scale parameter proportional to NG_a. E.g.
 in the case where a discrete hyperprior for NG_a is chosen, a desired
 proportion of let's say 0.2 is achieved by setting NG_c="0.2a" (character
 input!). \code{cholesky_NG_c} has only to be specified if
-\code{cholesky_U_prior="NG"}.}
-
-\item{cholesky_NG_tol}{Minimum number that a parameter draw of one of the
-shrinking parameters of the normal-gamma prior can take. Prevents numerical
-issues that can appear when strong shrinkage is enforced if chosen to be
-greater than zero. \code{cholesky_NG_tol} has only to be specified if
 \code{cholesky_U_prior="NG"}.}
 
 \item{cholesky_SSVS_c0}{single positive number indicating the (unscaled)

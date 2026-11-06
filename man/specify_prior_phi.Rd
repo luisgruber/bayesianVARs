@@ -10,16 +10,12 @@ specify_prior_phi(
   lags = 1L,
   prior = "HS",
   priormean = 0,
-  PHI_tol = 1e-18,
   DL_a = "1/K",
-  DL_tol = 0,
   R2D2_a = 0.1,
   R2D2_b = 0.5,
-  R2D2_tol = 0,
   NG_a = 0.1,
   NG_b = 1,
   NG_c = 1,
-  NG_tol = 0,
   SSVS_c0 = 0.01,
   SSVS_c1 = 100,
   SSVS_semiautomatic = TRUE,
@@ -53,10 +49,6 @@ w.r.t. the first lag equals \code{priormean} and \code{0} else. If
 the \eqn{M} columns is assumed to contain \code{lags*M} prior means for the
 VAR coefficients of the respective VAR equations.}
 
-\item{PHI_tol}{Minimum number that the absolute value of a VAR coefficient
-draw can take. Prevents numerical issues that can appear when strong
-shrinkage is enforced if chosen to be greater than zero.}
-
 \item{DL_a}{(Single) positive real number. The value is interpreted as the
 concentration parameter for the local scales. Smaller values enforce heavier
 shrinkage. If the argument \code{global_grouping} specifies e.g. \code{k}
@@ -65,12 +57,6 @@ elements indicate the shrinkage in each group.  A matrix of dimension
 \code{c(s,2)} specifies a discrete hyperprior, where the first column
 contains \code{s} support points and the second column contains the
 associated prior probabilities. \code{DL_a} has only to be specified if
-\code{prior="DL"}.}
-
-\item{DL_tol}{Minimum number that a parameter draw of one of the shrinking
-parameters of the Dirichlet Laplace prior can take. Prevents numerical
-issues that can appear when strong shrinkage is enforced if chosen to be
-greater than zero. \code{DL_tol} has only to be specified if
 \code{prior="DL"}.}
 
 \item{R2D2_a}{(Single) positive real number. The value is interpreted as the
@@ -89,11 +75,6 @@ argument \code{global_grouping} specifies e.g. \code{k} groups, then
 \code{NG_b} can be a numeric vector of length \code{k} and the elements
 determine the shape parameter in each group. \code{R2D2_b} has only to be
 specified if \code{prior="R2D2"}.}
-
-\item{R2D2_tol}{Minimum number that a parameter draw of one of the shrinking
-parameters of the R2D2 prior can take. Prevents numerical issues that can
-appear when strong shrinkage is enforced if chosen to be greater than zero.
-\code{R2D2_tol} has only to be specified if \code{prior="R2D2"}.}
 
 \item{NG_a}{(Single) positive real number. The value is interpreted as the
 concentration parameter for the local scales. Smaller values enforce heavier
@@ -121,11 +102,6 @@ the scale parameter proportional to \code{NG_a}. E.g. in the case where a
 discrete hyperprior for \code{NG_a} is chosen, a desired proportion of let's
 say \code{0.2} is achieved by setting \code{NG_c="0.2*a"} (character input!).
 \code{NG_c} has only to be specified if \code{prior="NG"}.}
-
-\item{NG_tol}{Minimum number that a parameter draw of one of the shrinking
-parameters of the normal-gamma prior can take. Prevents numerical issues
-that can appear when strong shrinkage is enforced if chosen to be greater
-than zero. \code{NG_tol} has only to be specified if \code{prior="NG"}.}
 
 \item{SSVS_c0}{single positive number indicating the (unscaled) standard
 deviation of the spike component. \code{SSVS_c0} has only to be specified if

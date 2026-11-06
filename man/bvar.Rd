@@ -15,6 +15,7 @@ bvar(
   prior_sigma = specify_prior_sigma(data = data, type = "factor", quiet = TRUE),
   sv_keep = "last",
   expert_huge = FALSE,
+  abs_floor = 1e-100,
   quiet = FALSE,
   startvals = get_startvals(prior_phi, prior_sigma, prior_intercept, data)
 )
@@ -55,6 +56,12 @@ log-variance \eqn{h_T} are stored.}
 \item{expert_huge}{logical value indicating whether to use a specific
 algorithm for huge VARs. Only possible if a factor structure for the errors
 is specified. See section MCMC algorithm below for more details.}
+
+\item{abs_floor}{single numeric greater or equal to zero indicating the
+threshold to that certain parameter draws, e.g. the VAR coefficients, with
+magnitude below are raised to (preserving the sign if possible). Exact zeros
+are raised to \code{abs_floor}. This can prevent numerical issues if heavy
+shrinkage is enforced.}
 
 \item{quiet}{logical value indicating whether information about the progress
 during sampling should be displayed during sampling (default is

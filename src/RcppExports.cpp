@@ -12,8 +12,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // bvar_cpp
-List bvar_cpp(const arma::mat& Y, const arma::mat& X, const int& M, const int& T, const int& K, const int& draws, const int& burnin, const int& thin, const std::string& tvp_keep, const int& intercept, const arma::vec& priorIntercept, arma::mat& PHI0, const List priorPHI_in, const List priorSigma_in, const List Rstartvals_in, const arma::imat& i_mat, const bool& progressbar, const double& PHI_tol, const double& L_tol, const bool& huge);
-RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP YSEXP, SEXP XSEXP, SEXP MSEXP, SEXP TSEXP, SEXP KSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP thinSEXP, SEXP tvp_keepSEXP, SEXP interceptSEXP, SEXP priorInterceptSEXP, SEXP PHI0SEXP, SEXP priorPHI_inSEXP, SEXP priorSigma_inSEXP, SEXP Rstartvals_inSEXP, SEXP i_matSEXP, SEXP progressbarSEXP, SEXP PHI_tolSEXP, SEXP L_tolSEXP, SEXP hugeSEXP) {
+List bvar_cpp(const arma::mat& Y, const arma::mat& X, const int& M, const int& T, const int& K, const int& draws, const int& burnin, const int& thin, const std::string& tvp_keep, const int& intercept, const arma::vec& priorIntercept, arma::mat& PHI0, const List priorPHI_in, const List priorSigma_in, const List Rstartvals_in, const arma::imat& i_mat, const bool& progressbar, const bool& huge, const double& abs_floor);
+RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP YSEXP, SEXP XSEXP, SEXP MSEXP, SEXP TSEXP, SEXP KSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP thinSEXP, SEXP tvp_keepSEXP, SEXP interceptSEXP, SEXP priorInterceptSEXP, SEXP PHI0SEXP, SEXP priorPHI_inSEXP, SEXP priorSigma_inSEXP, SEXP Rstartvals_inSEXP, SEXP i_matSEXP, SEXP progressbarSEXP, SEXP hugeSEXP, SEXP abs_floorSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -34,10 +34,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const List >::type Rstartvals_in(Rstartvals_inSEXP);
     Rcpp::traits::input_parameter< const arma::imat& >::type i_mat(i_matSEXP);
     Rcpp::traits::input_parameter< const bool& >::type progressbar(progressbarSEXP);
-    Rcpp::traits::input_parameter< const double& >::type PHI_tol(PHI_tolSEXP);
-    Rcpp::traits::input_parameter< const double& >::type L_tol(L_tolSEXP);
     Rcpp::traits::input_parameter< const bool& >::type huge(hugeSEXP);
-    rcpp_result_gen = Rcpp::wrap(bvar_cpp(Y, X, M, T, K, draws, burnin, thin, tvp_keep, intercept, priorIntercept, PHI0, priorPHI_in, priorSigma_in, Rstartvals_in, i_mat, progressbar, PHI_tol, L_tol, huge));
+    Rcpp::traits::input_parameter< const double& >::type abs_floor(abs_floorSEXP);
+    rcpp_result_gen = Rcpp::wrap(bvar_cpp(Y, X, M, T, K, draws, burnin, thin, tvp_keep, intercept, priorIntercept, PHI0, priorPHI_in, priorSigma_in, Rstartvals_in, i_mat, progressbar, huge, abs_floor));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -127,19 +126,20 @@ BEGIN_RCPP
 END_RCPP
 }
 // sample_PHI_cholesky
-arma::mat sample_PHI_cholesky(const arma::mat PHI, const arma::mat& PHI_prior, const arma::mat& Y, const arma::mat& X, const arma::mat& U, const arma::mat& d_sqrt, const arma::mat& V_prior);
-RcppExport SEXP _bayesianVARs_sample_PHI_cholesky(SEXP PHISEXP, SEXP PHI_priorSEXP, SEXP YSEXP, SEXP XSEXP, SEXP USEXP, SEXP d_sqrtSEXP, SEXP V_priorSEXP) {
+arma::mat sample_PHI_cholesky(const arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y, const arma::mat& X, const arma::mat& U, const arma::mat& d_sqrt, const arma::mat& V_prior, const double floor);
+RcppExport SEXP _bayesianVARs_sample_PHI_cholesky(SEXP PHISEXP, SEXP PHI_priorSEXP, SEXP YSEXP, SEXP XSEXP, SEXP USEXP, SEXP d_sqrtSEXP, SEXP V_priorSEXP, SEXP floorSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat >::type PHI(PHISEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type PHI(PHISEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type PHI_prior(PHI_priorSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type Y(YSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type U(USEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type d_sqrt(d_sqrtSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type V_prior(V_priorSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_PHI_cholesky(PHI, PHI_prior, Y, X, U, d_sqrt, V_prior));
+    Rcpp::traits::input_parameter< const double >::type floor(floorSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_PHI_cholesky(PHI, PHI_prior, Y, X, U, d_sqrt, V_prior, floor));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -235,14 +235,14 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 20},
+    {"_bayesianVARs_bvar_cpp", (DL_FUNC) &_bayesianVARs_bvar_cpp, 19},
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
     {"_bayesianVARs_compute_parameter_transformations", (DL_FUNC) &_bayesianVARs_compute_parameter_transformations, 5},
     {"_bayesianVARs_find_rotation_cpp", (DL_FUNC) &_bayesianVARs_find_rotation_cpp, 5},
     {"_bayesianVARs_irf_cpp", (DL_FUNC) &_bayesianVARs_irf_cpp, 7},
     {"_bayesianVARs_irf_bayes_optimal_order", (DL_FUNC) &_bayesianVARs_irf_bayes_optimal_order, 1},
     {"_bayesianVARs_irf_from_true_parameters", (DL_FUNC) &_bayesianVARs_irf_from_true_parameters, 3},
-    {"_bayesianVARs_sample_PHI_cholesky", (DL_FUNC) &_bayesianVARs_sample_PHI_cholesky, 7},
+    {"_bayesianVARs_sample_PHI_cholesky", (DL_FUNC) &_bayesianVARs_sample_PHI_cholesky, 8},
     {"_bayesianVARs_dmvnrm_arma_fast", (DL_FUNC) &_bayesianVARs_dmvnrm_arma_fast, 4},
     {"_bayesianVARs_predh", (DL_FUNC) &_bayesianVARs_predh, 6},
     {"_bayesianVARs_out_of_sample", (DL_FUNC) &_bayesianVARs_out_of_sample, 17},

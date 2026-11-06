@@ -22,7 +22,7 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
                  const arma::ivec& i_vec_small, const arma::uvec& i_ocl,
                  const arma::uvec& i_ol, const arma::uvec& i_cl, const arma::ivec& groups, 
                  const arma::mat& PHI0, const std::string priorPHI,
-                 const double PHI_tol, const double GL_tol, const bool DL_hyper, 
+                 const bool DL_hyper, 
                  const bool DL_plus, const bool GT_hyper, const arma::vec& b, 
                  const arma::vec& a_vec, const arma::vec& a_weight, 
                  const arma::vec& norm_consts, const arma::vec& c_vec, 
@@ -34,12 +34,12 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
                  const bool huge,   
                  const std::string sigma_type, const arma::uvec& U_upper_indices,
                  const arma::uvec& ind_U,
-                 const std::string priorU,  const double L_tol, const bool DL_hyper_U,
+                 const std::string priorU, const bool DL_hyper_U,
                  const bool DL_plus_U, const bool GT_hyper_U,
                  const arma::vec& a_vec_U, const arma::vec& a_weight_U,
                  const arma::vec& norm_consts_U, const arma::vec& c_vec_U, 
                  const bool c_rel_a_U, const std::string GT_priorkernel_U, 
-                 const double GT_vs_U, const double GL_tol_U,   
+                 const double GT_vs_U,   
                  const arma::vec& tau_0_U, const arma::vec& tau_1_U,
                  const double SSVS_s_a_U, const double SSVS_s_b_U, const bool SSVS_hyper_U, 
                  const arma::vec& s_r_3, const Rcpp::NumericVector aShrink, 
@@ -52,14 +52,15 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
                  const Rcpp::NumericVector heteroscedastic, const int factor_interweaving,
                  const stochvol::ExpertSpec_FastSV expert_sv, const stochvol::ExpertSpec_FastSV expert_fac,
                  const std::vector<stochvol::PriorSpec> prior_specs, const double B011inv,
-                 const Rcpp::NumericMatrix priorHomoscedastic, const Rcpp::NumericVector sv_offset
+                 const Rcpp::NumericMatrix priorHomoscedastic, const Rcpp::NumericVector sv_offset,
+                 const double abs_floor
                  ){
   //----1) Draw PHI (reduced form VAR coefficients)
   if(K>0){
     if(sigma_type == "cholesky"){
       //arma::mat PHI_old = PHI; // zombie???
       try{
-        sample_PHI(PHI, PHI0, Y, X, U, d_sqrt, V_prior, M);
+        sample_PHI(PHI, PHI0, Y, X, U, d_sqrt, V_prior, M, abs_floor);
       } catch(const std::exception &e){
         Rcpp::stop("sample_PHI() failed in run %i: %s", rep+1, e.what());
       } catch(...){
@@ -72,7 +73,7 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
       // Rcpp::print(Rcpp::wrap(V_prior.col(0)));
       try{
         sample_PHI_factor(PHI, PHI0, Y, X, logvar.cols(0,M-1), V_prior,
-                          armafacload, armafac, huge);
+                          armafacload, armafac, huge, abs_floor);
       } catch(const std::exception &e){
         Rcpp::stop("sample_PHI_factor() failed in run %i: %s", rep+1, e.what());
       } catch(...){
@@ -86,32 +87,8 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
     }
   }
   
-  if(priorPHI == "DL" || priorPHI == "R2D2" || priorPHI == "NG" || priorPHI == "GT"){
-    // to do: as function argument
-    PHI_diff = PHI - PHI0;
-    for (int ii = 0; ii<K; ii++) {
-      for (int jj = 0; jj<M; jj++){
-        if(PHI_diff(ii,jj) == 0) {
-
-          if(R::rbinom( 1, 0.5 )==0){
-            PHI(ii,jj) = PHI0(ii,jj) + PHI_tol;//eps(ii,jj);//PHI_tol;
-            PHI_diff(ii,jj) = PHI_tol;
-          }else{
-            PHI(ii,jj) = PHI0(ii,jj) - PHI_tol;//eps(ii,jj);//PHI_tol;
-            PHI_diff(ii,jj) = -PHI_tol;
-          }
-        }else if(PHI_diff(ii,jj) < PHI_tol && PHI_diff(ii,jj) > 0){ //eps(ii,jj)
-          PHI(ii,jj) = PHI0(ii,jj) + PHI_tol;//eps(ii,jj);
-          PHI_diff(ii,jj) = PHI_tol;
-        }else if (PHI_diff(ii,jj) > -PHI_tol && PHI_diff(ii,jj) < 0){ //-eps(ii,jj)
-          PHI(ii,jj) = PHI0(ii,jj) - PHI_tol;//eps(ii,jj);
-          PHI_diff(ii,jj) = -PHI_tol;
-        }
-      }
-    }
-  }else{
-    PHI_diff = PHI - PHI0;
-  }
+  PHI_diff = PHI - PHI0;
+  
   
   //----2) Sample hyperparameters of hierarchical priors (prior variances V_i)
   
@@ -126,12 +103,12 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
       if(priorPHI=="DL"){
         
         sample_V_i_DL(V_i, PHI_diff(i_ocl), a(j),b(j),c(j), a_vec, a_weight, psi,
-                      lambda, xi(j), ind, DL_hyper, norm_consts, GL_tol, DL_plus,
+                      lambda, xi(j), ind, DL_hyper, norm_consts, DL_plus,
                       c_vec, c_rel_a);
         
       }else if(priorPHI == "GT"){ // R2D2 is GT with exponential kernel, NG is GT with normal kernel
         sample_V_i_GT(V_i, PHI_diff(i_ocl), psi, lambda, xi(j), a(j), b(j), c(j),
-                      ind, GL_tol, GT_priorkernel, GT_vs, norm_consts,
+                      ind, GT_priorkernel, GT_vs, norm_consts,
                       a_vec, a_weight, c_vec, GT_hyper, c_rel_a);
       }else if(priorPHI == "SSVS"){
         
@@ -209,32 +186,12 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
   }else if(sigma_type == "cholesky"){
 
     try{
-      sample_U(U, resid, V_i_U, d_sqrt);
+      sample_U(U, resid, V_i_U, d_sqrt, abs_floor);
     } catch (const std::exception& e) {
       Rcpp::stop("sample_U() failed in run %i: %s", rep+1, e.what());
     } catch(...){
       Rprintf("\nsample_U() failed in run %i. Rethrowing exception:", rep+1);
       throw;
-    }
-
-    if(priorU == "DL" || priorU == "R2D2" || priorU == "GT"){
-
-      for (int jj = 0; jj<M; jj++){
-        for (int ii = 0; ii<jj; ii++) {
-          if(U(ii,jj) == 0) {
-            if(R::rbinom( 1, 0.5 )==0){
-              U(ii,jj) = L_tol;
-            }else{
-              U(ii,jj) = -L_tol;
-            }
-          }else
-            if(U(ii,jj) < L_tol && U(ii,jj) > 0){
-              U(ii,jj) = L_tol;
-            }else if (U(ii,jj) > -L_tol && U(ii,jj) < 0){
-              U(ii,jj) = -L_tol;
-            }
-        }
-      }
     }
 
     //----3b) Draw hyperparameters of hierarchical priors
@@ -244,8 +201,8 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
 
       try{
         sample_V_i_DL(V_i_U, u, a_U, b_U, c_U, a_vec_U, a_weight_U,
-                      psi_U, lambda_U, xi_U, ind_U, DL_hyper_U, norm_consts_U,
-                      GL_tol_U, DL_plus_U, c_vec_U, c_rel_a_U);
+                      psi_U, lambda_U, xi_U, ind_U, DL_hyper_U, norm_consts_U, 
+                      DL_plus_U, c_vec_U, c_rel_a_U);
       } catch(const std::exception& e) {
         Rcpp::stop("sample_V_i_DL() failed in run %i: %s", rep+1, e.what());
       } catch (...) {
@@ -256,7 +213,7 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_diff, arma::mat& V_prior,
     }else if (priorU == "GT"){
 
       sample_V_i_GT(V_i_U, u, psi_U, lambda_U, xi_U, a_U, b_U, c_U, ind_U,
-                    GL_tol_U, GT_priorkernel_U, GT_vs_U, norm_consts_U,
+                    GT_priorkernel_U, GT_vs_U, norm_consts_U,
                     a_vec_U, a_weight_U, c_vec_U, GT_hyper_U, c_rel_a_U);
 
     }else if(priorU == "SSVS"){

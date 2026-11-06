@@ -24,21 +24,20 @@ List bvar_cpp(const arma::mat& Y,
               const List Rstartvals_in,
               const arma::imat& i_mat,
               const bool& progressbar,
-              const double& PHI_tol,
-              const double& L_tol,
-              const bool& huge){
-
+              const bool& huge,
+              const double& abs_floor){
+  
   // Rcpp objects reuse memory
   // arma make copy by default unless deactivated
-
-//-------------------------Preliminaries--------------------------------------//
-
+  
+  //-------------------------Preliminaries--------------------------------------//
+  
   const double n = K*M; // number of VAR coefficients without intercept
   const arma::uvec i_ocl= arma::find(i_mat != 0); // indicator for all coefficients except intercept
   const arma::uvec i_i= arma::find(i_mat == 0); // indicator for intercepts
-
+  
   const std::string sigma_type = priorSigma_in["type"];
-
+  
   //////////////////
   // indicators for coefficients without intercept
   const arma::ivec i_vec_small=i_mat(i_ocl);
@@ -48,24 +47,24 @@ List bvar_cpp(const arma::mat& Y,
   const int n_ol = i_ol.size(); // nr. of ownlags
   const int n_cl = i_cl.size(); // nr. of crosslags
   /////////////////
-
-//--------------------Initialization -----------------------//
-
+  
+  //--------------------Initialization -----------------------//
+  
   List startvals_in(clone(Rstartvals_in)); // clone makes copy
-//---- PHI
-
+  //---- PHI
+  
   Rcpp::List phi_startvals = startvals_in["phi"];
   NumericMatrix PHI_in = phi_startvals["PHI"];
   arma::mat PHI(PHI_in.begin(), PHI_in.nrow(), PHI_in.ncol(), false);
   arma::mat PHI_diff = PHI - PHI0; // will hold PHI - PHI0
   std::string priorPHI = priorPHI_in["prior"];
-
+  
   // V_i holds prior variances (without intercepts)
   arma::vec V_i(n);
-
+  
   arma::vec V_i_long(n+M*intercept); //V_i plus intercept prior variances
   V_i_long(i_i) = priorIntercept;
-
+  
   if(priorPHI == "normal"){
     //arma::vec V_i_in = priorPHI_in["V_i"];
     NumericVector V_i_in = priorPHI_in["V_i"];
@@ -73,12 +72,12 @@ List bvar_cpp(const arma::mat& Y,
     //in case of 'normal' V_i is fixed at user specified values
     V_i = armaV_i_in;
   }
-
+  
   //  sub-groups for semi-global-local GL priors and SSVS prior
   const int n_groups = priorPHI_in["n_groups"]; // number of distinct groups
   IntegerVector groups_in = priorPHI_in["groups"];
   arma::ivec groups(groups_in.begin(), groups_in.size(),false);
-
+  
   // parameters shared by GT (i.e. NG & R2D2) and DL priors
   NumericVector lambda_in = phi_startvals["lambda"];
   arma::vec lambda(lambda_in.begin(), lambda_in.length(), false);//(n, fill::value(1/static_cast<double>(n)));
@@ -90,8 +89,7 @@ List bvar_cpp(const arma::mat& Y,
   arma::vec a(a_in.begin(), a_in.length(), false);//priorPHI_in["a"]; // arma makes copy...is that necessary?
   const arma::vec b = priorPHI_in["b"]; // arma makes copy...is that necessary?
   arma::vec c = priorPHI_in["c"]; // arma makes copy...is that necessary?
-  const double GL_tol = priorPHI_in["GL_tol"];
-
+  
   NumericVector a_vec_in = priorPHI_in["a_vec"]; //const
   arma::vec a_vec(a_vec_in.begin(), a_vec_in.size(), false);
   NumericVector a_weight_in = priorPHI_in["a_weight"]; //const
@@ -101,7 +99,7 @@ List bvar_cpp(const arma::mat& Y,
   NumericVector c_vec_in = priorPHI_in["c_vec"];
   arma::vec c_vec(c_vec_in.begin(), c_vec_in.size(), false); // const
   const bool c_rel_a = priorPHI_in["c_rel_a"];
-
+  
   //---- DL prior specific parameters
   const bool DL_hyper = priorPHI_in["DL_hyper"];
   const bool DL_plus = priorPHI_in["DL_plus"];
@@ -109,7 +107,7 @@ List bvar_cpp(const arma::mat& Y,
   if(priorPHI == "DL" ){
     V_i = psi % lambda % lambda;// * zeta(0) * zeta(0);
   }
-
+  
   //----GT on PHI (GT refers to gamma type priors a la normal gamma or r2d2)
   const bool GT_hyper = priorPHI_in["GT_hyper"];
   const double GT_vs = priorPHI_in["GT_vs"];
@@ -120,7 +118,7 @@ List bvar_cpp(const arma::mat& Y,
       V_i %= psi;// /2;
     }
     // else if(GT_priorkernel == "normal"){
-      // V_i = lambda*GT_vs;
+    // V_i = lambda*GT_vs;
     // }
   }
   
@@ -130,7 +128,7 @@ List bvar_cpp(const arma::mat& Y,
       c(g) = tmp(0);
     }
   }
-
+  
   //---- Horseshoe on PHI
   // initialization of global, local and auxiliary scaling parameters
   // NumericVector theta_hs_in = phi_startvals["theta_hs"];
@@ -152,7 +150,7 @@ List bvar_cpp(const arma::mat& Y,
       j++;
     }
   }
-
+  
   //---- SSVS on PHI
   arma::vec tau_0 = priorPHI_in["SSVS_tau0"];
   arma::vec tau_1 = priorPHI_in["SSVS_tau1"];
@@ -161,7 +159,7 @@ List bvar_cpp(const arma::mat& Y,
   bool SSVS_hyper = priorPHI_in["SSVS_hyper"];
   // NumericVector p_i_in = phi_startvals["p_i"];
   // arma::vec p_i(p_i_in.begin(), p_i_in.length(), false);//= priorPHI_in["SSVS_p"];
-
+  
   if(priorPHI == "SSVS"){
     // if(SSVS_hyper){
     //   V_i = tau_1 % tau_1;
@@ -172,7 +170,7 @@ List bvar_cpp(const arma::mat& Y,
   }
   // Rcpp::NumericVector gammas_in = phi_startvals["gammas"];
   // arma::vec gammas(gammas_in.begin(), gammas_in.length(), false);//(n, fill::zeros);
-
+  
   //---- HMP on PHI
   double lambda_1= phi_startvals["lambda_1"];//0.04;
   double lambda_2= phi_startvals["lambda_2"];//0.0016;
@@ -185,19 +183,19 @@ List bvar_cpp(const arma::mat& Y,
     V_i(i_ol) = lambda_1*V_i_prep(i_ol);//_small(i_ol);
     V_i(i_cl) = lambda_2*V_i_prep(i_cl);//_small(i_cl);
   }
-
+  
   //Fill V_i_long with remaining prior variances
   V_i_long(i_ocl) = V_i;
   arma::mat V_prior(V_i_long.begin(), K + intercept, M, false); // pointer, reuses memory, more efficient than reshape!!!
   //arma::mat V_prior = arma::reshape(V_i_long, K + intercept, M);
-
-//-------------- U
+  
+  //-------------- U
   List sigma_startvals = startvals_in["sigma"];
   NumericMatrix U_in = sigma_startvals["U"];
   arma::mat U(U_in.begin(), U_in.nrow(), U_in.ncol(), false);
-
+  
   std::string priorU = priorSigma_in["cholesky_U_prior"];
-
+  
   arma::uvec U_upper_indices(1);
   if(sigma_type == "cholesky"){
     U_upper_indices = trimatu_ind( size(U),  1);
@@ -205,12 +203,12 @@ List bvar_cpp(const arma::mat& Y,
   arma::vec u = U(U_upper_indices);
   const double n_U = u.size();
   arma::vec V_i_U(n_U);
-
+  
   if(priorU == "normal"){
     arma::vec V_i_U_in = priorSigma_in["cholesky_V_i"];
     V_i_U = V_i_U_in;
   }
-
+  
   /// Initialize GL parameters
   NumericVector lambda_U_in = sigma_startvals["lambda_U"];
   arma::vec lambda_U(lambda_U_in.begin(), lambda_U_in.length(), false);//(n_U, fill::value(1/static_cast<double>(n_U)));
@@ -220,14 +218,13 @@ List bvar_cpp(const arma::mat& Y,
   double a_U = sigma_startvals["a_U"];//priorSigma_in["cholesky_a"];
   const double b_U = priorSigma_in["cholesky_b"];
   double c_U = priorSigma_in["cholesky_c"];
-  const double GL_tol_U = priorSigma_in["cholesky_GL_tol"];
   const arma::vec c_vec_U = priorSigma_in["cholesky_c_vec"];
   const bool c_rel_a_U = priorSigma_in["cholesky_c_rel_a"];
   ///
-
+  
   //---- DL prior on U
   bool DL_hyper_U = priorSigma_in["cholesky_DL_hyper"];
-
+  
   const bool DL_plus_U = priorSigma_in["cholesky_DL_plus"];
   const arma::vec a_vec_U = priorSigma_in["cholesky_a_vec"];
   const arma::vec a_weight_U = priorSigma_in["cholesky_a_weight"];
@@ -235,7 +232,7 @@ List bvar_cpp(const arma::mat& Y,
   if(priorU == "DL"){
     V_i_U= psi_U % lambda_U % lambda_U;
   }
-
+  
   //----GT on U (GT refers to gamma type priors a la normal gamma or r2d2)
   const double GT_vs_U = priorSigma_in["cholesky_GT_vs"];
   const bool GT_hyper_U = priorSigma_in["cholesky_GT_hyper"];
@@ -253,7 +250,7 @@ List bvar_cpp(const arma::mat& Y,
     arma::vec tmp = c_vec_U.elem(arma::find(a_vec_U == a_U));
     c_U = tmp(0);
   }
-
+  
   //---- Horseshoe on U
   // initialization of global, local and auxiliary scaling parameters
   // NumericVector theta_hs_U_in = sigma_startvals["theta_hs_U"];
@@ -265,7 +262,7 @@ List bvar_cpp(const arma::mat& Y,
   if(priorU == "HS"){
     V_i_U = lambda_U*xi_U;
   }
-
+  
   //---- SSVS on U
   bool SSVS_hyper_U = priorSigma_in["cholesky_SSVS_hyper"];
   // NumericVector p_i_U_in = sigma_startvals["p_i_U"];
@@ -280,7 +277,7 @@ List bvar_cpp(const arma::mat& Y,
   }
   // NumericVector gammas_U_in = sigma_startvals["gammas_U"];
   // arma::vec gammas_U(gammas_U_in.begin(), gammas_U_in.length(), false);//(n_U, fill::zeros);
-
+  
   //---- HMP on U
   double lambda_3 = sigma_startvals["lambda_3"];//0.001;
   NumericVector s_r_3 = priorSigma_in["cholesky_lambda_3"];
@@ -293,7 +290,7 @@ List bvar_cpp(const arma::mat& Y,
   if(sigma_type == "cholesky" && factors != 0){
     Rcpp::stop("cholesky with factors,...,");
   }
-
+  
   // The objects preceded by //!!!/// are needed as inputs for factorstochvol::update_fsv()
   // initialization of factor loadings, factors, and tau2(shrinkage hyperparameter for factorloadings under ng-prior)
   // List factor_startval = startvals_in["factor_startval"];
@@ -303,11 +300,11 @@ List bvar_cpp(const arma::mat& Y,
   NumericMatrix fac = sigma_startvals["fac"];
   //!!!///
   arma::mat armafac(fac.begin(), fac.nrow(), fac.ncol(), false);
-
+  
   NumericMatrix tau2 = sigma_startvals["tau2"];
   //!!!///
   arma::mat armatau2(tau2.begin(), tau2.nrow(), tau2.ncol(), false);
-
+  
   //----------  prior settings
   // shrinkage hyperparamters for factor loadings
   const List factor_shrinkagepriors = priorSigma_in["factor_shrinkagepriors"];
@@ -317,22 +314,22 @@ List bvar_cpp(const arma::mat& Y,
   const NumericVector cShrink = factor_shrinkagepriors["c"]; // c and d are hyperparameters of global prior
   //!!!///
   const NumericVector dShrink = factor_shrinkagepriors["d"];
-
+  
   //!!!///
   const bool ngprior = priorSigma_in["factor_ngprior"];
   //!!!///
   const bool columnwise = priorSigma_in["factor_columnwise"];
   //!!!//
   arma::vec armalambda2((ngprior && columnwise) ? factors : ngprior ? M : 0 ); // conditional statement: if ngprior && columnwise, then factors, if ngprior (not columnwise), then M, else 0
-
+  
   // underbound of absolute value of factorloadings for better preventing numerical issues
   //!!!///
   const double factor_facloadtol = priorSigma_in["factor_facloadtol"];
-
+  
   //!!!///
   /* Could there be any situation where I need an offset? */
   const double factor_offset = 0; // unify with cholesky_sv ???
-
+  
   // restriction on factor loadings
   IntegerMatrix factor_restriction = priorSigma_in["factor_restrinv"];
   //!!!///
@@ -348,30 +345,30 @@ List bvar_cpp(const arma::mat& Y,
       if (factor_armarestr(i, j) == 0) {
         armafacload(i,j) = 0.;
         armatau2(i,j) = 0.;
-        }
+      }
     }
   }
-
+  
   //-----------------------------SV-settings----------------------------------//
   // vector of length M+factors indicating whether time-varying or constant variance should be estimated
   //!!!///
   NumericVector heteroscedastic = priorSigma_in["sv_heteroscedastic"];
-
+  
   // in case of constant idiosyncratic variance, homoscedastic collects shape and scale parameters of inverse-gamma prior of idi variances
   //!!!///
   NumericMatrix factor_homoskedastic = priorSigma_in["factor_priorhomoskedastic"]; // unify with cholesky_sv ???
   //!!!///
   const int factor_interweaving = priorSigma_in["factor_interweaving"]; // factor
-
+  
   NumericMatrix logvar_in = sigma_startvals["sv_logvar"];
   arma::mat logvar(logvar_in.begin(), logvar_in.nrow(), logvar_in.ncol(), false);
   NumericMatrix sv_para_in = sigma_startvals["sv_para"];
   arma::mat sv_para(sv_para_in.begin(), sv_para_in.nrow(), sv_para_in.ncol(), false);
   NumericVector logvar0_in = sigma_startvals["sv_logvar0"];
   arma::vec logvar0(logvar0_in.begin(), logvar0_in.length(), false);
-
+  
   NumericMatrix priorHomoscedastic = priorSigma_in["cholesky_priorhomoscedastic"];
-
+  
   // Import sv_spec
   NumericVector sv_priormu = priorSigma_in["sv_priormu"];
   NumericVector sv_priorphi= priorSigma_in["sv_priorphi"];
@@ -379,7 +376,7 @@ List bvar_cpp(const arma::mat& Y,
   NumericVector sv_priorh0 = priorSigma_in["sv_priorh0"];
   /// NumericVector sv_offset = sv_spec["sv_offset"];
   NumericVector sv_offset = priorSigma_in["cholesky_sv_offset"];
-
+  
   //!!!///
   std::vector<stochvol::PriorSpec> prior_specs(M+factors);
   {
@@ -409,7 +406,7 @@ List bvar_cpp(const arma::mat& Y,
       }
     }
   }
-
+  
   //expert settings: these are the same settings as the default settings for the
   //idiosyncratic variances from package factorstochvol
   //(https://github.com/gregorkastner/factorstochvol, accessed 2021-11-12)
@@ -437,18 +434,18 @@ List bvar_cpp(const arma::mat& Y,
     -1,  // MHcontrol unused for independence prior for sigma
     stochvol::ExpertSpec_FastSV::ProposalPhi::IMMEDIATE_ACCEPT_REJECT_NORMAL  // immediately reject (mu,phi,sigma) if proposed phi is outside (-1, 1)
   };
-
+  
   // initialize mixing indicators
   //!!!// // mixind is also used by cholesky_sv
   arma::umat mixind(T, (M+factors));
   //initialize d_sqrt
   arma::mat d_sqrt = arma::exp(logvar.cols(0,M-1)/2);
-
-
+  
+  
   //------------------------------------STORAGE-------------------------------//
-
+  
   const int nsave = std::floor(draws/thin);
-
+  
   Rcpp::NumericVector logvar_draws_rcpp((tvp_keep == "all" ? logvar.n_rows : 1) * logvar.n_cols * nsave);
   logvar_draws_rcpp.attr("dim") = Rcpp::IntegerVector::create(tvp_keep == "all" ? logvar.n_rows : 1, logvar.n_cols, nsave);
   arma::cube logvar_draws(logvar_draws_rcpp.begin(), tvp_keep == "all" ? logvar.n_rows : 1, logvar.n_cols, nsave, false);
@@ -461,11 +458,11 @@ List bvar_cpp(const arma::mat& Y,
   Rcpp::NumericVector V_prior_draws_rcpp(V_prior.n_rows * V_prior.n_cols * nsave);
   V_prior_draws_rcpp.attr("dim") = Rcpp::IntegerVector::create(V_prior.n_rows, V_prior.n_cols, nsave);
   arma::cube V_prior_draws(V_prior_draws_rcpp.begin(), V_prior.n_rows, V_prior.n_cols, nsave, false);
-
+  
   //arma::cube U_draws(sigma_type=="cholesky" ? nsave : 0, sigma_type=="cholesky" ? U.n_rows : 0, sigma_type=="cholesky" ? U.n_cols : 0);
   Rcpp::NumericMatrix U_draws_rcpp(sigma_type=="cholesky" ? U_upper_indices.n_elem : 0, sigma_type=="cholesky" ? nsave : 0);
   arma::mat U_draws(U_draws_rcpp.begin(), U_draws_rcpp.nrow(), U_draws_rcpp.ncol(), false);
-
+  
   Rcpp::NumericVector facload_draws_rcpp((sigma_type=="factor" ? facload.nrow() : 0) *
     (sigma_type=="factor" ? facload.ncol() : 0) * (sigma_type=="factor" ? nsave : 0));
   facload_draws_rcpp.attr("dim") = Rcpp::IntegerVector::create(sigma_type=="factor" ? facload.nrow() : 0, sigma_type=="factor" ? facload.ncol() : 0, sigma_type=="factor" ? nsave : 0);
@@ -476,9 +473,9 @@ List bvar_cpp(const arma::mat& Y,
   
   int tvp_keep_start = 0;
   if(tvp_keep == "last") tvp_keep_start += (logvar.n_rows - 1);
-
+  
   // maybe add storage for tau2 and lambda2, shrinkage hyperparameters of ngpior for factorloadings
-
+  
   int phi_hyperparameter_size(0);
   if(priorPHI == "DL" ){
     phi_hyperparameter_size += 2*n; // a + xi + n(lambda + psi)
@@ -557,6 +554,8 @@ List bvar_cpp(const arma::mat& Y,
   for(int i=0; i<n_U; ++i){
     ind_U(i)=i;
   }
+  
+  
   //-----------------------------------SAMPLER--------------------------------//
   const int tot = draws + burnin;
   // number of digits needed for printing progress
@@ -580,18 +579,18 @@ List bvar_cpp(const arma::mat& Y,
                 lambda_3, varpi_U, armafacload, 
                 armafac, armatau2, armalambda2, logvar, logvar0, sv_para, mixind,
                 rep, burnin, Y, X, K, T, M, n_ol, n_cl, i_vec_small, i_ocl,
-                i_ol, i_cl, groups, PHI0, priorPHI, PHI_tol, GL_tol, DL_hyper, 
+                i_ol, i_cl, groups, PHI0, priorPHI, DL_hyper, 
                 DL_plus, GT_hyper, b, a_vec, a_weight, norm_consts, c_vec, 
                 c_rel_a, GT_priorkernel, GT_vs, tau_0, tau_1, SSVS_s_a, SSVS_s_b, 
                 SSVS_hyper, s_r_1, s_r_2, V_i_prep, huge, sigma_type, U_upper_indices,
-                ind_U, priorU,  L_tol, DL_hyper_U, DL_plus_U, GT_hyper_U,
+                ind_U, priorU, DL_hyper_U, DL_plus_U, GT_hyper_U,
                 a_vec_U, a_weight_U, norm_consts_U, c_vec_U, c_rel_a_U, GT_priorkernel_U, 
-                GT_vs_U, GL_tol_U, tau_0_U, tau_1_U, SSVS_s_a_U, SSVS_s_b_U, SSVS_hyper_U, 
+                GT_vs_U, tau_0_U, tau_1_U, SSVS_s_a_U, SSVS_s_b_U, SSVS_hyper_U, 
                 s_r_3, aShrink, cShrink, dShrink, factor_facloadtol, factor_armarestr, 
                 armafacloadtunrestrictedelements, nonzerospercol, nonzerosperrow,
                 sv_priorh0, ngprior, columnwise, factor_homoskedastic, factor_offset,
                 heteroscedastic, factor_interweaving, expert_sv, expert_fac,
-                prior_specs, B011inv, priorHomoscedastic, sv_offset);
+                prior_specs, B011inv, priorHomoscedastic, sv_offset, abs_floor);
 
     //-------Store draws after burnin
     if(rep >= burnin && ( (rep+1-burnin) % thin == 0 )){
