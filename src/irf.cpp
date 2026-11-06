@@ -6,6 +6,9 @@
 #include "lpSolve.h"
 #include <optional>
 
+using namespace Rcpp;
+using namespace arma;
+
 inline cube Sigma_chol_t_draws (
 	const uword n_variables,
 	const uword n_posterior_draws,
