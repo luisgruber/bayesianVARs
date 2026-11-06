@@ -203,7 +203,7 @@ Rcpp::NumericVector predh(const arma::mat& logvar_T, const arma::ivec& ahead,
       for(int j=0; j<each; ++j){
         arma::mat norm_rand(arma::size(logvar_T));
         norm_rand.imbue(R::norm_rand);
-        h_pred(span(counter), span(), span(j*posterior_draws, (j+1)*posterior_draws-1)) = mu_pred + norm_rand%arma::sqrt(sigma2_pred);
+        h_pred(arma::span(counter), arma::span(), arma::span(j*posterior_draws, (j+1)*posterior_draws-1)) = mu_pred + norm_rand%arma::sqrt(sigma2_pred);
       }
       counter++;
     }
@@ -388,10 +388,10 @@ Rcpp::List out_of_sample(const int& each,
   }
 
   Rcpp::List out = Rcpp::List::create(
-    Named("LPL_draws") = LPL_draws_rcpp,
-    Named("PL_univariate_draws") = PL_univariate_draws_rcpp,
-    Named("LPL_sub_draws") = LPL_sub_draws_rcpp,
-    Named("predictions") = predictions_rcpp
+    Rcpp::Named("LPL_draws") = LPL_draws_rcpp,
+    Rcpp::Named("PL_univariate_draws") = PL_univariate_draws_rcpp,
+    Rcpp::Named("LPL_sub_draws") = LPL_sub_draws_rcpp,
+    Rcpp::Named("predictions") = predictions_rcpp
   );
   return out;
 }
@@ -480,4 +480,17 @@ Rcpp::NumericVector vcov_cpp(const bool& factor, const arma::cube& facload,
     Sigma_draws.slice(i) = Sigma_mat;
   }
   return(Sigma_draws_rcpp);
+}
+
+void abs_floor(double& x, const double floor) {
+  if(std::abs(x) < floor) {
+    x = std::copysign(floor, x);
+  }
+}
+
+void abs_floor2(double& x, const double y, const double floor) {
+  const double value = x-y;
+  if(std::abs(value) < floor) {
+    x = std::copysign(floor, value) + y;
+  }
 }
