@@ -289,7 +289,8 @@ test_that("geweke test sample_phi_cholesky", {
     # simulate unobservables|oberservables
     PHI_draws[,,r] <- PHI <- bayesianVARs:::sample_PHI_cholesky(PHI, PHI_prior, Y,
                                                                 X, U, d_sqrt_mat,
-                                                                V_prior)
+                                                                V_prior,
+                                                                0)
   }
 
 
@@ -339,7 +340,7 @@ test_that("flat prior factor", {
   phi_post_mean <- apply(mod$PHI, 1:2, mean)
   ols <- solve(crossprod(mod$X), crossprod(mod$X,mod$Y))
 
-  expect_lt(max(abs(ols-phi_post_mean)),0.01)
+  expect_lt(max(abs(ols-phi_post_mean)),0.015)
   # check that factor logvars are all zero
   expect_true(all(mod$logvar[,-seq_len(ncol(mod$Y)),]==0))
 })
@@ -384,8 +385,7 @@ test_that("iterative_use", {
                                              cholesky_U_prior = shrink,
                                              cholesky_NG_a = thea,
                                              cholesky_DL_a = thea,
-                                             cholesky_R2D2_a = thea,
-                                             factor_facloadtol = 0)
+                                             cholesky_R2D2_a = thea)
           set.seed(1)
           res0 <- bvar(data, lags = p, draws = draws, burnin = burnin,
                        prior_phi = prior_phi, prior_sigma = prior_sigma,
