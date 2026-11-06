@@ -1,5 +1,6 @@
-#include <RcppArmadillo.h>
+#include <RcppArmadilloExtensions/sample.h>
 #include "univariate_regression.h"
+#include "utilities_cpp.h"
 
 using namespace Rcpp;
 using namespace arma;
@@ -27,7 +28,7 @@ void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
                        const arma::mat& Y, const arma::mat& X,
                        const arma::mat& logvaridi, const arma::mat& V_prior,
                        const arma::mat& facload, const arma::mat& fac,
-                       const bool& huge){
+                       const bool& huge, const double floor){
 
   const int M = Y.n_cols;
   const int r = fac.n_rows;
@@ -41,20 +42,43 @@ void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
     arma::mat X_norm = X.each_col() % normalizer.col(j);
     arma::vec y_norm = Y_hat.col(j) % normalizer.col(j);
     arma::vec PHI_j = PHI.unsafe_col(j);
-    try{
-      PHI_j = huge ? sample_coef_blm_known1var_large_p_small_n(y_norm, X_norm,
-                                                               PHI_prior.col(j),
-                                                               1./V_prior.col(j)) :
-                     sample_coef_blm_known1var(X_norm.t()*y_norm, X_norm.t()*X_norm,
-                                               PHI_prior.col(j),
-                                               1./V_prior.col(j));
-    } catch(const std::exception& e) {
-      Rcpp::stop("sample_coef_blm_known1var() failed in %ith eqation: %s", j+1, e.what());
-    } catch (...) {
-      Rprintf("\nsample_coef_blm_known1var() failed in %ith eqation. Rethrowing exception:", j+1);
-      throw;
-    }
+    arma::vec PHI_prior_j = PHI_prior.unsafe_col(j);
+    arma::vec V_prior_j = V_prior.unsafe_col(j);
 
+      if(huge) {
+        try {
+          PHI_j = sample_coef_blm_known1var_large_p_small_n(y_norm, X_norm,
+                                                            PHI_prior_j,
+                                                            V_prior_j);  
+        } catch(const std::exception& e) {
+          Rcpp::stop("sample_coef_blm_known1var_large_p_small_n() failed in %ith eqation: %s", j+1, e.what());
+        } catch (...) {
+          Rprintf("\nsample_coef_blm_known1var_large_p_small_n() failed in %ith eqation. Rethrowing exception:", j+1);
+          throw;
+        }
+      } else {
+        try {
+          PHI_j = sample_coef_blm_known1var(X_norm.t()*y_norm, X_norm.t()*X_norm,
+                                            PHI_prior_j,
+                                            V_prior_j);
+        } catch (...) {
+          try {
+            PHI_j = sample_coef_blm_known1var_qr(y_norm, X_norm,
+                                                 PHI_prior_j,
+                                                 V_prior_j);  
+          } catch(const std::exception& e) {
+            Rcpp::stop("sample_coef_blm_known1var_qr() failed in %ith eqation: %s", j+1, e.what());
+          } catch (...) {
+            Rprintf("\nsample_coef_blm_known1var_qr() failed in %ith eqation. Rethrowing exception:", j+1);
+            throw;
+          }
+        }
+      }
+    if(floor>0) {
+      for (arma::uword i=0; i<PHI_j.n_elem; ++i) {
+        abs_floor2(PHI_j(i), PHI_prior_j(i), floor);
+      }
+    }
   }
 
 }
@@ -63,7 +87,7 @@ void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
 // algorithm as in Carrier, Chan, Clark & Marcellino (2021)
 void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
                 const arma::mat& X, const arma::mat& U, const arma::mat& d_sqrt,
-                const arma::mat& V_prior, const int M) {
+                const arma::mat& V_prior, const int M, const double floor) {
 
   for(int j = 0; j < M; j++){
 
@@ -78,34 +102,50 @@ void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
     arma::mat X_new = X_new_tmp.each_col() / normalizer;
 
     arma::vec PHI_j = PHI.unsafe_col(j);
+    arma::vec PHI_prior_j = PHI_prior.unsafe_col(j);
+    arma::vec V_prior_j = V_prior.unsafe_col(j);
     // generate posterior draw
-    try{
+    try {
       PHI_j = sample_coef_blm_known1var(X_new.t()*Y_new, X_new.t()*X_new,
-                                PHI_prior.col(j),
-                                1./V_prior.col(j));
+                                        PHI_prior_j,
+                                        V_prior_j);
       
-    } catch(const std::exception& e) {
-      Rcpp::stop("sample_coef_blm_known1var() failed in %ith eqation:\n%s", j+1, e.what());
     } catch (...) {
-      Rprintf("\nsample_coef_blm_known1var() failed in %ith eqation. Rethrowing exception:", j+1);
-      throw;
+      try {
+        PHI_j = sample_coef_blm_known1var_qr(Y_new, X_new,
+                                             PHI_prior_j,
+                                             V_prior_j);  
+      } catch(const std::exception& e) {
+        Rcpp::stop("sample_coef_blm_known1var_qr() failed in %ith eqation:\n%s", j+1, e.what());
+      } catch (...) {
+        Rprintf("\nsample_coef_blm_known1var_qr() failed in %ith eqation. Rethrowing exception:", j+1);
+        throw;
+      }
+    }  
+      
+    if(floor>0) {
+      for (arma::uword i=0; i<PHI_j.n_elem; ++i) {
+        abs_floor2(PHI_j(i), PHI_prior_j(i), floor);
+      }
     }
   }
 }
 
 // [[Rcpp::export]]
-arma::mat sample_PHI_cholesky(const arma::mat PHI, const arma::mat& PHI_prior,
+arma::mat sample_PHI_cholesky(const arma::mat& PHI, const arma::mat& PHI_prior,
                               const arma::mat& Y, const arma::mat& X,
                               const arma::mat& U, const arma::mat& d_sqrt,
-                              const arma::mat& V_prior){
+                              const arma::mat& V_prior,
+                              const double floor){
   const int M = Y.n_cols;
   arma::mat PHI_ret = PHI;
-  sample_PHI(PHI_ret, PHI_prior, Y, X, U, d_sqrt, V_prior, M);
+  sample_PHI(PHI_ret, PHI_prior, Y, X, U, d_sqrt, V_prior, M, floor);
   return(PHI_ret);
 }
 
 
-void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const arma::mat& d_sqrt) {
+void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const arma::mat& d_sqrt,
+              const double floor) {
 
   int M = Ytilde.n_cols;
 
@@ -115,14 +155,25 @@ void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const
 
     // create matrix with covariables (residuals of preceeding equations)
     arma::mat Z = Ytilde.cols(0, i-1);
-    Z = -1 * (Z.each_col() / d_sqrt.col(i));
+    Z = -1.0 * (Z.each_col() / d_sqrt.col(i));
     arma::vec prior_mean(i, arma::fill::zeros); // proxy needed for univariate_regression_update
     // create 'dependent' variable
     arma::vec c = Ytilde.col(i) / d_sqrt.col(i);
     // update free off-diagonal elements in column i
     arma::vec U_j = U.unsafe_col(i);
     try{
-      arma::vec tmp = sample_coef_blm_known1var(Z.t()*c, Z.t()*Z, prior_mean, 1./V_i.subvec(ind, ind+i-1));
+      arma::vec tmp;
+      try {
+        tmp = sample_coef_blm_known1var(Z.t()*c, Z.t()*Z, prior_mean, V_i.subvec(ind, ind+i-1));
+        // V_i probably not passed by reference in that case, because subvec is a subview
+      } catch (...) {
+        tmp = sample_coef_blm_known1var_qr(c, Z, prior_mean, V_i.subvec(ind, ind+i-1));
+      }
+      if(floor>0) {
+        for(arma::uword k=0; k<tmp.n_elem; ++k){
+          abs_floor(tmp(k), floor);
+        }  
+      }
       U_j.subvec(0,i-1) = tmp;
     } catch (const std::exception& e) {
       Rcpp::stop("sample_coef_blm_known1var() failed in equation %i: %s", i+1, e.what());
@@ -137,38 +188,53 @@ void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const
 
 }
 
+void sample_a_c(double& a, double& c, const arma::vec& a_vec, 
+                const arma::vec& a_weight, const arma::vec& norm_consts,
+                const arma::vec& c_vec, const bool c_rel_a, const double xi,
+                const double b, const arma::vec& lambda, const int n){
+  
+  arma::vec logprobs = log(a_weight) + n*(a_vec*log(xi) - norm_consts) +
+    (a_vec-1.0)*arma::accu(log(lambda)) ;
+  if(!c_rel_a){
+    logprobs += (-1.0)*2.0*xi*c/a_vec- b*log(a_vec);
+  }
+  
+  arma::vec w = exp(logprobs - logprobs.max());
+  arma::vec weights = w/sum(w);
+  const arma::uword gridlength = a_vec.n_elem;
+  const arma::uvec idx = arma::linspace<arma::uvec>(0, gridlength-1, gridlength);
+  //arma::vec which = Rcpp::RcppArmadillo::sample(a_vec, 1, true, weights); // if(c_rel_a) this would require calling arma::find later
+  arma::uvec which = Rcpp::RcppArmadillo::sample(idx, 1, true, weights);
+  a = a_vec(which(0));
+  if(c_rel_a){
+    c = c_vec(which(0));
+  }
+}
+
 void sample_V_i_GT(arma::vec& V_i, const arma::vec& coefs, arma::vec& psi,
                    arma::vec& lambda, double& xi, double& a, const double b,
-                   double& c, const arma::uvec& ind, const double tol,
+                   double& c, const arma::uvec& ind,
                    const std::string priorkernel,
                    const double vs, const arma::vec& norm_consts,
                    const arma::vec& a_vec, const arma::vec& a_weight,
                    const arma::vec& c_vec, const bool hyper, const bool c_rel_a){
 
   const int n = ind.size();
-  const int gridlength = a_vec.size();
-  arma::vec logprobs(gridlength);
   const arma::vec coefs_squared = arma::square(coefs);
   for(arma::uvec::const_iterator it = ind.begin(); it != ind.end(); ++it){
     // For R2d2exp vs must be 1/2, for NG 1
     double lambdascale = vs;
     // sample auxiliary scaling parameters
     if(priorkernel == "exponential"){
-      psi(*it) = 1./do_rgig(-0.5, 1, coefs_squared(*it)/(lambda(*it)*vs));
+      psi(*it) = 1./do_rgig(-0.5, 1.0, coefs_squared(*it)/(lambda(*it)*vs));
       lambdascale *= psi(*it);
     }
     // sample local scales
-    lambda(*it) = do_rgig(a - 0.5, coefs_squared(*it)/lambdascale, 2*xi); 
+    lambda(*it) = do_rgig(a - 0.5, coefs_squared(*it)/lambdascale, 2.0*xi); 
   }
   double zeta = arma::accu(lambda(ind));
-  if(tol>0){
-    arma::vec theta = lambda(ind)/zeta;
-    arma::uvec theta_ind = find( theta < tol);
-    theta(theta_ind) = arma::vec(theta_ind.size(), fill::value(tol));
-    lambda(ind) = theta * zeta;
-  }
   //sample global scale
-  xi = R::rgamma(b+n*a, 1./(2*c/a + zeta));
+  xi = R::rgamma(b+n*a, 1./(2.0*c/a + zeta));
 
   V_i(ind) = lambda(ind)*vs;
   if(priorkernel == "exponential"){
@@ -176,22 +242,8 @@ void sample_V_i_GT(arma::vec& V_i, const arma::vec& coefs, arma::vec& psi,
   }
 
   if(hyper){
-
-    logprobs = log(a_weight) +  n*(a_vec*log(xi) - norm_consts) +
-      (a_vec-1)*arma::accu(log(lambda(ind))) ;
-    if(!c_rel_a){//if c is a fixed proportion or multiple of a, the following terms cancel:
-      logprobs += (-1)*2*xi*c/a_vec- b*log(a_vec);
-    }
-    ///
-    arma::vec w = exp(logprobs - logprobs.max());
-    arma::vec weights = w/sum(w);
-    arma::ivec iv(gridlength);
-    R::rmultinom(1, weights.begin(), gridlength, iv.begin());
-    arma::uvec i = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
-    a = a_vec(i(0));
-    if(c_rel_a){
-      c = c_vec(i(0));
-    }
+    sample_a_c(a, c, a_vec, a_weight, norm_consts, c_vec, c_rel_a, xi, b, lambda(ind),
+               n);
   }
 }
 
@@ -201,11 +253,11 @@ void sample_V_i_HS(arma::vec& V_i, const arma::vec& coefs, arma::vec& lambda,
   int n = ind.size();
   for(arma::uvec::const_iterator it = ind.begin(); it != ind.end(); ++it){
     // R::rgamma uses scale!!!!
-    lambda(*it) = 1./(R::rgamma(1, 1./( 1/psi(*it) + (coefs(*it)*coefs(*it))/(2*xi) )));
-    psi(*it) = 1./(R::rgamma(1, 1./(1 + 1./lambda(*it)) ));
+    lambda(*it) = 1./(R::rgamma(1.0, 1./( 1.0/psi(*it) + (coefs(*it)*coefs(*it))/(2.0*xi) )));
+    psi(*it) = 1./(R::rgamma(1.0, 1./(1.0 + 1./lambda(*it)) ));
   }
-  xi = 1./(R::rgamma((n+1)/2., 1./(1./varpi + 0.5*arma::accu(square(coefs(ind))/lambda(ind))) ));
-  varpi = 1./(R::rgamma(1, 1./(1 + 1/xi) ));
+  xi = 1./(R::rgamma((n+1.0)/2., 1./(1./varpi + 0.5*arma::accu(square(coefs(ind))/lambda(ind))) ));
+  varpi = 1./(R::rgamma(1.0, 1./(1.0 + 1.0/xi) ));
   V_i(ind) = lambda(ind)*xi;
 
 }
@@ -215,51 +267,29 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, double& a ,
                    const arma::vec& a_vec, const arma::vec& a_weight,
                    arma::vec& psi, arma::vec& lambda, double& xi, const arma::uvec& ind,
                    const bool hyper,const arma::vec& norm_consts,
-                   const double tol, const bool DL_plus,
+                   const bool DL_plus,
                    const arma::vec& c_vec, const bool c_rel_a){ //, bool hyper
 
   const int n = ind.size();
   arma::vec coefs_abs = arma::abs(coefs);
-  int gridlength = a_vec.size();
-  arma::vec logprobs(gridlength);
 
   for(arma::uvec::const_iterator it = ind.begin(); it != ind.end(); ++it){
     //important: joint update of p(lambda,psi|...): first lambda, than psi!!! (is wrong in Bhattacharya et al 2015!)
-    lambda(*it) = do_rgig(a-1., 2*coefs_abs(*it), 2*xi);
+    lambda(*it) = do_rgig(a-1., 2.0*coefs_abs(*it), 2.0*xi);
     psi(*it) =  do_rgig(0.5, (coefs(*it)*coefs(*it)) /
-      (lambda(*it)*lambda(*it)), 1 );
+      (lambda(*it)*lambda(*it)), 1.0 );
   }
-  double zeta = arma::accu(lambda(ind));
+  
   if(DL_plus){
-    xi = R::rgamma(b+n*a, 1./(2*c/a + zeta));
+    const double zeta = arma::accu(lambda(ind));
+    xi = R::rgamma(b+n*a, 1./(2.0*c/a + zeta));
   }
-
-  if(tol>0){
-    arma::vec theta = lambda(ind) / zeta;
-    uvec th_f = find(theta<tol);
-    theta(th_f) = vec(th_f.size(), fill::value(tol));
-    lambda(ind) = theta * zeta;
-    }
 
   V_i(ind) = psi(ind) % square(lambda(ind));
 
   if(hyper){
-
-    logprobs = log(a_weight) + n*(a_vec*log(xi) - norm_consts) +
-      (a_vec-1)*arma::accu(log(lambda(ind))) ;
-    if(!c_rel_a){
-      logprobs += (-1)*2*xi*c/a_vec- b*log(a_vec);
-    }
-
-    arma::vec w = exp(logprobs - logprobs.max());
-    arma::vec weights = w/sum(w);
-    arma::ivec iv(gridlength);
-    R::rmultinom(1, weights.begin(), gridlength, iv.begin());
-    arma::uvec i = arma::find(iv == 1,1); // reports only the first value that meets the condition (by construction there is only one 1)
-    a = a_vec(i(0));
-    if(c_rel_a){
-      c = c_vec(i(0));
-    }
+    sample_a_c(a, c, a_vec, a_weight, norm_consts, c_vec, c_rel_a, xi, b, lambda(ind),
+               n);
   }
 
 }
@@ -270,14 +300,7 @@ void sample_V_i_SSVS_beta(arma::vec& V_i, arma::vec& lambda, double& a,
                      const bool hyper, const arma::uvec& ind){
 
   int n = ind.size();
-  // Compute conditional posterior inclusion probability
-  // taking logs is much stabler!!!
-  // arma::vec u_i1 = -log(tau_1(ind)) - 0.5 * square((coeffs(ind))/tau_1(ind)) + std::log(a);
-  // arma::vec u_i2 = -log(tau_0(ind)) - 0.5 * square((coeffs(ind))/tau_0(ind)) + std::log(1.0 - a);
-  // arma::vec logdif = u_i2 - u_i1;
-  // arma::vec gst = 1.0/(1.0 + exp(logdif)); // == exp(u_i1)/(exp(u_i2) + exp(u_i1))
 
-  //double j = 0;
   for(arma::uvec::const_iterator it = ind.begin(); it != ind.end(); ++it){
     // taking squares
     const double phi2_i = coeffs(*it)*coeffs(*it);
@@ -286,7 +309,7 @@ void sample_V_i_SSVS_beta(arma::vec& V_i, arma::vec& lambda, double& a,
     // Compute conditional posterior inclusion probability
     // taking logs is much stabler!!!
     const double u_i1 = -std::log(tau_1(*it)) - 0.5 * phi2_i/tau2_1_i + std::log(a);
-    const double u_i2 = -log(tau_0(*it)) - 0.5 * phi2_i/tau2_0_i + std::log(1.0 - a);
+    const double u_i2 = -std::log(tau_0(*it)) - 0.5 * phi2_i/tau2_0_i + std::log(1.0 - a);
     const double logdif = u_i2 - u_i1;
     const double gst = 1.0/(1.0 + exp(logdif)); // == exp(u_i1)/(exp(u_i2) + exp(u_i1))
     // Draw lambda
@@ -303,8 +326,6 @@ void sample_V_i_SSVS_beta(arma::vec& V_i, arma::vec& lambda, double& a,
   if(hyper){
     int incl = accu(lambda(ind));
     a = R::rbeta(s_a + incl, s_b + n - incl);
-    //Rcout << "The value of n : " << n << "\n";
-    // a(ind).fill(p);
   }
 }
 
@@ -327,7 +348,7 @@ void sample_V_i_U_HMP(double& lambda_3, arma::vec& V_i_U, const double& s1,
                     const double& r1, const arma::vec& u){
 
   int n = u.size();
-  lambda_3 = do_rgig(s1 - 0.5*n, sum(square(u)), 2*r1 );
+  lambda_3 = do_rgig(s1 - 0.5*n, sum(square(u)), 2.0*r1 );
   V_i_U.fill(lambda_3);
 
 }

@@ -3,28 +3,25 @@
 
 #include <RcppArmadillo.h>
 
-using namespace Rcpp;
-using namespace arma;
-
 void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
                        const arma::mat& Y, const arma::mat& X,
                        const arma::mat& logvaridi, const arma::mat& V_prior,
                        const arma::mat& facload, const arma::mat& fac,
-                       const bool& huge);
+                       const bool& huge, const double floor);
 
 void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
                 const arma::mat& X, const arma::mat& U, const arma::mat& d_sqrt,
-                const arma::mat& V_prior, const int M);
+                const arma::mat& V_prior, const int M, const double floor);
 
 void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i,
-              const arma::mat& d_sqrt);
+              const arma::mat& d_sqrt, const double floor);
 
 void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, double& a ,
                    const double b, double& c,
                    const arma::vec& a_vec, const arma::vec& a_weight,
                    arma::vec& psi, arma::vec& lambda, double& xi, const arma::uvec& ind,
                    const bool hyper,const arma::vec& norm_consts,
-                   const double tol, const bool DL_plus,
+                   const bool DL_plus,
                    const arma::vec& c_vec, const bool c_rel_a);
 
 double do_rgig(double lambda, double chi, double psi);
@@ -34,7 +31,7 @@ void sample_V_i_HS(arma::vec& V_i, const arma::vec& coefs, arma::vec& lambda,
 
 void sample_V_i_GT(arma::vec& V_i, const arma::vec& coefs, arma::vec& psi,
                    arma::vec& lambda, double& xi, double& a, const double b,
-                   double& c, const arma::uvec& ind, const double tol,
+                   double& c, const arma::uvec& ind,
                    const std::string priorkernel,
                    const double vs, const arma::vec& norm_consts,
                    const arma::vec& a_vec, const arma::vec& a_weight,
