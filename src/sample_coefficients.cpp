@@ -44,36 +44,16 @@ void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
     arma::vec PHI_j = PHI.unsafe_col(j);
     arma::vec PHI_prior_j = PHI_prior.unsafe_col(j);
     arma::vec V_prior_j = V_prior.unsafe_col(j);
-
-      if(huge) {
-        try {
-          PHI_j = sample_coef_blm_known1var_large_p_small_n(y_norm, X_norm,
-                                                            PHI_prior_j,
-                                                            V_prior_j);  
-        } catch(const std::exception& e) {
-          Rcpp::stop("sample_coef_blm_known1var_large_p_small_n() failed in %ith eqation: %s", j+1, e.what());
-        } catch (...) {
-          Rprintf("\nsample_coef_blm_known1var_large_p_small_n() failed in %ith eqation. Rethrowing exception:", j+1);
-          throw;
-        }
-      } else {
-        try {
-          PHI_j = sample_coef_blm_known1var(X_norm.t()*y_norm, X_norm.t()*X_norm,
-                                            PHI_prior_j,
-                                            V_prior_j);
-        } catch (...) {
-          try {
-            PHI_j = sample_coef_blm_known1var_qr(y_norm, X_norm,
-                                                 PHI_prior_j,
-                                                 V_prior_j);  
-          } catch(const std::exception& e) {
-            Rcpp::stop("sample_coef_blm_known1var_qr() failed in %ith eqation: %s", j+1, e.what());
-          } catch (...) {
-            Rprintf("\nsample_coef_blm_known1var_qr() failed in %ith eqation. Rethrowing exception:", j+1);
-            throw;
-          }
-        }
-      }
+    
+    try {
+      PHI_j = sample_coef_blm_known1var(y_norm, X_norm, PHI_prior_j, V_prior_j,
+                                        huge);
+    } catch(const std::exception& e) {
+      Rcpp::stop("sample_coef_blm_known1var failed in %ith eqation: %s", j+1, e.what());
+    } catch (...) {
+      Rprintf("\nsample_coef_blm_known1var failed in %ith eqation. Rethrowing exception:", j+1);
+      throw;
+    }
     if(floor>0) {
       for (arma::uword i=0; i<PHI_j.n_elem; ++i) {
         abs_floor2(PHI_j(i), PHI_prior_j(i), floor);
@@ -104,24 +84,16 @@ void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
     arma::vec PHI_j = PHI.unsafe_col(j);
     arma::vec PHI_prior_j = PHI_prior.unsafe_col(j);
     arma::vec V_prior_j = V_prior.unsafe_col(j);
-    // generate posterior draw
+    
     try {
-      PHI_j = sample_coef_blm_known1var(X_new.t()*Y_new, X_new.t()*X_new,
-                                        PHI_prior_j,
-                                        V_prior_j);
-      
+      PHI_j = sample_coef_blm_known1var(Y_new, X_new, PHI_prior_j, V_prior_j,
+                                        false);
+    } catch(const std::exception& e) {
+      Rcpp::stop("sample_coef_blm_known1var failed in %ith eqation: %s", j+1, e.what());
     } catch (...) {
-      try {
-        PHI_j = sample_coef_blm_known1var_qr(Y_new, X_new,
-                                             PHI_prior_j,
-                                             V_prior_j);  
-      } catch(const std::exception& e) {
-        Rcpp::stop("sample_coef_blm_known1var_qr() failed in %ith eqation:\n%s", j+1, e.what());
-      } catch (...) {
-        Rprintf("\nsample_coef_blm_known1var_qr() failed in %ith eqation. Rethrowing exception:", j+1);
-        throw;
-      }
-    }  
+      Rprintf("\nsample_coef_blm_known1var failed in %ith eqation. Rethrowing exception:", j+1);
+      throw;
+    }
       
     if(floor>0) {
       for (arma::uword i=0; i<PHI_j.n_elem; ++i) {
@@ -150,7 +122,6 @@ void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const
   int M = Ytilde.n_cols;
 
   int ind = 0;
-  // arma::vec prior_mean(1); // proxy needed for univariate_regression_update
   for(int i = 1; i < M; i++){
 
     // create matrix with covariables (residuals of preceeding equations)
@@ -161,14 +132,10 @@ void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const
     arma::vec c = Ytilde.col(i) / d_sqrt.col(i);
     // update free off-diagonal elements in column i
     arma::vec U_j = U.unsafe_col(i);
-    try{
-      arma::vec tmp;
-      try {
-        tmp = sample_coef_blm_known1var(Z.t()*c, Z.t()*Z, prior_mean, V_i.subvec(ind, ind+i-1));
-        // V_i probably not passed by reference in that case, because subvec is a subview
-      } catch (...) {
-        tmp = sample_coef_blm_known1var_qr(c, Z, prior_mean, V_i.subvec(ind, ind+i-1));
-      }
+    try {
+      arma::vec tmp = sample_coef_blm_known1var(c, Z, prior_mean, V_i.subvec(ind, ind+i-1), false);
+      // V_i.subvec not passed by reference in that case, because subvec is a subview
+      // @ huge=false: could true be an option if M>>T?
       if(floor>0) {
         for(arma::uword k=0; k<tmp.n_elem; ++k){
           abs_floor(tmp(k), floor);
