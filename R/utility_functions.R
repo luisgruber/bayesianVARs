@@ -1591,7 +1591,9 @@ new_baysesianVARs_prior_phi_cpp <- function(){
               SSVS_s_b = numeric(1L),
               V_i_prep = matrix(0, 1L, 1L),
               lambda_1 = numeric(1L),
-              lambda_2 = numeric(1L)
+              lambda_2 = numeric(1L),
+              stable = logical(1L),
+              stable_lim = numeric(1L)
   )
   class(out) <- "bayesianVARs_prior_phi_cpp"
   out
@@ -1763,6 +1765,20 @@ validate_baysesianVARs_prior_phi_cpp <- function(x){ # nocov start
       stop("x[['lambda_2']] must be a numeric vector")
     }
   }
+  if(!exists("stable", x)) {
+    stop("x must be subsettable with x[['stable']]")
+  } else {
+    if(!is.logical(x[["stable"]])){
+      stop("x[['stable']] must be a single logical")
+    }
+  }
+  if(!exists("stable_lim", x)) {
+    stop("x must be subsettable with x[['stable_lim']]")
+  } else {
+    if(!is.numeric(x[["stable_lim"]])){
+      stop("x[['stable_lim']] must be a single numeric")
+    }
+  }
   x
 } # nocov end
 
@@ -1854,6 +1870,10 @@ validate_baysesianVARs_prior_phi <- function(x) {
 #'subgroups of the coefficients, can be achieved through the argument
 #'`global_grouping`.
 #'
+#'Regarding `stable=TRUE`: A VAR(p) model is considered as stable only if all
+#'eigenvalues of the companion form matrix lie inside the unit circle, i.e. have
+#'modulus less than 1, see Lütkepohl (2005).
+#'
 #'@param data Optional. Data matrix (can be a time series object). Each of
 #'  \eqn{M} columns is assumed to contain a single time-series of length
 #'  \eqn{T}.
@@ -1870,6 +1890,10 @@ validate_baysesianVARs_prior_phi <- function(x) {
 #'  \code{priormean} is a matrix of dimension \code{c(lags*M,M)}, then each of
 #'  the \eqn{M} columns is assumed to contain \code{lags*M} prior means for the
 #'  VAR coefficients of the respective VAR equations.
+#'@param stable logical indicating whether the prior is restricted to the
+#'  'stable' parameter space, see 'Details'. If `stable=TRUE`, the prior assigns
+#'  zero support to parameter values that fail the stability criterion, and
+#'  corresponding draws are rejected.
 #'@param DL_a (Single) positive real number. The value is interpreted as the
 #'  concentration parameter for the local scales. Smaller values enforce heavier
 #'  shrinkage. If the argument \code{global_grouping} specifies e.g. \code{k}
@@ -1916,8 +1940,8 @@ validate_baysesianVARs_prior_phi <- function(x) {
 #'  determine the scale parameter in each group. Expert option would be to set
 #'  the scale parameter proportional to \code{NG_a}. E.g. in the case where a
 #'  discrete hyperprior for \code{NG_a} is chosen, a desired proportion of let's
-#'  say \code{0.2} is achieved by setting \code{NG_c="0.2*a"} (character input!).
-#'  \code{NG_c} has only to be specified if \code{prior="NG"}.
+#'  say \code{0.2} is achieved by setting \code{NG_c="0.2*a"} (character
+#'  input!). \code{NG_c} has only to be specified if \code{prior="NG"}.
 #'@param SSVS_c0 single positive number indicating the (unscaled) standard
 #'  deviation of the spike component. \code{SSVS_c0} has only to be specified if
 #'  \code{prior="SSVS"}. It should be that \eqn{SSVS_{c0} \ll SSVS_{c1}}!
@@ -1943,9 +1967,9 @@ validate_baysesianVARs_prior_phi <- function(x) {
 #'  The first indicates the shape and the second the rate of the Gamma
 #'  hyperprior on cross-lag coefficients. \code{HMP_lambda2} has only to be
 #'  specified if \code{prior="HMP"}.
-#'@param normal_sds numeric vector of length \eqn{n}, where \eqn{n = lags M^2} is
-#'  the number of all VAR coefficients (excluding the intercept), indicating the
-#'  prior variances. A single number will be recycled accordingly! Must be
+#'@param normal_sds numeric vector of length \eqn{n}, where \eqn{n = lags M^2}
+#'  is the number of all VAR coefficients (excluding the intercept), indicating
+#'  the prior variances. A single number will be recycled accordingly! Must be
 #'  positive. \code{normal_sds} has only to be specified if
 #'  \code{prior="normal"}.
 #'@param global_grouping One of \code{"global"}, \code{"equation-wise"},
@@ -1955,10 +1979,16 @@ validate_baysesianVARs_prior_phi <- function(x) {
 #'  \code{c(lags*M,M)}.  Only relevant if \code{prior="HS"}, \code{prior="DL"},
 #'  \code{prior="R2D2"}, `prior="NG"` or \code{prior="SSVS"}.
 #'@param ... Do not use!
+#'@param stable_lim positive numerical less-than or equal to 1. Only those
+#'  posterior draws for which all eigenvalues of the companion form matrix have
+#'  modulus less than `lim` are accepted. Only relevant if `stable=TRUE`
 #'
 #'@references  Gruber, L. and Kastner, G. (2025). Forecasting macroeconomic data
 #'  with Bayesian VARs: Sparse or dense? It depends! \emph{International Journal
 #'  of Forecasting}. \doi{10.1016/j.ijforecast.2025.02.001}.
+#'@references Lütkepohl, H. (2005). Stable Vector Autoregressive Processes. In:
+#'   New Introduction to Multiple Time Series Analysis. Springer, Berlin,
+#'   Heidelberg. \doi{doi.org/10.1007/978-3-540-27752-1_2}.
 #'
 #'@return A `baysianVARs_prior_phi`-object.
 #'@export
@@ -1992,6 +2022,7 @@ specify_prior_phi <- function(data = NULL,
                               lags = 1L,
                               prior = "HS",
                               priormean = 0,
+                              stable = FALSE,
                               DL_a = "1/K",
                               R2D2_a = 0.1, R2D2_b = 0.5,
                               NG_a = 0.1, NG_b = 1, NG_c = 1,
@@ -2000,6 +2031,7 @@ specify_prior_phi <- function(data = NULL,
                               HMP_lambda1 = c(0.01,0.01), HMP_lambda2 = c(0.01,0.01),
                               normal_sds = 10,
                               global_grouping = "global",
+                              stable_lim = 1,
                               ...){
   
   prior_phi_cpp <- new_baysesianVARs_prior_phi_cpp()
@@ -2027,6 +2059,12 @@ specify_prior_phi <- function(data = NULL,
                            # global_grouping = character(1L), 
                            i_mat = matrix(0L,0,M), SSVS_semiautomatic = logical(1L),
                            SSVS_c1 = numeric(1L), SSVS_c0 = numeric(1L))
+  prior_phi_cpp[["stable"]] <- stable
+  if(stable_lim>1 | stable_lim < 0) {
+    stop("'stable_lim' must be a single numeric in the range 'c(0,1)'")
+  }
+  prior_phi_cpp[["stable_lim"]] <- stable_lim
+  
   if(lags==0L){
     # general_settings <- list(M = M, lags = lags, PHI0 = matrix(0,0,M), PHI_tol = 
     #                            numeric(1L), 

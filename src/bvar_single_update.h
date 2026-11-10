@@ -55,7 +55,7 @@ void single_bvar(arma::mat& PHI,
                  const stochvol::ExpertSpec_FastSV expert_sv, const stochvol::ExpertSpec_FastSV expert_fac,
                  const std::vector<stochvol::PriorSpec> prior_specs, const double B011inv,
                  const Rcpp::NumericMatrix priorHomoscedastic, const Rcpp::NumericVector sv_offset,
-                 const double abs_floor
+                 const double abs_floor, const bool stable, const double stable_lim
 );
 
 #endif

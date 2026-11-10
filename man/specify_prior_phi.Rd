@@ -10,6 +10,7 @@ specify_prior_phi(
   lags = 1L,
   prior = "HS",
   priormean = 0,
+  stable = FALSE,
   DL_a = "1/K",
   R2D2_a = 0.1,
   R2D2_b = 0.5,
@@ -24,6 +25,7 @@ specify_prior_phi(
   HMP_lambda2 = c(0.01, 0.01),
   normal_sds = 10,
   global_grouping = "global",
+  stable_lim = 1,
   ...
 )
 }
@@ -48,6 +50,11 @@ w.r.t. the first lag equals \code{priormean} and \code{0} else. If
 \code{priormean} is a matrix of dimension \code{c(lags*M,M)}, then each of
 the \eqn{M} columns is assumed to contain \code{lags*M} prior means for the
 VAR coefficients of the respective VAR equations.}
+
+\item{stable}{logical indicating whether the prior is restricted to the
+'stable' parameter space, see 'Details'. If \code{stable=TRUE}, the prior assigns
+zero support to parameter values that fail the stability criterion, and
+corresponding draws are rejected.}
 
 \item{DL_a}{(Single) positive real number. The value is interpreted as the
 concentration parameter for the local scales. Smaller values enforce heavier
@@ -100,8 +107,8 @@ argument \code{global_grouping} specifies e.g. \code{k} groups, then
 determine the scale parameter in each group. Expert option would be to set
 the scale parameter proportional to \code{NG_a}. E.g. in the case where a
 discrete hyperprior for \code{NG_a} is chosen, a desired proportion of let's
-say \code{0.2} is achieved by setting \code{NG_c="0.2*a"} (character input!).
-\code{NG_c} has only to be specified if \code{prior="NG"}.}
+say \code{0.2} is achieved by setting \code{NG_c="0.2*a"} (character
+input!). \code{NG_c} has only to be specified if \code{prior="NG"}.}
 
 \item{SSVS_c0}{single positive number indicating the (unscaled) standard
 deviation of the spike component. \code{SSVS_c0} has only to be specified if
@@ -134,9 +141,9 @@ The first indicates the shape and the second the rate of the Gamma
 hyperprior on cross-lag coefficients. \code{HMP_lambda2} has only to be
 specified if \code{prior="HMP"}.}
 
-\item{normal_sds}{numeric vector of length \eqn{n}, where \eqn{n = lags M^2} is
-the number of all VAR coefficients (excluding the intercept), indicating the
-prior variances. A single number will be recycled accordingly! Must be
+\item{normal_sds}{numeric vector of length \eqn{n}, where \eqn{n = lags M^2}
+is the number of all VAR coefficients (excluding the intercept), indicating
+the prior variances. A single number will be recycled accordingly! Must be
 positive. \code{normal_sds} has only to be specified if
 \code{prior="normal"}.}
 
@@ -146,6 +153,10 @@ sub-groups of the semi-global(-local) modifications to HS, R2D2, NG, DL and
 SSVS prior. Works also with user-specified indicator matrix of dimension
 \code{c(lags*M,M)}.  Only relevant if \code{prior="HS"}, \code{prior="DL"},
 \code{prior="R2D2"}, \code{prior="NG"} or \code{prior="SSVS"}.}
+
+\item{stable_lim}{positive numerical less-than or equal to 1. Only those
+posterior draws for which all eigenvalues of the companion form matrix have
+modulus less than \code{lim} are accepted. Only relevant if \code{stable=TRUE}}
 
 \item{...}{Do not use!}
 }
@@ -170,6 +181,10 @@ the normal-prior.
 Semi-global shrinkage, i.e. group-specific shrinkage for pre-specified
 subgroups of the coefficients, can be achieved through the argument
 \code{global_grouping}.
+
+Regarding \code{stable=TRUE}: A VAR(p) model is considered as stable only if all
+eigenvalues of the companion form matrix lie inside the unit circle, i.e. have
+modulus less than 1, see Lütkepohl (2005).
 }
 \examples{
 # Access a subset of the usmacro_growth dataset
@@ -200,4 +215,8 @@ mod <- bvar(data, lags = 2L, prior_phi = phi_hs_sg, quiet = TRUE)
 Gruber, L. and Kastner, G. (2025). Forecasting macroeconomic data
 with Bayesian VARs: Sparse or dense? It depends! \emph{International Journal
 of Forecasting}. \doi{10.1016/j.ijforecast.2025.02.001}.
+
+Lütkepohl, H. (2005). Stable Vector Autoregressive Processes. In:
+New Introduction to Multiple Time Series Analysis. Springer, Berlin,
+Heidelberg. \doi{doi.org/10.1007/978-3-540-27752-1_2}.
 }

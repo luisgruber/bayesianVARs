@@ -2,6 +2,7 @@
 #include <factorstochvol.h>
 #include <stochvol.h>
 #include "bvar_single_update.h"
+#include "utilities_cpp.h"
 
 using namespace Rcpp;
 using namespace arma;
@@ -32,6 +33,9 @@ List bvar_cpp(const arma::mat& Y,
   
   //--------------------Initialization -----------------------//
   
+  const bool stable = priorPHI_in["stable"];
+  const double stable_lim = priorPHI_in["stable_lim"];
+  
   List startvals_in(clone(Rstartvals_in)); // clone makes copy
   //---- PHI
   
@@ -39,6 +43,12 @@ List bvar_cpp(const arma::mat& Y,
   NumericMatrix PHI_in = phi_startvals["PHI"];
   arma::mat PHI(PHI_in.begin(), PHI_in.nrow(), PHI_in.ncol(), false);
   std::string priorPHI = priorPHI_in["prior"];
+  
+  if(stable) {
+    if(!is_stable(PHI, M, stable_lim)) {
+      Rcpp::stop("Starting value for PHI does not fulfill stable criterion, although prior on PHI is specified to do so. See, ?specify_prior_phi and ?get_startvals!");
+    }
+  }
   
   // PHI_priorvariance holds prior variances of coefficicients without intercept
   // priorIntercept holds fixed prior variances of intercept coefficients
@@ -500,7 +510,8 @@ List bvar_cpp(const arma::mat& Y,
                 armafacloadtunrestrictedelements, nonzerospercol, nonzerosperrow,
                 sv_priorh0, ngprior, columnwise, factor_homoskedastic, factor_offset,
                 heteroscedastic, factor_interweaving, expert_sv, expert_fac,
-                prior_specs, B011inv, priorHomoscedastic, sv_offset, abs_floor);
+                prior_specs, B011inv, priorHomoscedastic, sv_offset, abs_floor, stable,
+                stable_lim);
 
     //-------Store draws after burnin
     if(rep >= burnin && ( (rep+1-burnin) % thin == 0 )){

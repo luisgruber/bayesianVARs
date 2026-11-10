@@ -494,3 +494,27 @@ void abs_floor2(double& x, const double y, const double floor) {
     x = std::copysign(floor, value) + y;
   }
 }
+
+bool is_stable(const arma::mat& PHI, const int M, const double lim) {
+  bool res;
+  const arma::uword p = PHI.n_rows / M;
+  if(p>0) {
+    arma::mat companion(p*M, p*M, arma::fill::zeros);
+    companion.submat(0,0,p*M-1,M-1) = PHI.head_rows(p*M);
+    if(p>1) {
+      companion.submat(0,M,(p-1)*M-1, p*M-1).diag() += 1.; 
+    }
+    arma::cx_vec eigval = arma::eig_gen(companion);
+    arma::vec mod = arma::abs(eigval);
+    res = arma::max(mod)<lim;  
+  } else {
+    res = true;
+  }
+  return res;
+}
+
+void stable_PHI(arma::mat& PHI, const arma::mat& PHI_old, const int M, const double lim) {
+  if(!is_stable(PHI, M, lim)){
+    PHI = PHI_old;
+  }
+}

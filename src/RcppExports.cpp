@@ -126,8 +126,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // sample_PHI_cholesky
-arma::mat sample_PHI_cholesky(const arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y, const arma::mat& X, const arma::mat& U, const arma::mat& d_sqrt, const arma::mat& V_prior, const double floor);
-RcppExport SEXP _bayesianVARs_sample_PHI_cholesky(SEXP PHISEXP, SEXP PHI_priorSEXP, SEXP YSEXP, SEXP XSEXP, SEXP USEXP, SEXP d_sqrtSEXP, SEXP V_priorSEXP, SEXP floorSEXP) {
+arma::mat sample_PHI_cholesky(const arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y, const arma::mat& X, const arma::mat& U, const arma::mat& d_sqrt, const arma::mat& V_prior, const double floor, const bool stable, const double stable_lim);
+RcppExport SEXP _bayesianVARs_sample_PHI_cholesky(SEXP PHISEXP, SEXP PHI_priorSEXP, SEXP YSEXP, SEXP XSEXP, SEXP USEXP, SEXP d_sqrtSEXP, SEXP V_priorSEXP, SEXP floorSEXP, SEXP stableSEXP, SEXP stable_limSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -139,7 +139,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::mat& >::type d_sqrt(d_sqrtSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type V_prior(V_priorSEXP);
     Rcpp::traits::input_parameter< const double >::type floor(floorSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_PHI_cholesky(PHI, PHI_prior, Y, X, U, d_sqrt, V_prior, floor));
+    Rcpp::traits::input_parameter< const bool >::type stable(stableSEXP);
+    Rcpp::traits::input_parameter< const double >::type stable_lim(stable_limSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_PHI_cholesky(PHI, PHI_prior, Y, X, U, d_sqrt, V_prior, floor, stable, stable_lim));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -242,7 +244,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bayesianVARs_irf_cpp", (DL_FUNC) &_bayesianVARs_irf_cpp, 7},
     {"_bayesianVARs_irf_bayes_optimal_order", (DL_FUNC) &_bayesianVARs_irf_bayes_optimal_order, 1},
     {"_bayesianVARs_irf_from_true_parameters", (DL_FUNC) &_bayesianVARs_irf_from_true_parameters, 3},
-    {"_bayesianVARs_sample_PHI_cholesky", (DL_FUNC) &_bayesianVARs_sample_PHI_cholesky, 8},
+    {"_bayesianVARs_sample_PHI_cholesky", (DL_FUNC) &_bayesianVARs_sample_PHI_cholesky, 10},
     {"_bayesianVARs_dmvnrm_arma_fast", (DL_FUNC) &_bayesianVARs_dmvnrm_arma_fast, 4},
     {"_bayesianVARs_predh", (DL_FUNC) &_bayesianVARs_predh, 6},
     {"_bayesianVARs_out_of_sample", (DL_FUNC) &_bayesianVARs_out_of_sample, 17},

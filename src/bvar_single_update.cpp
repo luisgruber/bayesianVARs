@@ -54,7 +54,7 @@ void single_bvar(arma::mat& PHI,
                  const stochvol::ExpertSpec_FastSV expert_sv, const stochvol::ExpertSpec_FastSV expert_fac,
                  const std::vector<stochvol::PriorSpec> prior_specs, const double B011inv,
                  const Rcpp::NumericMatrix priorHomoscedastic, const Rcpp::NumericVector sv_offset,
-                 const double abs_floor
+                 const double abs_floor, const bool stable, const double stable_lim
                  ){
   //----1) Draw PHI (reduced form VAR coefficients)
   arma::mat coef_priorvariance(K+isIntercept, M);
@@ -65,7 +65,8 @@ void single_bvar(arma::mat& PHI,
   if(K>0){
     if(sigma_type == "cholesky"){
       try{
-        sample_PHI(PHI, PHI_priormean, Y, X, U, d_sqrt, coef_priorvariance, M, abs_floor);
+        sample_PHI(PHI, PHI_priormean, Y, X, U, d_sqrt, coef_priorvariance, M, abs_floor,
+                   stable, stable_lim);
       } catch(const std::exception &e){
         Rcpp::stop("sample_PHI() failed in run %i: %s", rep+1, e.what());
       } catch(...){
@@ -75,7 +76,7 @@ void single_bvar(arma::mat& PHI,
     }else if(sigma_type == "factor"){
       try{
         sample_PHI_factor(PHI, PHI_priormean, Y, X, logvar.cols(0,M-1), coef_priorvariance,
-                          armafacload, armafac, huge, abs_floor);
+                          armafacload, armafac, huge, abs_floor, stable, stable_lim);
       } catch(const std::exception &e){
         Rcpp::stop("sample_PHI_factor() failed in run %i: %s", rep+1, e.what());
       } catch(...){

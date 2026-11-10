@@ -411,6 +411,9 @@ bvar <- function(data,
   class(res[["sigma_para"]][["sv_para"]]) <- "bayesianVARs_draws"
   class(res[["lastdraw"]]) <- c("bayesianVARs_lastdraw", "bayesianVARs_startvals")
   class(res) <- "bayesianVARs_bvar"
+  if(prior_phi[["prior_phi_cpp"]][["stable"]]){
+    class(res) <- c(oldClass(res), "bayesianVARs_bvar_stable")
+  }
   res
 }
 
@@ -579,7 +582,9 @@ stable_bvar <- function(object, lim = 1, quiet = FALSE){
   if(!quiet){
     cat("Remaining draws: ",dim(object[["PHI"]])[3], "!\n", sep = "")
   }
-
-  class(object) <- c(oldClass(object), "bayesianVARs_bvar_stable")
+  
+  if(!inherits(object, "bayesianVARs_bvar_stable")) {
+    class(object) <- c(oldClass(object), "bayesianVARs_bvar_stable")
+  }  
   object
 }

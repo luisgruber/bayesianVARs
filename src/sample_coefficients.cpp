@@ -28,7 +28,8 @@ void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
                        const arma::mat& Y, const arma::mat& X,
                        const arma::mat& logvaridi, const arma::mat& V_prior,
                        const arma::mat& facload, const arma::mat& fac,
-                       const bool& huge, const double floor){
+                       const bool& huge, const double floor,
+                       const bool stable, const double stable_lim){
 
   const int M = Y.n_cols;
   const int r = fac.n_rows;
@@ -36,7 +37,8 @@ void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
   const arma::mat Y_hat = (r > 0) ? Y - arma::trans(facload*fac) : Y; // conditioning on factors leads to independent equations
   
   const arma::mat normalizer = exp(-logvaridi/2.);
-
+  
+  const arma::mat PHI_old = PHI;
   for(int j = 0; j < M; j++){
 
     arma::mat X_norm = X.each_col() % normalizer.col(j);
@@ -60,15 +62,18 @@ void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
       }
     }
   }
-
+  if(stable) {
+    stable_PHI(PHI, PHI_old, M, stable_lim);
+  }
 }
 
 // sample_PHI samples VAR coefficients using the corrected triangular
 // algorithm as in Carrier, Chan, Clark & Marcellino (2021)
 void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
                 const arma::mat& X, const arma::mat& U, const arma::mat& d_sqrt,
-                const arma::mat& V_prior, const int M, const double floor) {
-
+                const arma::mat& V_prior, const int M, const double floor,
+                const bool stable, const double stable_lim) {
+  const arma::mat PHI_old = PHI;
   for(int j = 0; j < M; j++){
 
     arma::mat PHI_0 = PHI;
@@ -101,6 +106,9 @@ void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
       }
     }
   }
+  if(stable) {
+    stable_PHI(PHI, PHI_old, M, stable_lim);
+  }
 }
 
 // [[Rcpp::export]]
@@ -108,10 +116,11 @@ arma::mat sample_PHI_cholesky(const arma::mat& PHI, const arma::mat& PHI_prior,
                               const arma::mat& Y, const arma::mat& X,
                               const arma::mat& U, const arma::mat& d_sqrt,
                               const arma::mat& V_prior,
-                              const double floor){
+                              const double floor, const bool stable,
+                              const double stable_lim){
   const int M = Y.n_cols;
   arma::mat PHI_ret = PHI;
-  sample_PHI(PHI_ret, PHI_prior, Y, X, U, d_sqrt, V_prior, M, floor);
+  sample_PHI(PHI_ret, PHI_prior, Y, X, U, d_sqrt, V_prior, M, floor, stable, stable_lim);
   return(PHI_ret);
 }
 

@@ -290,9 +290,10 @@ test_that("geweke test sample_phi_cholesky", {
     PHI_draws[,,r] <- PHI <- bayesianVARs:::sample_PHI_cholesky(PHI, PHI_prior, Y,
                                                                 X, U, d_sqrt_mat,
                                                                 V_prior,
-                                                                0)
+                                                                0,
+                                                                FALSE,
+                                                                1)
   }
-
 
   # compare distribution of quadratic length in terms of euclidean distance of iid and autocorrelated draws
   test1 <- mydist.test(apply(PHI_ind, 3, function(x) (sum(x^2))),apply(PHI_draws, 3, function(x) (sum(x^2))))
@@ -409,5 +410,19 @@ test_that("iterative_use", {
         }
       }
     }  
+  }
+})
+
+test_that("stable VAR", {
+  data <- 100*usmacro_growth[,c("GDPC1","CPIAUCSL","FEDFUNDS")]
+  lags <- c(1L,3L)
+  for(p in lags) {
+    prior_phi <- specify_prior_phi(data = data, lags = p, stable = TRUE, stable_lim = 0.99)
+    res <- bvar(data = data, lags = p, prior_phi = prior_phi, burnin = 0L, draws = 100L,
+                quiet = TRUE)
+    # stable_bvar is not expected to detect draws that do not fulfill the stable
+    # criterion
+    res_stable_post <- stable_bvar(res, lim = 0.99, quiet = TRUE)
+    expect_equal(res, res_stable_post) 
   }
 })
