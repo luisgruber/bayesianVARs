@@ -1,6 +1,6 @@
 dim_shocks <- function(x) {
-	if (x$sigma_type == "factor") ncol(x$facload)
-	else if (x$sigma_type == "cholesky") ncol(x$Y)
+	if (x[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "factor") ncol(x$facload)
+	else if (x[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "cholesky") ncol(x$Y)
 	else stop("unknown model")
 }
 
@@ -87,7 +87,7 @@ specify_structural_restrictions <- function(
 	restrictions_structural_coeff = NULL,
 	restrictions_long_run_ir = NULL
 ) {
-	if (x$sigma_type == "factor") {
+	if (x[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "factor") {
 		forbidden_restrictions <- c(
 			!is.null(restrictions_B0_inv_t),
 			!is.null(restrictions_B0),
@@ -96,7 +96,7 @@ specify_structural_restrictions <- function(
 		if (any(forbidden_restrictions))
 			stop("For factor models, only the factor loadings can be restricted")
 	}
-	else if (x$sigma_type == "cholesky") {
+	else if (x[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "cholesky") {
 		if (!is.null(restrictions_facload))
 			stop("Factor loadings cannot be restricted for a Cholesky model")
 	}

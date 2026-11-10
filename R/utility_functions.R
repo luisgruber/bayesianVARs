@@ -32,7 +32,7 @@ print.bayesianVARs_bvar <- function(x, ...) {
   }
   cat(paste("\nFitted bayesianVARs_bvar object with\n",
             " -", formatC(M, width = 7), "series\n",
-            " -", formatC(x$lags, width = 7), "lag(s)\n",
+            " -", formatC(x$config$lags, width = 7), "lag(s)\n",
             " -", formatC(Tobs, width = 7), "used observations\n",
             " -", formatC(Traw, width = 7), "total observations\n",
             " -", formatC(x$config$draws, width = 7), "MCMC draws\n",
@@ -76,7 +76,7 @@ summary.bayesianVARs_bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.
               PHIiqr = PHIiqr
   )
 
-  if(object$sigma_type == "cholesky"){
+  if(object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "cholesky"){
     Umedian <- Uiqr <- diag(1, nrow = ncol(object$Y))
     colnames(Umedian) <- rownames(Umedian) <-
       colnames(Uiqr) <- rownames(Uiqr) <- colnames(object$Y)
@@ -87,7 +87,7 @@ summary.bayesianVARs_bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.
     out$Umedian <- Umedian
     out$Uquantiles <- Uquantiles
     out$Uiqr <- Uiqr
-  }else if(object[["sigma_type"]] == "factor"){
+  }else if(object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "factor"){
     factors <- dim(object$facload)[2]
     out[["facloadmedian"]] <- round(apply(object[["facload"]], 1:2, stats::median), digits = digits)
     rownames(out[["facloadmedian"]]) <- colnames(object$Y)
@@ -98,7 +98,7 @@ summary.bayesianVARs_bvar <- function(object, quantiles = c(0.025, 0.25, 0.5, 0.
     colnames(out[["facloadiqr"]]) <- paste0("factor", 1:factors)
   }
 
-  out$sigma_type <- object$sigma_type
+  out$sigma_type <- object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]]
 
   class(out) <- "summary.bayesianVARs_bvar"
   out
@@ -217,7 +217,7 @@ vcov.bayesianVARs_bvar <- function(object, t = seq_len(nrow(object$logvar)), ...
                       error = function(e) dates)
   }
 
-  out <- vcov_cpp(object$sigma_type == "factor",
+  out <- vcov_cpp(object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "factor",
                   object$facload,
                   object$logvar[t,,,drop=FALSE],
                   object$U,
@@ -269,10 +269,16 @@ summary.bayesianVARs_draws <- function(object, quantiles = c(0.25, 0.5, 0.75),
                                        ...){
 
   dim_object <- dim(object)
-  dim_length <- length(dim_object)
-  object_mean <- apply(object, 1:(dim_length-1), mean)
-  object_sd <- apply(object, 1:(dim_length-1), sd)
-  object_quantiles <- apply(object, 1:(dim_length-1), quantile, quantiles)
+  if(is.null(dim_object)) {
+    object_mean <- mean(object)
+    object_sd <- sd(object)
+    object_quantiles <- quantile(object, quantiles)
+  } else {
+    dim_length <- length(dim_object)
+    object_mean <- apply(object, 1:(dim_length-1), mean)
+    object_sd <- apply(object, 1:(dim_length-1), sd)
+    object_quantiles <- apply(object, 1:(dim_length-1), quantile, quantiles) 
+  }
 
   out <- list(
     mean = object_mean,
@@ -326,7 +332,7 @@ fitted.bayesianVARs_bvar <- function(object, error_term = TRUE, ...){
                   object$facload,
                   object$logvar,
                   error_term,
-                  object$sigma_type == "factor")
+                  object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "factor")
   colnames(ret) <- colnames(object$Y)
   rownames(ret) <- rownames(object$Y)
   out <- list(
@@ -384,16 +390,14 @@ new_baysesianVARs_prior_sigma_cpp <- function(){
               cholesky_norm_consts = numeric(1L),
               cholesky_c_vec = numeric(1L),
               cholesky_c_rel_a = logical(1L),
-              cholesky_DL_hyper = logical(1L),
+              cholesky_a_hyper = logical(1L),
               cholesky_DL_plus = logical(1L),
-              cholesky_GT_hyper = logical(1L),
               cholesky_GT_vs = numeric(1L),
               cholesky_GT_priorkernel = character(1L),
               cholesky_SSVS_tau0 = numeric(1L),
               cholesky_SSVS_tau1 = numeric(1L),
               cholesky_SSVS_s_a = numeric(1L),
               cholesky_SSVS_s_b = numeric(1L),
-              cholesky_SSVS_hyper = logical(1L),
               cholesky_lambda_3 = numeric(1L),
               cholesky_priorhomoscedastic = matrix(0, 1, 1),
               cholesky_sv_offset = numeric(1L),
@@ -499,11 +503,11 @@ validate_baysesianVARs_prior_sigma_cpp <- function(x){ # nocov start
       stop("x[['cholesky_c_rel_a']] must be a logical")
     }
   }
-  if(!exists("cholesky_DL_hyper", x)){
-    stop("x must be subsettable with x[['cholesky_DL_hyper']]")
+  if(!exists("cholesky_a_hyper", x)){
+    stop("x must be subsettable with x[['cholesky_a_hyper']]")
   }else{
-    if(!is.logical(x[["cholesky_DL_hyper"]])){
-      stop("x[['cholesky_DL_hyper']] must be a logical")
+    if(!is.logical(x[["cholesky_a_hyper"]])){
+      stop("x[['cholesky_a_hyper']] must be a logical")
     }
   }
   if(!exists("cholesky_DL_plus", x)){
@@ -511,13 +515,6 @@ validate_baysesianVARs_prior_sigma_cpp <- function(x){ # nocov start
   }else{
     if(!is.logical(x[["cholesky_DL_plus"]])){
       stop("x[['cholesky_DL_plus']] must be a logical")
-    }
-  }
-  if(!exists("cholesky_GT_hyper", x)){
-    stop("x must be subsettable with x[['cholesky_GT_hyper']]")
-  }else{
-    if(!is.logical(x[["cholesky_GT_hyper"]])){
-      stop("x[['cholesky_GT_hyper']] must be a logical")
     }
   }
   if(!exists("cholesky_GT_vs", x)){
@@ -560,13 +557,6 @@ validate_baysesianVARs_prior_sigma_cpp <- function(x){ # nocov start
   }else{
     if(!is.numeric(x[["cholesky_SSVS_s_b"]])){
       stop("x[['cholesky_SSVS_s_b']] must be a numeric vector")
-    }
-  }
-  if(!exists("cholesky_SSVS_hyper", x)){
-    stop("x must be subsettable with x[['cholesky_SSVS_hyper']]")
-  }else{
-    if(!is.logical(x[["cholesky_SSVS_hyper"]])){
-      stop("x[['cholesky_SSVS_hyper']] must be a logical")
     }
   }
   if(!exists("cholesky_lambda_3", x)){
@@ -1437,11 +1427,11 @@ specify_prior_sigma <- function(data=NULL,
 
       if(is.numeric(cholesky_DL_a) & length(cholesky_DL_a) == 1L){
         prior_sigma_cpp[["cholesky_a"]] <- cholesky_DL_a
-        prior_sigma_cpp[["cholesky_DL_hyper"]] <- FALSE
+        prior_sigma_cpp[["cholesky_a_hyper"]] <- FALSE
       }else if(is.character(cholesky_DL_a)) {
         if(cholesky_DL_a == "1/n"){
           prior_sigma_cpp[["cholesky_a"]] <- 1/n_U
-          prior_sigma_cpp[["cholesky_DL_hyper"]] <- FALSE
+          prior_sigma_cpp[["cholesky_a_hyper"]] <- FALSE
         }else stop(text)
 
       }else if(is.matrix(cholesky_DL_a)){
@@ -1452,7 +1442,7 @@ specify_prior_sigma <- function(data=NULL,
              hyperprior on 'DL_a' !")
         }
 
-        prior_sigma_cpp[["cholesky_DL_hyper"]] <- TRUE
+        prior_sigma_cpp[["cholesky_a_hyper"]] <- TRUE
         prior_sigma_cpp[["cholesky_a_vec"]] <- cholesky_DL_a[,1]
         prior_sigma_cpp[["cholesky_a_weight"]] <- cholesky_DL_a[,2]
         # precompute log normalizing constants of hyperprior
@@ -1473,7 +1463,7 @@ specify_prior_sigma <- function(data=NULL,
         }
         if(!exists("cholesky_DL_c", optionals)){
           prior_sigma_cpp[["cholesky_c"]] <- 0.5*prior_sigma_cpp[["cholesky_a"]]
-          if(prior_sigma_cpp[["cholesky_DL_hyper"]]) {
+          if(prior_sigma_cpp[["cholesky_a_hyper"]]) {
             prior_sigma_cpp[["cholesky_c_rel_a"]] <- TRUE
             prior_sigma_cpp[["cholesky_c_vec"]] <- 0.5*prior_sigma_cpp[["cholesky_a_vec"]]
           }
@@ -1523,7 +1513,7 @@ specify_prior_sigma <- function(data=NULL,
       prior_sigma_cpp[["cholesky_SSVS_tau0"]] <- rep(cholesky_SSVS_c0, n_U)
       prior_sigma_cpp[["cholesky_SSVS_tau1"]] <- rep(cholesky_SSVS_c1, n_U)
       prior_sigma_cpp[["cholesky_a"]] <- cholesky_SSVS_a
-      prior_sigma_cpp[["cholesky_SSVS_hyper"]] <- cholesky_SSVS_hyper
+      prior_sigma_cpp[["cholesky_a_hyper"]] <- cholesky_SSVS_hyper
 
     }else if(cholesky_U_prior == "normal"){
       if(!(all(cholesky_normal_sds>0))){
@@ -1541,7 +1531,7 @@ specify_prior_sigma <- function(data=NULL,
 
       if(is.matrix(prior_sigma_cpp[["cholesky_a"]])){
         if(ncol(prior_sigma_cpp[["cholesky_a"]])==2){
-          prior_sigma_cpp[["cholesky_GT_hyper"]] <- TRUE
+          prior_sigma_cpp[["cholesky_a_hyper"]] <- TRUE
           prior_sigma_cpp[["cholesky_a_vec"]] <- prior_sigma_cpp[["cholesky_a"]][,1]
           prior_sigma_cpp[["cholesky_a_weight"]] <- prior_sigma_cpp[["cholesky_a"]][,2]
           prior_sigma_cpp[["cholesky_norm_consts"]] <- lgamma(prior_sigma_cpp[["cholesky_a_vec"]])
@@ -1552,7 +1542,7 @@ specify_prior_sigma <- function(data=NULL,
           prior_sigma_cpp[["cholesky_a"]] <- as.vector(prior_sigma_cpp[["cholesky_a"]])
         }
       }else if(is.null(dim(prior_sigma_cpp[["cholesky_a"]]))){
-        prior_sigma_cpp[["cholesky_GT_hyper"]] <- FALSE
+        prior_sigma_cpp[["cholesky_a_hyper"]] <- FALSE
       }
 
       if(is.character(prior_sigma_cpp[["cholesky_c"]])){
@@ -1560,7 +1550,7 @@ specify_prior_sigma <- function(data=NULL,
         mya <- prior_sigma_cpp[["cholesky_a"]]
         myc <- gsub("a","mya", prior_sigma_cpp[["cholesky_c"]])
         cholesky_c <- eval(str2lang(myc)) # initial value
-        if(base::isTRUE(prior_sigma_cpp[["cholesky_GT_hyper"]])){
+        if(base::isTRUE(prior_sigma_cpp[["cholesky_a_hyper"]])){
           myc2 <- gsub("a","prior_sigma_cpp$cholesky_a_vec", prior_sigma_cpp[["cholesky_c"]]) #cholesky_list$cholesky_c is still character
           prior_sigma_cpp[["cholesky_c_vec"]] <- eval(str2lang(myc2))
         }
@@ -1580,7 +1570,7 @@ specify_prior_sigma <- function(data=NULL,
 new_baysesianVARs_prior_phi_cpp <- function(){
   # constructor, bvar_cpp.cpp expects a list with following elements
   out <- list(prior = character(1L),
-              V_i = numeric(1L),
+              V_i = matrix(0, 1L, 1L),
               n_groups = integer(1L),
               groups = integer(1L),
               a = numeric(1L),
@@ -1591,17 +1581,15 @@ new_baysesianVARs_prior_phi_cpp <- function(){
               norm_consts = numeric(1L),
               c_vec = numeric(1L),
               c_rel_a = logical(1L),
-              DL_hyper = logical(1L),
+              a_hyper = logical(1L),
               DL_plus = logical(1L),
-              GT_hyper = logical(1L),
               GT_vs = numeric(1L),
               GT_priorkernel = character(1L),
-              SSVS_tau0 = numeric(1L),
-              SSVS_tau1 = numeric(1L),
+              SSVS_tau0 = matrix(0, 1L, 1L),
+              SSVS_tau1 = matrix(0, 1L, 1L),
               SSVS_s_a = numeric(1L),
               SSVS_s_b = numeric(1L),
-              SSVS_hyper = logical(1L),
-              V_i_prep = numeric(1L),
+              V_i_prep = matrix(0, 1L, 1L),
               lambda_1 = numeric(1L),
               lambda_2 = numeric(1L)
   )
@@ -1624,8 +1612,8 @@ validate_baysesianVARs_prior_phi_cpp <- function(x){ # nocov start
   if(!exists("V_i", x)){
     stop("x must be subsettable with x[['V_i']]")
   }else{
-    if(!is.numeric(x[["V_i"]])){
-      stop("x[['V_i']] must be a numeric vector")
+    if(!is.numeric(x[["V_i"]]) | !is.matrix(x[["V_i"]])){
+      stop("x[['V_i']] must be a numeric matrix")
     }
   }
   if(!exists("n_groups", x)){
@@ -1698,11 +1686,11 @@ validate_baysesianVARs_prior_phi_cpp <- function(x){ # nocov start
       stop("x[['c_rel_a']] must be a logical")
     }
   }
-  if(!exists("DL_hyper", x)){
-    stop("x must be subsettable with x[['DL_hyper']]")
+  if(!exists("a_hyper", x)){
+    stop("x must be subsettable with x[['a_hyper']]")
   }else{
-    if(!is.logical(x[["DL_hyper"]])){
-      stop("x[['DL_hyper']] must be a logical")
+    if(!is.logical(x[["a_hyper"]])){
+      stop("x[['a_hyper']] must be a logical")
     }
   }
   if(!exists("DL_plus", x)){
@@ -1710,13 +1698,6 @@ validate_baysesianVARs_prior_phi_cpp <- function(x){ # nocov start
   }else{
     if(!is.logical(x[["DL_plus"]])){
       stop("x[['DL_plus']] must be a logical")
-    }
-  }
-  if(!exists("GT_hyper", x)){
-    stop("x must be subsettable with x[['GT_hyper']]")
-  }else{
-    if(!is.logical(x[["GT_hyper"]])){
-      stop("x[['GT_hyper']] must be a logical")
     }
   }
   if(!exists("GT_vs", x)){
@@ -1736,15 +1717,15 @@ validate_baysesianVARs_prior_phi_cpp <- function(x){ # nocov start
   if(!exists("SSVS_tau0", x)){
     stop("x must be subsettable with x[['SSVS_tau0']]")
   }else{
-    if(!is.numeric(x[["SSVS_tau0"]])){
-      stop("x[['SSVS_tau0']] must be a numeric vector")
+    if(!is.numeric(x[["SSVS_tau0"]]) | !is.matrix(x[["SSVS_tau0"]])){
+      stop("x[['SSVS_tau0']] must be a numeric matrix")
     }
   }
   if(!exists("SSVS_tau1", x)){
     stop("x must be subsettable with x[['SSVS_tau1']]")
   }else{
-    if(!is.numeric(x[["SSVS_tau1"]])){
-      stop("x[['SSVS_tau1']] must be a numeric vector")
+    if(!is.numeric(x[["SSVS_tau1"]]) | !is.matrix(x[["SSVS_tau1"]])){
+      stop("x[['SSVS_tau1']] must be a numeric matrix")
     }
   }
   if(!exists("SSVS_s_a", x)){
@@ -1761,18 +1742,11 @@ validate_baysesianVARs_prior_phi_cpp <- function(x){ # nocov start
       stop("x[['SSVS_s_b']] must be a numeric vector")
     }
   }
-  if(!exists("SSVS_hyper", x)){
-    stop("x must be subsettable with x[['SSVS_hyper']]")
-  }else{
-    if(!is.logical(x[["SSVS_hyper"]])){
-      stop("x[['SSVS_hyper']] must be a logical")
-    }
-  }
   if(!exists("V_i_prep", x)){
     stop("x must be subsettable with x[['V_i_prep']]")
   }else{
-    if(!is.numeric(x[["V_i_prep"]])){
-      stop("x[['V_i_prep']] must be a numeric vector")
+    if(!is.numeric(x[["V_i_prep"]]) | !is.matrix(x[["V_i_prep"]])){
+      stop("x[['V_i_prep']] must be a numeric matrix")
     }
   }
   if(!exists("lambda_1", x)){
@@ -2172,17 +2146,17 @@ specify_prior_phi <- function(data = NULL,
       prior_phi_cpp[["a"]] <- DL_a
       
       if(all(is.numeric(prior_phi_cpp[["a"]]))&is.null(dim(prior_phi_cpp[["a"]]))){
-        prior_phi_cpp[["DL_hyper"]] <- FALSE
+        prior_phi_cpp[["a_hyper"]] <- FALSE
         prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a"]], prior_phi_cpp[["n_groups"]])
       }else if(is.matrix(prior_phi_cpp[["a"]])){
-        prior_phi_cpp[["DL_hyper"]] <- TRUE
+        prior_phi_cpp[["a_hyper"]] <- TRUE
         prior_phi_cpp[["a_vec"]] <- prior_phi_cpp[["a"]][,1]
         prior_phi_cpp[["a_weight"]] <- prior_phi_cpp[["a"]][,2]
         prior_phi_cpp[["norm_consts"]] <- lgamma(prior_phi_cpp[["a_vec"]])
         prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a_vec"]][1], prior_phi_cpp[["n_groups"]])
       }else if(any(c("1/K", "1/n") %in% prior_phi_cpp[["a"]]) &
                length(prior_phi_cpp[["a"]]) == 1){
-        prior_phi_cpp[["DL_hyper"]] <- FALSE
+        prior_phi_cpp[["a_hyper"]] <- FALSE
         if(prior_phi_cpp[["a"]] == "1/K") {
           prior_phi_cpp[["a"]] <- rep(1/K, prior_phi_cpp[["n_groups"]])
         }else if(prior_phi_cpp[["a"]] == "1/n") {
@@ -2205,7 +2179,7 @@ specify_prior_phi <- function(data = NULL,
           }
           if(!exists("DL_c", dots)){
             prior_phi_cpp[["c"]] <- 0.5*prior_phi_cpp[["a"]]
-            if(prior_phi_cpp[["DL_hyper"]]){
+            if(prior_phi_cpp[["a_hyper"]]){
               prior_phi_cpp[["c_vec"]] <- 0.5*prior_phi_cpp[["a_vec"]]
               prior_phi_cpp[["c_rel_a"]] <- TRUE
             }
@@ -2252,22 +2226,22 @@ specify_prior_phi <- function(data = NULL,
         prior_phi_cpp[["SSVS_s_a"]] <- SSVS_a[1]
         prior_phi_cpp[["SSVS_s_b"]] <- SSVS_a[2]
         prior_phi_cpp[["a"]] <- rep_len(0.5, prior_phi_cpp[["n_groups"]]) # initial value --> move to get startvals?
-        prior_phi_cpp[["SSVS_hyper"]] <- TRUE
+        prior_phi_cpp[["a_hyper"]] <- TRUE
       }else if(length(SSVS_a)==1L){
         prior_phi_cpp[["a"]] <- rep_len(SSVS_a, prior_phi_cpp[["n_groups"]])
         prior_phi_cpp[["SSVS_s_a"]] <- prior_phi_cpp[["SSVS_s_b"]] <- as.numeric(NA)
-        prior_phi_cpp[["SSVS_hyper"]] <- FALSE
+        prior_phi_cpp[["a_hyper"]] <- FALSE
       }else{
         stop("SSVS_a must be either numeric vector of length 1L or 2L!")
       }
       general_settings[["SSVS_semiautomatic"]] <- SSVS_semiautomatic
       if(SSVS_semiautomatic) {
         # in case of semiautomatic "SSVS_tau0" will be scaled in bvar_wrapper())
-        general_settings[["SSVS_c0"]] <- rep_len(SSVS_c0, n)
-        general_settings[["SSVS_c1"]] <- rep_len(SSVS_c1, n)
+        general_settings[["SSVS_c0"]] <- matrix(rep_len(SSVS_c0, n), K, M)
+        general_settings[["SSVS_c1"]] <- matrix(rep_len(SSVS_c1, n), K, M)
       } else {
-        prior_phi_cpp[["SSVS_tau0"]] <- rep_len(SSVS_c0, n)
-        prior_phi_cpp[["SSVS_tau1"]] <- rep_len(SSVS_c1, n)
+        prior_phi_cpp[["SSVS_tau0"]] <- matrix(rep_len(SSVS_c0, n), K, M)
+        prior_phi_cpp[["SSVS_tau1"]] <- matrix(rep_len(SSVS_c1, n), K, M)
       }
       
     }else if(prior == "normal"){
@@ -2275,7 +2249,7 @@ specify_prior_phi <- function(data = NULL,
         stop("'normal_sds' must be positive.")
       } 
       # note to myself: bvar expects variances!
-      prior_phi_cpp[["V_i"]] <- rep_len(normal_sds^2, n)
+      prior_phi_cpp[["V_i"]] <- matrix(rep_len(normal_sds^2, n), K, M)
     }else if(prior == "HMP"){
       prior_phi_cpp[["lambda_1"]] <- HMP_lambda1
       prior_phi_cpp[["lambda_2"]] <- HMP_lambda2
@@ -2305,18 +2279,18 @@ specify_prior_phi <- function(data = NULL,
       
       if(is.matrix(prior_phi_cpp[["a"]])){
         if(ncol(prior_phi_cpp[["a"]])==2L){
-          prior_phi_cpp[["GT_hyper"]] <- TRUE
+          prior_phi_cpp[["a_hyper"]] <- TRUE
         }else if(ncol(prior_phi_cpp[["a"]])==1L){
-          prior_phi_cpp[["GT_hyper"]] <- FALSE
+          prior_phi_cpp[["a_hyper"]] <- FALSE
           prior_phi_cpp[["a"]] <- as.vector(prior_phi_cpp[["a"]])
         }else if(ncol(prior_phi_cpp[["a"]])>2){
           stop("The easiest way to specify 'R2D2_a', 'NG_a' or 'GT_a' is a single postive number!")
         }
       }else if(is.null(dim(prior_phi_cpp[["a"]]))){
-        prior_phi_cpp[["GT_hyper"]] <- FALSE
+        prior_phi_cpp[["a_hyper"]] <- FALSE
       }
       
-      if(prior_phi_cpp[["GT_hyper"]]){
+      if(prior_phi_cpp[["a_hyper"]]){
         prior_phi_cpp[["a_vec"]] <- prior_phi_cpp[["a"]][,1]
         prior_phi_cpp[["a_weight"]] <- prior_phi_cpp[["a"]][,2]
         prior_phi_cpp[["norm_consts"]] <- lgamma(prior_phi_cpp[["a_vec"]])
@@ -2328,7 +2302,7 @@ specify_prior_phi <- function(data = NULL,
       if(is.character(prior_phi_cpp[["c"]])){
         prior_phi_cpp[["c_rel_a"]] <- TRUE # then c is always proportion of a (e.g. for R2D2 c=0.5a)
         # if GT_hyper, compute first c_vec, because the c will eventually be assigned the initial value
-        if(base::isTRUE(prior_phi_cpp[["GT_hyper"]])){
+        if(base::isTRUE(prior_phi_cpp[["a_hyper"]])){
           myc2 <- gsub("a","prior_phi_cpp$a_vec", prior_phi_cpp[["c"]])
           prior_phi_cpp[["c_vec"]] <- eval(str2lang(myc2))
         }
@@ -2351,8 +2325,8 @@ specify_prior_phi <- function(data = NULL,
 new_startvals <- function(){
   out <- list(
     phi = list(PHI = matrix(0, 1, 1),
-               lambda = numeric(1L),
-               psi = numeric(1L),
+               lambda = matrix(0, 1, 1),
+               psi = matrix(0, 1, 1),
                xi = numeric(1L),
                a = numeric(1L),
                varpi = numeric(1L),
@@ -2400,15 +2374,15 @@ validate_bayesianVARs_startvals <- function(x) {
   if(!exists("lambda", x[["phi"]])) {
     stop("x must be subsettable with x[['phi']][['lambda']]")
   } else {
-    if (!is.numeric(x[["phi"]][["lambda"]])) {
-      stop("x[['phi']][['lambda']] must be a numeric vector")
+    if (!is.numeric(x[["phi"]][["lambda"]]) | !is.matrix(x[["phi"]][["lambda"]])) {
+      stop("x[['phi']][['lambda']] must be a numeric matrix")
     }
   }
   if(!exists("psi", x[["phi"]])) {
     stop("x must be subsettable with x[['phi']][['psi']]")
   } else {
-    if (!is.numeric(x[["phi"]][["psi"]])) {
-      stop("x[['phi']][['psi']] must be a numeric vector")
+    if (!is.numeric(x[["phi"]][["psi"]]) | !is.matrix(x[["phi"]][["psi"]])) {
+      stop("x[['phi']][['psi']] must be a numeric matrix")
     }
   }
   if(!exists("xi", x[["phi"]])) {
@@ -2596,6 +2570,7 @@ get_startvals <- function(prior_phi, prior_sigma, intercept,
   phi_prior <- prior_phi[["prior_phi_cpp"]][["prior"]]
   p <- prior_phi[["general_settings"]][["lags"]]
   M <- prior_phi[["general_settings"]][["M"]]
+  K <- p*M
   n <- p*M^2
   n_groups <- prior_phi$prior_phi_cpp$n_groups
   PHI_start <- matrix(1e-10, p*M+intercept, M)
@@ -2603,22 +2578,22 @@ get_startvals <- function(prior_phi, prior_sigma, intercept,
   startvals[["phi"]][["PHI"]] <- PHI_start
   # if DL | GT
   if(phi_prior %in% c("DL", "GT")){
-    startvals[["phi"]][["lambda"]] <- rep(1/n, n)
+    startvals[["phi"]][["lambda"]] <- matrix(1/n, K, M)
     if(prior_phi[["prior_phi_cpp"]][["GT_priorkernel"]] == "exponential" | phi_prior == "DL"){
-      startvals[["phi"]][["psi"]] <- rep(1, n) # must be 1 in case of NG prior
+      startvals[["phi"]][["psi"]] <- matrix(1, K, M) 
     }
     # if(phi_prior != "DL" | prior_phi[["prior_phi_cpp"]][["DL_plus"]]){ # needed as dummy
     startvals[["phi"]][["xi"]] <- rep(0.5, n_groups) 
     # }
     startvals[["phi"]][["a"]] <- prior_phi[["prior_phi_cpp"]][["a"]]
   } else if(phi_prior == "HS"){
-    startvals[["phi"]][["lambda"]] <- rep(1/n, n)
+    startvals[["phi"]][["lambda"]] <- matrix(1/n, K, M)
     startvals[["phi"]][["xi"]] <- rep(10, n_groups)
-    startvals[["phi"]][["psi"]] <- rep(1, n)
+    startvals[["phi"]][["psi"]] <- matrix(1, K, M)
     startvals[["phi"]][["varpi"]] <- rep(1, n_groups)
   } else if (phi_prior == "SSVS") {
     startvals[["phi"]][["a"]] <- prior_phi[["prior_phi_cpp"]][["a"]]
-    startvals[["phi"]][["lambda"]] <- rep(0, n)
+    startvals[["phi"]][["lambda"]] <- matrix(0, K, M)
   } else if (phi_prior == "HMP") {
     startvals[["phi"]][["lambda_1"]] <- 0.04
     startvals[["phi"]][["lambda_2"]] <- 0.0016
@@ -2797,7 +2772,7 @@ predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TR
                         stable_lim = 1, simulate_predictive = TRUE, LPL = FALSE, 
                         Y_obs = NA, LPL_VoI = NA, quiet = FALSE, ...){
 
-  factor <- object$sigma_type == "factor"
+  factor <- object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "factor"
   ahead <- sort(as.integer(ahead))
 
   if(!simulate_predictive & !LPL){
@@ -2819,7 +2794,7 @@ predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TR
   }
 
   # relevant mod settings
-  sv_indicator <- which(object$heteroscedastic==TRUE)
+  sv_indicator <- which(object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["sv_heteroscedastic"]]==TRUE)
 
   # data preparation
   variables <- colnames(object$Y)
@@ -2828,14 +2803,14 @@ predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TR
   M <- ncol(object$Y)
   #if(any(SV)) {
   # extract sv parameters
-  sv_mu <- matrix(object$sv_para[1,sv_indicator,], length(sv_indicator), dim(object$sv_para)[3])
-  sv_phi <- matrix(object$sv_para[2,sv_indicator,], length(sv_indicator), dim(object$sv_para)[3])
-  sv_sigma <- matrix(object$sv_para[3,sv_indicator,], length(sv_indicator), dim(object$sv_para)[3])
+  sv_mu <- matrix(object[["sigma_para"]][["sv_para"]][1,sv_indicator,], length(sv_indicator), dim(object[["sigma_para"]][["sv_para"]])[3])
+  sv_phi <- matrix(object[["sigma_para"]][["sv_para"]][2,sv_indicator,], length(sv_indicator), dim(object[["sigma_para"]][["sv_para"]])[3])
+  sv_sigma <- matrix(object[["sigma_para"]][["sv_para"]][3,sv_indicator,], length(sv_indicator), dim(object[["sigma_para"]][["sv_para"]])[3])
   #}
   # extract current state of logvariance (in case of homoscedasticity one could pick any, since constant...)
   sv_h_T <- object$logvar[dim(object$logvar)[1],,]
-  X_T_plus_1 <- as.numeric(object$datamat[nrow(object$datamat), 1:(object$lags*M)])
-  if(object$intercept) X_T_plus_1 <- c(X_T_plus_1, 1)
+  X_T_plus_1 <- as.numeric(object$datamat[nrow(object$datamat), 1:(object$config$lags*M)])
+  if(object$config$prior_intercept>0) X_T_plus_1 <- c(X_T_plus_1, 1)
 
 
   LPL_subset <- logical(1L)
@@ -2859,7 +2834,7 @@ predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TR
     Y_obs <- matrix(Y_obs, length(ahead), M)
     colnames(Y_obs) <- variables
   }
-
+  sv_indicator <- as.integer(sv_indicator - 1L)
   ret <- out_of_sample(each,
                        X_T_plus_1,
                        object$PHI,
@@ -2870,7 +2845,7 @@ predict.bayesianVARs_bvar <- function(object, ahead = 1L, each = 1L, stable = TR
                        sv_mu,
                        sv_phi,
                        sv_sigma,
-                       as.integer(sv_indicator-1),
+                       sv_indicator,
                        factor,
                        LPL,
                        Y_obs,
@@ -2932,14 +2907,14 @@ predict_old <- function(object, n.ahead, stable = TRUE, LPL = FALSE, Y_obs = NA,
   }
 
   # relevant mod settings
-  SV <- object$heteroscedastic
+  SV <- object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["sv_heteroscedastic"]]
   sv_indicator <- which(SV==TRUE)
-  intercept <- object$intercept
+  intercept <- object$config$prior_intercept > 0
 
   # data preparation
   variables <- colnames(object$Y)
   draws <- dim(object$PHI)[3]
-  lags <- object$lags # number of lags
+  lags <- object$config$lags # number of lags
   M <- ncol(object$Y) # dimensionality, number of time series
   # if(object$sigma_type == "factor"){
   #   r <- dim(object$facload)[3] # number of factors
@@ -2963,9 +2938,9 @@ predict_old <- function(object, n.ahead, stable = TRUE, LPL = FALSE, Y_obs = NA,
   }
   if(any(SV)) {
     # extract sv parameters
-    sv_mu <- (object$sv_para[1,,])
-    sv_phi <- (object$sv_para[2,,])
-    sv_sigma <- (object$sv_para[3,,])
+    sv_mu <- (object[["sigma_para"]][["sv_para"]][1,,])
+    sv_phi <- (object[["sigma_para"]][["sv_para"]][2,,])
+    sv_sigma <- (object[["sigma_para"]][["sv_para"]][3,,])
 
   }
   # extract current state of logvariance (in case of homoscedasticity one could pick any, since constant...)
@@ -3000,7 +2975,7 @@ predict_old <- function(object, n.ahead, stable = TRUE, LPL = FALSE, Y_obs = NA,
     # initialize latent logvariance at current state
     h_fore <- sv_h_T[, i]
 
-    if(object$sigma_type == "cholesky"){
+    if(object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "cholesky"){
       U[upperind] <- object$U[,i]
       U_inv <- backsolve(U, diag(M))
     }
@@ -3016,17 +2991,17 @@ predict_old <- function(object, n.ahead, stable = TRUE, LPL = FALSE, Y_obs = NA,
           sv_sigma[sv_indicator, i]*stats::rnorm(length(sv_indicator), mean = 0, sd = 1)
       }
 
-      if(object$sigma_type == "factor"){
+      if(object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "factor"){
         Sigma_fore <- crossprod(t(object$facload[,,i])*exp(h_fore[-c(1:M)]/2)) # facload %*% diag(exp(h)) %*% t(facload)
         diag(Sigma_fore) <- diag(Sigma_fore) +  exp(h_fore[1:M])
-      }else if(object$sigma_type == "cholesky"){
+      }else if(object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "cholesky"){
         Sigma_chol_fore <- diag(exp(h_fore/2)) %*% U_inv
         Sigma_fore <- crossprod(Sigma_chol_fore)
       }
 
-      predictions[i,k,] <-  if(object$sigma_type == "factor"){
+      predictions[i,k,] <-  if(object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "factor"){
         MASS::mvrnorm(1, mean_fore, Sigma_fore)
-      }else if(object$sigma_type == "cholesky"){
+      }else if(object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "cholesky"){
         tryCatch(
           mean_fore + stats::rnorm(M) %*% Sigma_chol_fore,
           error = function(e) MASS::mvrnorm(1, mean_fore, Sigma_fore)
@@ -3034,9 +3009,9 @@ predict_old <- function(object, n.ahead, stable = TRUE, LPL = FALSE, Y_obs = NA,
       }
 
       if(LPL){
-        LPL_draws[i,k] <- if(object$sigma_type == "factor"){
+        LPL_draws[i,k] <- if(object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "factor"){
           mvtnorm::dmvnorm(as.vector(Y_obs[k,]),mean_fore,Sigma_fore, log = TRUE)
-        }else if(object$sigma_type == "cholesky"){
+        }else if(object[["config"]][["prior_sigma"]][["prior_sigma_cpp"]][["type"]] == "cholesky"){
           mydmvnorm(Y_obs[k,], mean_fore,Sigma_chol_fore, log = TRUE)
         }
         PL_univariate_draws[i, k,] <-  stats::dnorm(as.vector(Y_obs[k, ]), mean_fore, sqrt(diag(Sigma_fore)))

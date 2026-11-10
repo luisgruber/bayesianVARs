@@ -178,8 +178,8 @@ void sample_a_c(double& a, double& c, const arma::vec& a_vec,
   }
 }
 
-void sample_V_i_GT(arma::vec& V_i, const arma::vec& coefs, arma::vec& psi,
-                   arma::vec& lambda, double& xi, double& a, const double b,
+void sample_V_i_GT(arma::mat& V_i, const arma::mat& coefs, arma::mat& psi,
+                   arma::mat& lambda, double& xi, double& a, const double b,
                    double& c, const arma::uvec& ind,
                    const std::string priorkernel,
                    const double vs, const arma::vec& norm_consts,
@@ -187,7 +187,7 @@ void sample_V_i_GT(arma::vec& V_i, const arma::vec& coefs, arma::vec& psi,
                    const arma::vec& c_vec, const bool hyper, const bool c_rel_a){
 
   const int n = ind.size();
-  const arma::vec coefs_squared = arma::square(coefs);
+  const arma::mat coefs_squared = arma::square(coefs);
   for(arma::uvec::const_iterator it = ind.begin(); it != ind.end(); ++it){
     // For R2d2exp vs must be 1/2, for NG 1
     double lambdascale = vs;
@@ -214,8 +214,8 @@ void sample_V_i_GT(arma::vec& V_i, const arma::vec& coefs, arma::vec& psi,
   }
 }
 
-void sample_V_i_HS(arma::vec& V_i, const arma::vec& coefs, arma::vec& lambda,
-                   double& xi, arma::vec& psi, double& varpi, const arma::uvec& ind){
+void sample_V_i_HS(arma::mat& V_i, const arma::mat& coefs, arma::mat& lambda,
+                   double& xi, arma::mat& psi, double& varpi, const arma::uvec& ind){
 
   int n = ind.size();
   for(arma::uvec::const_iterator it = ind.begin(); it != ind.end(); ++it){
@@ -229,16 +229,16 @@ void sample_V_i_HS(arma::vec& V_i, const arma::vec& coefs, arma::vec& lambda,
 
 }
 
-void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, double& a ,
+void sample_V_i_DL(arma::mat& V_i, const arma::mat& coefs, double& a ,
                    const double b, double& c,
                    const arma::vec& a_vec, const arma::vec& a_weight,
-                   arma::vec& psi, arma::vec& lambda, double& xi, const arma::uvec& ind,
+                   arma::mat& psi, arma::mat& lambda, double& xi, const arma::uvec& ind,
                    const bool hyper,const arma::vec& norm_consts,
                    const bool DL_plus,
                    const arma::vec& c_vec, const bool c_rel_a){ //, bool hyper
 
   const int n = ind.size();
-  arma::vec coefs_abs = arma::abs(coefs);
+  arma::mat coefs_abs = arma::abs(coefs);
 
   for(arma::uvec::const_iterator it = ind.begin(); it != ind.end(); ++it){
     //important: joint update of p(lambda,psi|...): first lambda, than psi!!! (is wrong in Bhattacharya et al 2015!)
@@ -261,16 +261,16 @@ void sample_V_i_DL(arma::vec& V_i, const arma::vec& coefs, double& a ,
 
 }
 
-void sample_V_i_SSVS_beta(arma::vec& V_i, arma::vec& lambda, double& a,
-                     const arma::vec& coeffs, const arma::vec& tau_0,
-                     const arma::vec& tau_1, const double s_a, const double s_b,
+void sample_V_i_SSVS_beta(arma::mat& V_i, arma::mat& lambda, double& a,
+                     const arma::mat& coefs, const arma::mat& tau_0,
+                     const arma::mat& tau_1, const double s_a, const double s_b,
                      const bool hyper, const arma::uvec& ind){
 
   int n = ind.size();
 
   for(arma::uvec::const_iterator it = ind.begin(); it != ind.end(); ++it){
     // taking squares
-    const double phi2_i = coeffs(*it)*coeffs(*it);
+    const double phi2_i = coefs(*it)*coefs(*it);
     const double tau2_1_i = tau_1(*it)*tau_1(*it);
     const double tau2_0_i = tau_0(*it)*tau_0(*it);
     // Compute conditional posterior inclusion probability
@@ -296,9 +296,9 @@ void sample_V_i_SSVS_beta(arma::vec& V_i, arma::vec& lambda, double& a,
   }
 }
 
-void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::vec& V_i, const double& s1,
+void sample_V_i_HMP(double& lambda_1, double& lambda_2, arma::mat& V_i, const double& s1,
                     const double& r1, const double& s2, const double& r2,
-                    const arma::vec& PHI_diff, const arma::vec& V_i_prep,
+                    const arma::mat& PHI_diff, const arma::mat& V_i_prep,
                     const int& n_ol, const int& n_cl, const arma::uvec& i_ol,
                     const arma::uvec& i_cl){
 

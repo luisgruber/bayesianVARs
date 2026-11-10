@@ -283,25 +283,13 @@ bvar <- function(data,
     }
   }
 
-# Indicator matrix --------------------------------------------------------
-
-  if(is.numeric(prior_intercept)){
-    i_intercept <- rep(0,M)
-  }else i_intercept <- NULL
-
-  # indicator for for coefficients of lagged ys.
-  i_mat <- prior_phi[["general_settings"]][["i_mat"]]
-  # add indicator for intercept
-  i_mat <- rbind(i_mat, i_intercept)
-  mode(i_mat) <- "integer"
-
 # prior_intercept ---------------------------------------------------------
 
   if(is.logical(prior_intercept)){
     if(any(prior_intercept == TRUE)){
       stop(paste0("Argument 'prior_intercept' must be one of 'FALSE', a single numeric greater than 0, or a vector of length M."))
     }
-    intercept <- 0L
+    intercept <- FALSE
     priorIntercept <- vector("numeric")
   }else{
     # prior_intercept <- prior_intercept^2 # transform to variances
@@ -314,7 +302,7 @@ bvar <- function(data,
       stop(paste0("Argument 'prior_intercept' must be one of 'FALSE', a single numeric greater than 0, or a vector of length ", M, "."))
     }
 
-    intercept <- 1L
+    intercept <- TRUE
   }
   PHI0 <- matrix(0, K+intercept, M) # prior mean of intercept is 0
   if(lags>0L){
@@ -346,7 +334,7 @@ bvar <- function(data,
     Sigma_flat <- (S_post)/(M +2 + Tobs - M - 1)
     
     # standard errors of flat phi posterior estimates, except those of intercept
-    sigma_phi <- sqrt( rep(diag(Sigma_flat), each = K) * rep(diag(V_post_flat[1:K, 1:K]), M))
+    sigma_phi <- matrix(sqrt( rep(diag(Sigma_flat), each = K) * rep(diag(V_post_flat[1:K, 1:K]), M)), K, M)
     if(length(sigma_phi)!=lags*M^2){
       stop(paste0(length(sigma_phi), " length(sigma_phi)!= lags*M^2"))
     }
@@ -383,7 +371,7 @@ bvar <- function(data,
                                        prior_phi[["prior_phi_cpp"]],
                                        prior_sigma[["prior_sigma_cpp"]],
                                        startvals,
-                                       i_mat,
+                                       prior_phi[["general_settings"]][["i_mat"]],
                                        !quiet,
                                        expert_huge,
                                        abs_floor
@@ -392,76 +380,12 @@ bvar <- function(data,
   res[["bench"]] <- bench
   dimnames(res[["PHI"]])[1] <- list(colnames(X))
   dimnames(res[["PHI"]])[2] <- list(colnames(Y))
-  if(lags > 0L){
-    phinames <- as.vector((vapply(seq_len(M), function(i) paste0(colnames(Y)[i], "~", colnames(X[,1:(ncol(X)-intercept)])), character(K))))
-    if(prior_phi[["prior_phi_cpp"]][["prior"]] %in% c("DL","DL_h", "GT")){
-      isexpkern <- (prior_phi[["prior_phi_cpp"]][["GT_priorkernel"]] == "exponential") | (prior_phi[["prior_phi_cpp"]][["prior"]] == "DL")
-      isahyper <- prior_phi[["prior_phi_cpp"]][["DL_hyper"]] | prior_phi[["prior_phi_cpp"]][["GT_hyper"]]
-      isxi <- prior_phi[["prior_phi_cpp"]][["DL_plus"]] | (prior_phi[["prior_phi_cpp"]][["prior"]] == "GT")
-      rownames(res[["phi_hyperparameter"]]) <- c(if(isahyper) paste0("a",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]) else NULL,
-                                                 if(isxi) paste0("xi",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]) else NULL,
-                                                 paste0("lambda: ", phinames),
-                                                 if(isexpkern) paste0("psi: ", phinames) else NULL)
-      
-    }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HS"){
-      rownames(res[["phi_hyperparameter"]]) <- c(paste0("xi", 1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
-                                                 paste0("varpi", 1:prior_phi[["prior_phi_cpp"]][["n_groups"]]),
-                                                 paste0("lambda: ", phinames),
-                                                 paste0("psi: ", phinames))
-    }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "SSVS"){
-      
-      isahyper <- prior_phi[["prior_phi_cpp"]][["SSVS_hyper"]]
-      rownames(res[["phi_hyperparameter"]]) <- c(if(isahyper) paste0("a",1:prior_phi[["prior_phi_cpp"]][["n_groups"]]) else NULL,
-                                                 paste0("lambda: ", phinames))#
-      
-    }else if(prior_phi[["prior_phi_cpp"]][["prior"]] == "HMP"){
-      
-      rownames(res[["phi_hyperparameter"]]) <- c("lambda_1", "lambda_2")
-      
-    }
-  }
   
-  if(prior_sigma[["prior_sigma_cpp"]][["type"]]=="cholesky"){
-    lnames <- rep(as.character(NA), (M^2-M)/2)
-    ii <- 1
-    for(j in 2:M){
-      #lnames <- c(lnames, paste0(colnames(Y)[j],"~", colnames(Y)[1:(j-1)]))
-      lnames[ii:(ii+j-2)] <- paste0(colnames(Y)[j],"~", colnames(Y)[1:(j-1)])
-      ii <- ii+j-1
-    }
-    rownames(res[["U"]]) <- lnames
-    if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] %in% c("DL", "GT")){
-      isexpkernU <- (prior_sigma[["prior_sigma_cpp"]][["cholesky_GT_priorkernel"]] == "exponential") | (prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "DL")
-      isahyperU <- prior_sigma[["prior_sigma_cpp"]][["cholesky_DL_hyper"]] | prior_sigma[["prior_sigma_cpp"]][["cholesky_GT_hyper"]]
-      isxi <- prior_sigma[["prior_sigma_cpp"]][["cholesky_DL_plus"]] | (prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "GT")
-      rownames(res[["u_hyperparameter"]]) <- c(if(isahyperU)"a" else NULL,
-                                               if(isxi) "xi" else NULL,
-                                               paste0("lambda: ", lnames),
-                                               if(isexpkernU) paste0("psi: ", lnames) else NULL)
-      
-    }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "HS"){
-      rownames(res[["u_hyperparameter"]]) <- c("xi",
-                                               "varpi",
-                                               paste0("lambda: ", lnames),
-                                               paste0("psi: ", lnames))
-    }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "SSVS"){
-      isahyperU <- prior_sigma[["prior_sigma_cpp"]][["cholesky_SSVS_hyper"]]
-      rownames(res[["u_hyperparameter"]]) <- c(if(isahyperU) "a" else NULL,
-                                               paste0("lambda: ", lnames))
-    }else if(prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]] == "HMP"){
-      rownames(res[["u_hyperparameter"]]) <- c("lambda_3")
-    }
-    
-  }
   res[["fac"]] <- aperm(res[["fac"]], c(2,1,3))
   res[["Y"]] <- Y
   res[["X"]] <- X
-  res[["lags"]] <- lags
-  res[["intercept"]] <- ifelse(intercept>0, TRUE, FALSE)
-  res[["heteroscedastic"]] <- prior_sigma[["prior_sigma_cpp"]][["sv_heteroscedastic"]]
   res[["Yraw"]] <- Y_tmp
   res[["Traw"]] <- Traw
-  res[["sigma_type"]] <- prior_sigma[["prior_sigma_cpp"]][["type"]]
   res[["datamat"]] <- data.frame(cbind(Y, X))
   res[["config"]] <- list(draws = draws, burnin = burnin, thin = thin,
                           sv_keep = sv_keep, prior_phi = prior_phi,
@@ -471,8 +395,20 @@ bvar <- function(data,
   class(res[["U"]]) <- "bayesianVARs_draws"
   class(res[["facload"]]) <- "bayesianVARs_draws"
   class(res[["fac"]]) <- "bayesianVARs_draws"
-  class(res[["sv_para"]]) <- "bayesianVARs_draws"
   class(res[["logvar"]]) <- "bayesianVARs_draws"
+  res[["phi_para"]] <- lapply(res[["phi_para"]], function (x) {
+    class(x) <- "bayesianVARs_draws"
+    x
+  })
+  res[["sigma_para"]][["U"]] <- lapply(res[["sigma_para"]][["U"]], function (x) {
+    class(x) <- "bayesianVARs_draws"
+    x
+  })
+  res[["sigma_para"]][["facload"]] <- lapply(res[["sigma_para"]][["facload"]], function (x) {
+    class(x) <- "bayesianVARs_draws"
+    x
+  })
+  class(res[["sigma_para"]][["sv_para"]]) <- "bayesianVARs_draws"
   class(res[["lastdraw"]]) <- c("bayesianVARs_lastdraw", "bayesianVARs_startvals")
   class(res) <- "bayesianVARs_bvar"
   res
@@ -630,32 +566,15 @@ stable_bvar <- function(object, lim = 1, quiet = FALSE){
     cat("Detected",sum(!stable_indicator), "unstable draws.\n")
   }
 
-  object[["PHI"]] <- object[["PHI"]][,,stable_indicator, drop = FALSE]
-
-  if(ncol(object[["U"]]) == draws){
-    object[["U"]] <- object[["U"]][,stable_indicator, drop = FALSE]
-  }
-  if(dim(object[["logvar"]])[3] == draws){
-    object[["logvar"]] <- object[["logvar"]][,,stable_indicator, drop = FALSE]
-  }
-  if(dim(object[["sv_para"]])[3] == draws){
-    object[["sv_para"]] <- object[["sv_para"]][,,stable_indicator, drop = FALSE]
-  }
-  if(ncol(object[["phi_hyperparameter"]]) == draws){
-    object[["phi_hyperparameter"]] <- object[["phi_hyperparameter"]][,stable_indicator, drop = FALSE]
-  }
-  if(ncol(object[["u_hyperparameter"]]) == draws){
-    object[["u_hyperparameter"]] <- object[["u_hyperparameter"]][,stable_indicator, drop = FALSE]
-  }
-  if(dim(object[["V_prior"]])[3] == draws){
-    object[["V_prior"]] <- object[["V_prior"]][,,stable_indicator, drop = FALSE]
-  }
-  if(dim(object[["facload"]])[3] == draws){
-    object[["facload"]] <- object[["facload"]][,,stable_indicator, drop = FALSE]
-  }
-  if(dim(object[["fac"]])[3] == draws){
-    object[["fac"]] <- object[["fac"]][,,stable_indicator, drop = FALSE]
-  }
+  object[["PHI"]] <- subset_last(object[["PHI"]], stable_indicator, draws)
+  object[["U"]] <- subset_last(object[["U"]], stable_indicator, draws)
+  object[["facload"]] <- subset_last(object[["facload"]], stable_indicator, draws)
+  object[["fac"]] <- subset_last(object[["fac"]], stable_indicator, draws)
+  object[["logvar"]] <- subset_last(object[["logvar"]], stable_indicator, draws)
+  object[["phi_para"]] <- lapply(object[["phi_para"]], subset_last, i = stable_indicator, expected = draws)
+  object[["sigma_para"]][["facload"]] <- lapply(object[["sigma_para"]][["facload"]], subset_last, i = stable_indicator, expected = draws)
+  object[["sigma_para"]][["U"]] <- lapply(object[["sigma_para"]][["U"]], subset_last, i = stable_indicator, expected = draws)
+  object[["sigma_para"]][["sv_para"]] <- subset_last(object[["sigma_para"]][["sv_para"]], stable_indicator, draws)
 
   if(!quiet){
     cat("Remaining draws: ",dim(object[["PHI"]])[3], "!\n", sep = "")

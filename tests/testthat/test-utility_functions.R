@@ -149,14 +149,14 @@ test_that("specify_prior_sigma (cholesky)", {
                             cholesky_DL_a = a_fix,
                             quiet = TRUE)
   expect_equal(dl$prior_sigma_cpp$cholesky_a, a_fix)
-  expect_false(dl$prior_sigma_cpp$cholesky_DL_hyper)
+  expect_false(dl$prior_sigma_cpp$cholesky_a_hyper)
   
   dl_a <- specify_prior_sigma(M = M, type = "cholesky", cholesky_U_prior = "DL",
                               cholesky_DL_a = a_mat,
                               quiet = TRUE)
   expect_equal(dl_a$prior_sigma_cpp$cholesky_a_vec, a_mat[,1])
   expect_equal(dl_a$prior_sigma_cpp$cholesky_a_weight, a_mat[,2])
-  expect_true(dl_a$prior_sigma_cpp$cholesky_DL_hyper)
+  expect_true(dl_a$prior_sigma_cpp$cholesky_a_hyper)
   
   # R2D2
   r2d2 <- specify_prior_sigma(M = M, type = "cholesky", cholesky_U_prior = "R2D2",
@@ -165,7 +165,7 @@ test_that("specify_prior_sigma (cholesky)", {
   expect_equal(r2d2$prior_sigma_cpp$cholesky_a, a_fix)
   expect_equal(r2d2$prior_sigma_cpp$cholesky_b, b_fix)
   expect_equal(r2d2$prior_sigma_cpp$cholesky_c, 0.5*a_fix)
-  expect_false(r2d2$prior_sigma_cpp$cholesky_GT_hyper)
+  expect_false(r2d2$prior_sigma_cpp$cholesky_a_hyper)
   expect_true(r2d2$prior_sigma_cpp$cholesky_c_rel_a)
   expect_equal(r2d2$prior_sigma_cpp$cholesky_GT_priorkernel, "exponential")
   expect_equal(r2d2$prior_sigma_cpp$cholesky_GT_vs, 0.5)
@@ -176,7 +176,7 @@ test_that("specify_prior_sigma (cholesky)", {
   expect_equal(r2d2_a$prior_sigma_cpp$cholesky_b, b_fix)
   expect_equal(r2d2_a$prior_sigma_cpp$cholesky_c, 0.5*r2d2_a$prior_sigma_cpp$cholesky_a)
   expect_equal(r2d2_a$prior_sigma_cpp$cholesky_c_vec, 0.5*r2d2_a$prior_sigma_cpp$cholesky_a_vec)
-  expect_true(r2d2_a$prior_sigma_cpp$cholesky_GT_hyper)
+  expect_true(r2d2_a$prior_sigma_cpp$cholesky_a_hyper)
   expect_true(r2d2_a$prior_sigma_cpp$cholesky_c_rel_a)
   expect_equal(r2d2_a$prior_sigma_cpp$cholesky_GT_priorkernel, "exponential")
   expect_equal(r2d2_a$prior_sigma_cpp$cholesky_GT_vs, 0.5)
@@ -189,7 +189,7 @@ test_that("specify_prior_sigma (cholesky)", {
   expect_equal(ng$prior_sigma_cpp$cholesky_a, a_fix)
   expect_equal(ng$prior_sigma_cpp$cholesky_b, b_fix)
   expect_equal(ng$prior_sigma_cpp$cholesky_c, c_fix)
-  expect_false(ng$prior_sigma_cpp$cholesky_GT_hyper)
+  expect_false(ng$prior_sigma_cpp$cholesky_a_hyper)
   expect_false(ng$prior_sigma_cpp$cholesky_c_rel_a)
   expect_equal(ng$prior_sigma_cpp$cholesky_GT_priorkernel, "normal")
   expect_equal(ng$prior_sigma_cpp$cholesky_GT_vs, 1)
@@ -202,7 +202,7 @@ test_that("specify_prior_sigma (cholesky)", {
   expect_equal(ng_a$prior_sigma_cpp$cholesky_a_weight, a_mat[,2])
   expect_equal(ng_a$prior_sigma_cpp$cholesky_b, b_fix)
   expect_equal(ng_a$prior_sigma_cpp$cholesky_c, c_fix)
-  expect_true(ng_a$prior_sigma_cpp$cholesky_GT_hyper)
+  expect_true(ng_a$prior_sigma_cpp$cholesky_a_hyper)
   expect_false(ng_a$prior_sigma_cpp$cholesky_c_rel_a)
   expect_equal(ng_a$prior_sigma_cpp$cholesky_GT_priorkernel, "normal")
   expect_equal(ng_a$prior_sigma_cpp$cholesky_GT_vs, 1)
@@ -217,7 +217,7 @@ test_that("specify_prior_sigma (cholesky)", {
   expect_equal(ng_a_c$prior_sigma_cpp$cholesky_b, b_fix)
   expect_equal(ng_a_c$prior_sigma_cpp$cholesky_c, q*ng_a_c$prior_sigma_cpp$cholesky_a)
   expect_equal(ng_a_c$prior_sigma_cpp$cholesky_c_vec, q*ng_a_c$prior_sigma_cpp$cholesky_a_vec)
-  expect_true(ng_a_c$prior_sigma_cpp$cholesky_GT_hyper)
+  expect_true(ng_a_c$prior_sigma_cpp$cholesky_a_hyper)
   expect_true(ng_a_c$prior_sigma_cpp$cholesky_c_rel_a)
   expect_equal(ng_a_c$prior_sigma_cpp$cholesky_GT_priorkernel, "normal")
   expect_equal(ng_a_c$prior_sigma_cpp$cholesky_GT_vs, 1)
@@ -296,10 +296,10 @@ test_that("specify_prior_phi (R2D2)", {
   expect_equal(length(r2d2_ah_global[["prior_phi_cpp"]][["c"]]), r2d2_ah_global[["prior_phi_cpp"]][["n_groups"]])
   expect_equal(length(r2d2_ah_semiglobal[["prior_phi_cpp"]][["c"]]), r2d2_ah_semiglobal[["prior_phi_cpp"]][["n_groups"]])
   # GT_hyper
-  expect_true(r2d2_ah_global[["prior_phi_cpp"]][["GT_hyper"]])
-  expect_true(r2d2_ah_semiglobal[["prior_phi_cpp"]][["GT_hyper"]])
-  expect_false(r2d2_afix_global[["prior_phi_cpp"]][["GT_hyper"]])
-  expect_false(r2d2_afix_semiglobal[["prior_phi_cpp"]][["GT_hyper"]])
+  expect_true(r2d2_ah_global[["prior_phi_cpp"]][["a_hyper"]])
+  expect_true(r2d2_ah_semiglobal[["prior_phi_cpp"]][["a_hyper"]])
+  expect_false(r2d2_afix_global[["prior_phi_cpp"]][["a_hyper"]])
+  expect_false(r2d2_afix_semiglobal[["prior_phi_cpp"]][["a_hyper"]])
 })
 
 test_that("specify_prior_phi (NG)", {
@@ -425,14 +425,14 @@ test_that("specify_prior_phi (NG)", {
   expect_equal(length(ng_ah_global_crela[["prior_phi_cpp"]][["c"]]), ng_ah_global_crela[["prior_phi_cpp"]][["n_groups"]])
   expect_equal(length(ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["c"]]), ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["n_groups"]])
   #GT_hyper
-  expect_true(ng_ah_global[["prior_phi_cpp"]][["GT_hyper"]])
-  expect_true(ng_ah_global_crela[["prior_phi_cpp"]][["GT_hyper"]])
-  expect_true(ng_ah_semiglobal[["prior_phi_cpp"]][["GT_hyper"]])
-  expect_true(ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["GT_hyper"]])
-  expect_false(ng_afix_global[["prior_phi_cpp"]][["GT_hyper"]])
-  expect_false(ng_afix_global_crela[["prior_phi_cpp"]][["GT_hyper"]])
-  expect_false(ng_afix_semiglobal[["prior_phi_cpp"]][["GT_hyper"]])
-  expect_false(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["GT_hyper"]])
+  expect_true(ng_ah_global[["prior_phi_cpp"]][["a_hyper"]])
+  expect_true(ng_ah_global_crela[["prior_phi_cpp"]][["a_hyper"]])
+  expect_true(ng_ah_semiglobal[["prior_phi_cpp"]][["a_hyper"]])
+  expect_true(ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["a_hyper"]])
+  expect_false(ng_afix_global[["prior_phi_cpp"]][["a_hyper"]])
+  expect_false(ng_afix_global_crela[["prior_phi_cpp"]][["a_hyper"]])
+  expect_false(ng_afix_semiglobal[["prior_phi_cpp"]][["a_hyper"]])
+  expect_false(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["a_hyper"]])
 })
 
 test_that("specify_prior_phi (DL)", {
@@ -491,13 +491,13 @@ test_that("specify_prior_phi (DL)", {
   expect_equal(dl_a$prior_phi_cpp$n_groups, length(dl_a$prior_phi_cpp$a))
   expect_equal(dl_a_semi$prior_phi_cpp$n_groups, length(dl_a_semi$prior_phi_cpp$a))
   #DL_hyper
-  expect_true(dl_a$prior_phi_cpp$DL_hyper)
-  expect_true(dl_a_semi$prior_phi_cpp$DL_hyper)
-  expect_false(dl$prior_phi_cpp$DL_hyper)
-  expect_false(dl2$prior_phi_cpp$DL_hyper)
-  expect_false(dl3$prior_phi_cpp$DL_hyper)
-  expect_false(dl2_semiglobal$prior_phi_cpp$DL_hyper)
-  expect_false(dl3_semiglobal$prior_phi_cpp$DL_hyper)
+  expect_true(dl_a$prior_phi_cpp$a_hyper)
+  expect_true(dl_a_semi$prior_phi_cpp$a_hyper)
+  expect_false(dl$prior_phi_cpp$a_hyper)
+  expect_false(dl2$prior_phi_cpp$a_hyper)
+  expect_false(dl3$prior_phi_cpp$a_hyper)
+  expect_false(dl2_semiglobal$prior_phi_cpp$a_hyper)
+  expect_false(dl3_semiglobal$prior_phi_cpp$a_hyper)
 })
 
 pred_mod <- predict(mod)

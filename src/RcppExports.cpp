@@ -12,8 +12,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // bvar_cpp
-List bvar_cpp(const arma::mat& Y, const arma::mat& X, const int& M, const int& T, const int& K, const int& draws, const int& burnin, const int& thin, const std::string& tvp_keep, const int& intercept, const arma::vec& priorIntercept, arma::mat& PHI0, const List priorPHI_in, const List priorSigma_in, const List Rstartvals_in, const arma::imat& i_mat, const bool& progressbar, const bool& huge, const double& abs_floor);
-RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP YSEXP, SEXP XSEXP, SEXP MSEXP, SEXP TSEXP, SEXP KSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP thinSEXP, SEXP tvp_keepSEXP, SEXP interceptSEXP, SEXP priorInterceptSEXP, SEXP PHI0SEXP, SEXP priorPHI_inSEXP, SEXP priorSigma_inSEXP, SEXP Rstartvals_inSEXP, SEXP i_matSEXP, SEXP progressbarSEXP, SEXP hugeSEXP, SEXP abs_floorSEXP) {
+List bvar_cpp(const arma::mat& Y, const arma::mat& X, const int& M, const int& T, const int& K, const int& draws, const int& burnin, const int& thin, const std::string& tvp_keep, const bool& intercept, const arma::rowvec& priorIntercept, arma::mat& PHI_priormean, const List priorPHI_in, const List priorSigma_in, const List Rstartvals_in, const arma::imat& i_mat, const bool& progressbar, const bool& huge, const double& abs_floor);
+RcppExport SEXP _bayesianVARs_bvar_cpp(SEXP YSEXP, SEXP XSEXP, SEXP MSEXP, SEXP TSEXP, SEXP KSEXP, SEXP drawsSEXP, SEXP burninSEXP, SEXP thinSEXP, SEXP tvp_keepSEXP, SEXP interceptSEXP, SEXP priorInterceptSEXP, SEXP PHI_priormeanSEXP, SEXP priorPHI_inSEXP, SEXP priorSigma_inSEXP, SEXP Rstartvals_inSEXP, SEXP i_matSEXP, SEXP progressbarSEXP, SEXP hugeSEXP, SEXP abs_floorSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -26,9 +26,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int& >::type burnin(burninSEXP);
     Rcpp::traits::input_parameter< const int& >::type thin(thinSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type tvp_keep(tvp_keepSEXP);
-    Rcpp::traits::input_parameter< const int& >::type intercept(interceptSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type priorIntercept(priorInterceptSEXP);
-    Rcpp::traits::input_parameter< arma::mat& >::type PHI0(PHI0SEXP);
+    Rcpp::traits::input_parameter< const bool& >::type intercept(interceptSEXP);
+    Rcpp::traits::input_parameter< const arma::rowvec& >::type priorIntercept(priorInterceptSEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type PHI_priormean(PHI_priormeanSEXP);
     Rcpp::traits::input_parameter< const List >::type priorPHI_in(priorPHI_inSEXP);
     Rcpp::traits::input_parameter< const List >::type priorSigma_in(priorSigma_inSEXP);
     Rcpp::traits::input_parameter< const List >::type Rstartvals_in(Rstartvals_inSEXP);
@@ -36,7 +36,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const bool& >::type progressbar(progressbarSEXP);
     Rcpp::traits::input_parameter< const bool& >::type huge(hugeSEXP);
     Rcpp::traits::input_parameter< const double& >::type abs_floor(abs_floorSEXP);
-    rcpp_result_gen = Rcpp::wrap(bvar_cpp(Y, X, M, T, K, draws, burnin, thin, tvp_keep, intercept, priorIntercept, PHI0, priorPHI_in, priorSigma_in, Rstartvals_in, i_mat, progressbar, huge, abs_floor));
+    rcpp_result_gen = Rcpp::wrap(bvar_cpp(Y, X, M, T, K, draws, burnin, thin, tvp_keep, intercept, priorIntercept, PHI_priormean, priorPHI_in, priorSigma_in, Rstartvals_in, i_mat, progressbar, huge, abs_floor));
     return rcpp_result_gen;
 END_RCPP
 }
