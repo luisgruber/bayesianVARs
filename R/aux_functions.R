@@ -104,7 +104,7 @@ MP_V_prior_prep <- function(sigma_sq ,K, M, intercept){
       }
     }
   }
-  return(V_i_prep=as.vector(V_i))
+  return(V_i_prep=V_i)
 }
 
 get_MP_V_prior <- function(lambda1=0.04, lambda2=0.0016, lambda3=10^3, sigma_sq ,p, intercept){
@@ -194,4 +194,26 @@ mydmvnormU <- function (x, mean , U, log = FALSE) {
   if (log)
     logretval
   else exp(logretval)
+}
+
+# Subset last -------------------------------------------------------------
+
+subset_last <- function(x, i, expected) {
+  d <- dim(x)
+  
+  if (is.null(d)) {
+    if(length(x) == expected) {
+      x[i]
+    }else{
+      x
+    }
+  } else {
+    if(d[length(d)] == expected) {
+      subs <- rep(list(TRUE), length(d))
+      subs[[length(d)]] <- i
+      do.call(`[`, c(list(x), subs, list(drop = FALSE)))  
+    } else {
+      x
+    }
+  }
 }
