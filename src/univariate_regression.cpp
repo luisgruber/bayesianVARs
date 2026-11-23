@@ -28,10 +28,10 @@ arma::vec sample_coef_blm_known1var_trad(const arma::vec& y, const arma::mat& X,
     arma::vec rhs1 = Xy_plus%scales;
     arma::vec coef_post_tmp = arma::solve(arma::trimatl(XX_scaled_plus1_chol.t()),
                                           rhs1, arma::solve_opts::no_approx);
-    arma::mat rhs2 = arma::join_rows(coef_post_tmp, normrandvec);
-    arma::mat coef_post_mat = arma::solve(arma::trimatu(XX_scaled_plus1_chol),
-                                          rhs2, arma::solve_opts::no_approx);
-    coef_draw = coef_post_mat.col(0)%scales + coef_post_mat.col(1)%scales;
+    coef_post_tmp += normrandvec;
+    coef_draw = arma::solve(arma::trimatu(XX_scaled_plus1_chol), coef_post_tmp, 
+                            arma::solve_opts::no_approx);
+    coef_draw %= scales;
   } catch (...) {
     // fall back to traditional approach
     arma::mat coef_post_precision = X.t()*X;
