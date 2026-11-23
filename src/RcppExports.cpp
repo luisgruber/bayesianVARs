@@ -126,8 +126,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // sample_PHI_cholesky
-arma::mat sample_PHI_cholesky(const arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y, const arma::mat& X, const arma::mat& U, const arma::mat& d_sqrt, const arma::mat& V_prior, const double floor, const bool stable, const double stable_lim);
-RcppExport SEXP _bayesianVARs_sample_PHI_cholesky(SEXP PHISEXP, SEXP PHI_priorSEXP, SEXP YSEXP, SEXP XSEXP, SEXP USEXP, SEXP d_sqrtSEXP, SEXP V_priorSEXP, SEXP floorSEXP, SEXP stableSEXP, SEXP stable_limSEXP) {
+arma::mat sample_PHI_cholesky(const arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y, const arma::mat& X, const arma::mat& U, const arma::mat& logvar, const arma::mat& V_prior, const double floor, const bool stable, const double stable_lim);
+RcppExport SEXP _bayesianVARs_sample_PHI_cholesky(SEXP PHISEXP, SEXP PHI_priorSEXP, SEXP YSEXP, SEXP XSEXP, SEXP USEXP, SEXP logvarSEXP, SEXP V_priorSEXP, SEXP floorSEXP, SEXP stableSEXP, SEXP stable_limSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -136,12 +136,12 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::mat& >::type Y(YSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type U(USEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type d_sqrt(d_sqrtSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type logvar(logvarSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type V_prior(V_priorSEXP);
     Rcpp::traits::input_parameter< const double >::type floor(floorSEXP);
     Rcpp::traits::input_parameter< const bool >::type stable(stableSEXP);
     Rcpp::traits::input_parameter< const double >::type stable_lim(stable_limSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_PHI_cholesky(PHI, PHI_prior, Y, X, U, d_sqrt, V_prior, floor, stable, stable_lim));
+    rcpp_result_gen = Rcpp::wrap(sample_PHI_cholesky(PHI, PHI_prior, Y, X, U, logvar, V_prior, floor, stable, stable_lim));
     return rcpp_result_gen;
 END_RCPP
 }

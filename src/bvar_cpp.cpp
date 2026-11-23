@@ -384,8 +384,6 @@ List bvar_cpp(const arma::mat& Y,
   // initialize mixing indicators
   // mixind is also used by cholesky_sv
   arma::umat mixind(T, (M+factors));
-  //initialize d_sqrt
-  arma::mat d_sqrt = arma::exp(logvar.cols(0,M-1)/2);
   
   
   //------------------------------------STORAGE-------------------------------//
@@ -495,7 +493,7 @@ List bvar_cpp(const arma::mat& Y,
 
     single_bvar(PHI, PHI_priorvariance, a, c, psi, lambda, xi, 
                 varpi, lambda_1, lambda_2,
-                U, u, d_sqrt, U_priorvariance, a_U, b_U, c_U, psi_U, lambda_U, xi_U, 
+                U, u, U_priorvariance, a_U, b_U, c_U, psi_U, lambda_U, xi_U, 
                 lambda_3, varpi_U, armafacload, 
                 armafac, armatau2, armalambda2, logvar, logvar0, sv_para, mixind,
                 rep, burnin, Y, X, K, T, M, n_ol, n_cl, i_mat,

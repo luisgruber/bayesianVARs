@@ -69,23 +69,23 @@ void sample_PHI_factor(arma::mat& PHI, const arma::mat& PHI_prior,
 
 // sample_PHI samples VAR coefficients using the corrected triangular
 // algorithm as in Carrier, Chan, Clark & Marcellino (2021)
-void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
-                const arma::mat& X, const arma::mat& U, const arma::mat& d_sqrt,
-                const arma::mat& V_prior, const int M, const double floor,
-                const bool stable, const double stable_lim) {
+void sample_PHI_chol(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
+                     const arma::mat& X, const arma::mat& U, const arma::mat& logvar,
+                     const arma::mat& V_prior, const int M, const double floor,
+                     const bool stable, const double stable_lim) {
   const arma::mat PHI_old = PHI;
   for(int j = 0; j < M; j++){
-
+    
     arma::mat PHI_0 = PHI;
     PHI_0.col(j).zeros();
-    arma::mat normalizer_mat = d_sqrt.cols(j, M-1);
+    arma::mat normalizer_mat = arma::exp(0.5*logvar.cols(j, M-1));//d_sqrt.cols(j, M-1);
     arma::vec normalizer(normalizer_mat.begin(), normalizer_mat.size(), false);
     arma::mat Y_new_mat = (Y - X * PHI_0) * U.cols(j, M-1);
     arma::vec Y_new(Y_new_mat.begin(), Y_new_mat.size(), false);
     Y_new /= normalizer;
     arma::mat X_new_tmp = arma::kron(U( span(j,j), span(j, M-1)).t(), X);
     arma::mat X_new = X_new_tmp.each_col() / normalizer;
-
+    
     arma::vec PHI_j = PHI.unsafe_col(j);
     arma::vec PHI_prior_j = PHI_prior.unsafe_col(j);
     arma::vec V_prior_j = V_prior.unsafe_col(j);
@@ -99,7 +99,7 @@ void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
       Rprintf("\nsample_coef_blm_known1var failed in %ith eqation. Rethrowing exception:", j+1);
       throw;
     }
-      
+    
     if(floor>0) {
       for (arma::uword i=0; i<PHI_j.n_elem; ++i) {
         abs_floor2(PHI_j(i), PHI_prior_j(i), floor);
@@ -111,34 +111,52 @@ void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior, const arma::mat& Y,
   }
 }
 
+void sample_PHI(arma::mat& PHI, const arma::mat& PHI_prior,
+                const arma::mat& Y, const arma::mat& X,
+                const arma::mat& V_prior, const double floor, const bool stable, 
+                const double stable_lim, const std::string sigma_type,
+                const arma::mat& logvar, const arma::mat& facload, 
+                const arma::mat& fac, const bool& huge, 
+                const arma::mat& U, const int M) {
+  if(sigma_type == "factor") {
+    const arma::mat logvaridi = logvar.cols(0,M-1);
+    sample_PHI_factor(PHI, PHI_prior, Y, X, logvaridi, V_prior,
+                      facload, fac, huge, floor, stable, stable_lim);
+  } else if (sigma_type == "cholesky") {
+    sample_PHI_chol(PHI, PHI_prior, Y, X, U, logvar, V_prior, M, floor,
+                    stable, stable_lim);
+  } else {
+    Rcpp::stop("sample_PHI() unaware of 'sigma_type' " + sigma_type);
+  }
+  
+}
+
 // [[Rcpp::export]]
 arma::mat sample_PHI_cholesky(const arma::mat& PHI, const arma::mat& PHI_prior,
                               const arma::mat& Y, const arma::mat& X,
-                              const arma::mat& U, const arma::mat& d_sqrt,
+                              const arma::mat& U, const arma::mat& logvar,
                               const arma::mat& V_prior,
                               const double floor, const bool stable,
                               const double stable_lim){
   const int M = Y.n_cols;
   arma::mat PHI_ret = PHI;
-  sample_PHI(PHI_ret, PHI_prior, Y, X, U, d_sqrt, V_prior, M, floor, stable, stable_lim);
+  sample_PHI_chol(PHI_ret, PHI_prior, Y, X, U, logvar, V_prior, M, floor, stable, stable_lim);
   return(PHI_ret);
 }
 
 
-void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const arma::mat& d_sqrt,
+void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const arma::mat& logvar,
               const double floor) {
-
   int M = Ytilde.n_cols;
-
   int ind = 0;
   for(int i = 1; i < M; i++){
-
+    arma::vec normalizer = arma::exp(0.5*logvar.col(i));
     // create matrix with covariables (residuals of preceeding equations)
     arma::mat Z = Ytilde.cols(0, i-1);
-    Z = -1.0 * (Z.each_col() / d_sqrt.col(i));
+    Z = -1.0 * (Z.each_col() /normalizer);
     arma::vec prior_mean(i, arma::fill::zeros); // proxy needed for univariate_regression_update
     // create 'dependent' variable
-    arma::vec c = Ytilde.col(i) / d_sqrt.col(i);
+    arma::vec c = Ytilde.col(i) / normalizer;
     // update free off-diagonal elements in column i
     arma::vec U_j = U.unsafe_col(i);
     try {
@@ -157,11 +175,8 @@ void sample_U(arma::mat& U, const arma::mat& Ytilde, const arma::vec& V_i, const
       Rprintf("\nsample_coef_blm_known1var() failed in equation %i. Rethrowing exception:", i+1);
       throw;
     }
-    
     ind = ind+i;
-
   }
-
 }
 
 void sample_a_c(double& a, double& c, const arma::vec& a_vec, 

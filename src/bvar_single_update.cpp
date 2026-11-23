@@ -8,7 +8,7 @@ void single_bvar(arma::mat& PHI,
                  arma::mat& psi, arma::mat& lambda, arma::vec& xi, 
                  arma::vec& varpi, 
                  double& lambda_1, double& lambda_2,
-                 arma::mat& U, arma::vec& u, arma::mat& d_sqrt, arma::vec& U_priorvariance,
+                 arma::mat& U, arma::vec& u, arma::vec& U_priorvariance,
                  double& a_U, const double b_U, double& c_U, arma::vec& psi_U, 
                  arma::vec& lambda_U, double& xi_U, 
                  double& lambda_3,
@@ -63,28 +63,16 @@ void single_bvar(arma::mat& PHI,
     coef_priorvariance.row(K) = priorIntercept; // priorIntercept must be a rowvec!
   }
   if(K>0){
-    if(sigma_type == "cholesky"){
-      try{
-        sample_PHI(PHI, PHI_priormean, Y, X, U, d_sqrt, coef_priorvariance, M, abs_floor,
-                   stable, stable_lim);
-      } catch(const std::exception &e){
-        Rcpp::stop("sample_PHI() failed in run %i: %s", rep+1, e.what());
-      } catch(...){
-        Rprintf("\nsample_PHI() failed in run %i: Rethrowing exception:", rep+1);
-        throw;
-      }
-    }else if(sigma_type == "factor"){
-      try{
-        sample_PHI_factor(PHI, PHI_priormean, Y, X, logvar.cols(0,M-1), coef_priorvariance,
-                          armafacload, armafac, huge, abs_floor, stable, stable_lim);
-      } catch(const std::exception &e){
-        Rcpp::stop("sample_PHI_factor() failed in run %i: %s", rep+1, e.what());
-      } catch(...){
-        Rprintf("\nsample_PHI_factor() failed in run %i: Rethrowing exception:", rep+1);
-        throw;
-      }
+    try{
+      sample_PHI(PHI, PHI_priormean, Y, X, coef_priorvariance, abs_floor, 
+                 stable, stable_lim, sigma_type, logvar, 
+                 armafacload, armafac, huge, U, M);
+    } catch (const std::exception &e) {
+      Rcpp::stop("sample_PHI() failed in run %i: %s", rep+1, e.what());
+    } catch (...) {
+      Rprintf("\nsample_PHI() failed in run %i: Rethrowing exception:", rep+1);
+      throw;
     }
-    
     if(!PHI.is_finite()){
       Rcpp::stop("non-finite PHI in rep %i.", rep+1);
     }
@@ -184,7 +172,7 @@ void single_bvar(arma::mat& PHI,
   }else if(sigma_type == "cholesky"){
 
     try{
-      sample_U(U, resid, U_priorvariance, d_sqrt, abs_floor);
+      sample_U(U, resid, U_priorvariance, logvar, abs_floor);
     } catch (const std::exception& e) {
       Rcpp::stop("sample_U() failed in run %i: %s", rep+1, e.what());
     } catch(...){
@@ -236,8 +224,7 @@ void single_bvar(arma::mat& PHI,
       if(heteroscedastic(j) == false){
         double s_p = priorHomoscedastic(j,1) + 0.5*accu(square(str_resid.col(j)));
         double d_i = 1. / R::rgamma(priorHomoscedastic(j,0)+.5*T, 1./s_p);
-        d_sqrt.col(j).fill(sqrt(d_i));
-        logvar.col(j).fill(log(d_i));
+        logvar.col(j).fill(std::log(d_i));
       }else if(heteroscedastic(j) == true){
         //const arma::mat resid_norm = log(square(str_resid) + sv_offset); // + 1e-40offset??
         const arma::mat resid_norm = log(square(str_resid.col(j)) + sv_offset(j));
@@ -250,7 +237,6 @@ void single_bvar(arma::mat& PHI,
         stochvol::update_fast_sv(resid_norm, mu, phi, sigma, h0_j, h_j, mixind_j, prior_specs[j], expert_sv); //resid_norm.col(j)
         sv_para.col(j) = arma::colvec({mu, phi, sigma}); //, h0_j
         logvar0(j) = h0_j;
-        d_sqrt.col(j) = exp(h_j/2);
       }
     }
   }

@@ -43,8 +43,8 @@ irf_from_true_parameters <- function(true_structural_matrix, true_reduced_coeff,
     .Call(`_bayesianVARs_irf_from_true_parameters`, true_structural_matrix, true_reduced_coeff, ahead)
 }
 
-sample_PHI_cholesky <- function(PHI, PHI_prior, Y, X, U, d_sqrt, V_prior, floor, stable, stable_lim) {
-    .Call(`_bayesianVARs_sample_PHI_cholesky`, PHI, PHI_prior, Y, X, U, d_sqrt, V_prior, floor, stable, stable_lim)
+sample_PHI_cholesky <- function(PHI, PHI_prior, Y, X, U, logvar, V_prior, floor, stable, stable_lim) {
+    .Call(`_bayesianVARs_sample_PHI_cholesky`, PHI, PHI_prior, Y, X, U, logvar, V_prior, floor, stable, stable_lim)
 }
 
 dmvnrm_arma_fast <- function(x, mean, sigma, logd = FALSE) {

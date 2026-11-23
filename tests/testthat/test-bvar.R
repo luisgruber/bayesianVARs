@@ -263,6 +263,7 @@ test_that("geweke test sample_phi_cholesky", {
   d <- rep(20, M)
   d_sqrt <- sqrt(d)
   d_sqrt_mat <- matrix(d_sqrt, n, M, byrow = TRUE)
+  logvar_mat <- 2*log(d_sqrt_mat)
   SIGMA <- crossprod(U_inv*d_sqrt)
   SIGMA_chol <- diag(d_sqrt)%*%U_inv
   #cov2cor(SIGMA)
@@ -288,7 +289,7 @@ test_that("geweke test sample_phi_cholesky", {
 
     # simulate unobservables|oberservables
     PHI_draws[,,r] <- PHI <- bayesianVARs:::sample_PHI_cholesky(PHI, PHI_prior, Y,
-                                                                X, U, d_sqrt_mat,
+                                                                X, U, logvar_mat,
                                                                 V_prior,
                                                                 0,
                                                                 FALSE,
