@@ -1,7 +1,7 @@
 #include <RcppArmadillo.h>
 #include <factorstochvol.h>
-#include <stochvol.h>
 #include "sample_coefficients.h"
+#include "sample_sigma.h"
 
 void single_bvar(arma::mat& PHI,
                  arma::mat& PHI_priorvariance, arma::vec& a, arma::vec& c, 
@@ -124,67 +124,32 @@ void single_bvar(arma::mat& PHI,
     }
   }
   
-  arma::mat resid = Y - X*PHI;
+  const arma::mat resid = Y - X*PHI;
   
   //----3) Draw Sigma_t
+  try{
+    sample_sigma(armafacload, armafac, logvar, logvar0, sv_para, armatau2,
+                 armalambda2, mixind, U, sigma_type, resid, factor_facloadtol,
+                 factor_armarestr, armafacloadtunrestrictedelements,
+                 nonzerospercol, nonzerosperrow, sv_priorh0, ngprior, columnwise,
+                 aShrink, cShrink, dShrink, factor_homoskedastic, factor_offset, 
+                 heteroscedastic, factor_interweaving, expert_sv, expert_fac,
+                 prior_specs, B011inv, sv_offset, U_priorvariance, 
+                 priorHomoscedastic, abs_floor, T, M, rep);
+    
+  } catch(const std::exception &e){
+    Rcpp::stop("sample_sigma() failed in run %i: %s", rep+1, e.what());
+  } catch (...) {
+    Rprintf("\nsample_sigma() failed in run %i. Rethrowing exception:", rep+1);
+    throw;
+  }
   
-  if(sigma_type == "factor"){
-    try{
-      factorstochvol::update_fsv(armafacload,
-                                 armafac,
-                                 logvar,
-                                 logvar0,
-                                 sv_para,
-                                 armatau2,
-                                 armalambda2,
-                                 mixind,
-                                 resid.t(),
-                                 factor_facloadtol,
-                                 factor_armarestr,
-                                 armafacloadtunrestrictedelements,
-                                 nonzerospercol,
-                                 nonzerosperrow,
-                                 sv_priorh0,
-                                 ngprior,
-                                 columnwise,
-                                 aShrink,
-                                 cShrink,
-                                 dShrink,
-                                 factor_homoskedastic,
-                                 factor_offset,
-                                 heteroscedastic,
-                                 factor_interweaving,
-                                 expert_sv, // aka expert_idi
-                                 expert_fac,
-                                 prior_specs,
-                                 B011inv,
-                                 true, //const bool& samplefac,
-                                 false,//const bool& signswitch,
-                                 rep);
-    } catch(const std::exception &e){
-      Rcpp::stop("factorstochvol::update_fsv() failed in run %i: %s", rep+1, e.what());
-    } catch (...) {
-      Rprintf("\nfactorstochvol::update_fsv() failed in run %i. Rethrowing exception:", rep+1);
-      throw;
-    }
-
-
-  }else if(sigma_type == "cholesky"){
-
-    try{
-      sample_U(U, resid, U_priorvariance, logvar, abs_floor);
-    } catch (const std::exception& e) {
-      Rcpp::stop("sample_U() failed in run %i: %s", rep+1, e.what());
-    } catch(...){
-      Rprintf("\nsample_U() failed in run %i. Rethrowing exception:", rep+1);
-      throw;
-    }
-
+  if(sigma_type == "cholesky") {
     //----3b) Draw hyperparameters of hierarchical priors
     u = U(U_upper_indices);
     if(priorU == "DL" ){
-
-
+      
+      
       try{
         sample_V_i_DL(U_priorvariance, u, a_U, b_U, c_U, a_vec_U, a_weight_U,
                       psi_U, lambda_U, xi_U, ind_U, a_hyper_U, norm_consts_U, 
@@ -195,49 +160,25 @@ void single_bvar(arma::mat& PHI,
         Rprintf("\nsample_V_i_DL() failed in run %i. Rethrowing exception:", rep+1);
         throw;
       }
-
+      
     }else if (priorU == "GT"){
-
+      
       sample_V_i_GT(U_priorvariance, u, psi_U, lambda_U, xi_U, a_U, b_U, c_U, ind_U,
                     GT_priorkernel_U, GT_vs_U, norm_consts_U,
                     a_vec_U, a_weight_U, c_vec_U, a_hyper_U, c_rel_a_U);
-
+      
     }else if(priorU == "SSVS"){
-
+      
       sample_V_i_SSVS_beta(U_priorvariance, lambda_U, a_U, u, tau_0_U, tau_1_U, SSVS_s_a_U,
                            SSVS_s_b_U, a_hyper_U, ind_U);
-
+      
     }else if(priorU == "HMP"){
-
+      
       sample_V_i_U_HMP(lambda_3, U_priorvariance, s_r_3(0), s_r_3(1), u);
     }else if(priorU == "HS"){
-
+      
       sample_V_i_HS(U_priorvariance, u, lambda_U, xi_U, psi_U, varpi_U, ind_U);
-
-    }
-
-    //----3c) Draw elements of D_t
-    //        in case of SV use package stochvol
-    arma::mat str_resid = resid*U; // structural (orthogonalized) residuals
-
-    for(int j =0; j<M; j++){
-      if(heteroscedastic(j) == false){
-        double s_p = priorHomoscedastic(j,1) + 0.5*accu(square(str_resid.col(j)));
-        double d_i = 1. / R::rgamma(priorHomoscedastic(j,0)+.5*T, 1./s_p);
-        logvar.col(j).fill(std::log(d_i));
-      }else if(heteroscedastic(j) == true){
-        //const arma::mat resid_norm = log(square(str_resid) + sv_offset); // + 1e-40offset??
-        const arma::mat resid_norm = log(square(str_resid.col(j)) + sv_offset(j));
-        arma::vec h_j  = logvar.unsafe_col(j);  // unsafe_col reuses memory, logvar will automatically be overwritten
-        arma::uvec mixind_j = mixind.unsafe_col(j);
-        double mu = sv_para(0,j),
-          phi = sv_para(1,j),
-          sigma = sv_para(2,j),
-          h0_j = logvar0(j);
-        stochvol::update_fast_sv(resid_norm, mu, phi, sigma, h0_j, h_j, mixind_j, prior_specs[j], expert_sv); //resid_norm.col(j)
-        sv_para.col(j) = arma::colvec({mu, phi, sigma}); //, h0_j
-        logvar0(j) = h0_j;
-      }
+      
     }
   }
 }
