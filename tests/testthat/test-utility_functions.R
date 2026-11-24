@@ -235,18 +235,22 @@ test_that("specify_prior_phi (R2D2)", {
   r2d2_afix_global <- specify_prior_phi(M = M, lags = lags, prior = "R2D2",
                                         R2D2_a = a_fix, R2D2_b = b_fix,
                                         global_grouping = "global")
+  n_groups_afix_global <- length(r2d2_afix_global[["prior_phi_cpp"]][["groups"]])
   # R2D2, a random, global
   r2d2_ah_global <- specify_prior_phi(M = M, lags = lags, prior = "R2D2",
                                       R2D2_a = a_mat, R2D2_b = b_fix,
                                       global_grouping = "global")
+  n_groups_ah_global <- length(r2d2_ah_global[["prior_phi_cpp"]][["groups"]])
   # R2D2, a fixed, semi_global
   r2d2_afix_semiglobal <- specify_prior_phi(M = M, lags = lags, prior = "R2D2",
                                             R2D2_a = a_fix, R2D2_b = b_fix,
                                             global_grouping = "olcl-lagwise")
+  n_groups_afix_semi <- length(r2d2_afix_semiglobal[["prior_phi_cpp"]][["groups"]])
   # R2D2, a random, semi-global
   r2d2_ah_semiglobal <- specify_prior_phi(M = M, lags = lags, prior = "R2D2",
                                           R2D2_a = a_mat, R2D2_b = b_fix,
                                           global_grouping = "olcl-lagwise")
+  n_groups_ah_semi <- length(r2d2_ah_semiglobal[["prior_phi_cpp"]][["groups"]])
   
   # GT_vs == 1/2
   expect_equal(r2d2_afix_global[["prior_phi_cpp"]][["GT_vs"]], 1/2)
@@ -260,12 +264,12 @@ test_that("specify_prior_phi (R2D2)", {
   expect_identical(r2d2_ah_semiglobal[["prior_phi_cpp"]][["GT_priorkernel"]], "exponential")
   # a = a_fix
   expect_equal(r2d2_afix_global[["prior_phi_cpp"]][["a"]], a_fix)
-  expect_equal(r2d2_afix_semiglobal[["prior_phi_cpp"]][["a"]], rep(a_fix,r2d2_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]]))
+  expect_equal(r2d2_afix_semiglobal[["prior_phi_cpp"]][["a"]], rep(a_fix,n_groups_afix_semi))
   # b = b_fix
   expect_equal(r2d2_afix_global[["prior_phi_cpp"]][["b"]], b_fix)
-  expect_equal(r2d2_afix_semiglobal[["prior_phi_cpp"]][["b"]], rep(b_fix,r2d2_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]]))
+  expect_equal(r2d2_afix_semiglobal[["prior_phi_cpp"]][["b"]], rep(b_fix,n_groups_afix_semi))
   expect_equal(r2d2_afix_global[["prior_phi_cpp"]][["b"]], b_fix)
-  expect_equal(r2d2_afix_semiglobal[["prior_phi_cpp"]][["b"]], rep(b_fix,r2d2_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]]))
+  expect_equal(r2d2_afix_semiglobal[["prior_phi_cpp"]][["b"]], rep(b_fix,n_groups_afix_semi))
   # c_rel_a == TRUE
   expect_true(r2d2_afix_global[["prior_phi_cpp"]][["c_rel_a"]])
   expect_true(r2d2_afix_semiglobal[["prior_phi_cpp"]][["c_rel_a"]])
@@ -280,21 +284,19 @@ test_that("specify_prior_phi (R2D2)", {
   expect_equal(2*r2d2_ah_global[["prior_phi_cpp"]][["c_vec"]], r2d2_ah_global[["prior_phi_cpp"]][["a_vec"]])
   expect_equal(2*r2d2_ah_semiglobal[["prior_phi_cpp"]][["c_vec"]], r2d2_ah_semiglobal[["prior_phi_cpp"]][["a_vec"]])
   # a,b,c for each group
-  expect_equal(r2d2_afix_global[["prior_phi_cpp"]][["n_groups"]], 1L)
-  expect_equal(r2d2_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]], length(r2d2_afix_semiglobal[["prior_phi_cpp"]][["groups"]]))
-  expect_equal(r2d2_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]], length(unique(as.vector(r2d2_afix_semiglobal[["general_settings"]][["i_mat"]]))))
-  expect_equal(length(r2d2_afix_global[["prior_phi_cpp"]][["a"]]), r2d2_afix_global[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(r2d2_afix_semiglobal[["prior_phi_cpp"]][["a"]]), r2d2_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(r2d2_ah_global[["prior_phi_cpp"]][["a"]]), r2d2_ah_global[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(r2d2_ah_semiglobal[["prior_phi_cpp"]][["a"]]), r2d2_ah_semiglobal[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(r2d2_afix_global[["prior_phi_cpp"]][["b"]]), r2d2_afix_global[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(r2d2_afix_semiglobal[["prior_phi_cpp"]][["b"]]), r2d2_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(r2d2_ah_global[["prior_phi_cpp"]][["b"]]), r2d2_ah_global[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(r2d2_ah_semiglobal[["prior_phi_cpp"]][["b"]]), r2d2_ah_semiglobal[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(r2d2_afix_global[["prior_phi_cpp"]][["c"]]), r2d2_afix_global[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(r2d2_afix_semiglobal[["prior_phi_cpp"]][["c"]]), r2d2_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(r2d2_ah_global[["prior_phi_cpp"]][["c"]]), r2d2_ah_global[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(r2d2_ah_semiglobal[["prior_phi_cpp"]][["c"]]), r2d2_ah_semiglobal[["prior_phi_cpp"]][["n_groups"]])
+  expect_equal(n_groups_afix_semi, length(unique(as.vector(r2d2_afix_semiglobal[["prior_phi_cpp"]][["i_mat"]]))))
+  expect_equal(length(r2d2_afix_global[["prior_phi_cpp"]][["a"]]), n_groups_afix_global)
+  expect_equal(length(r2d2_afix_semiglobal[["prior_phi_cpp"]][["a"]]), n_groups_afix_semi)
+  expect_equal(length(r2d2_ah_global[["prior_phi_cpp"]][["a"]]), n_groups_ah_global)
+  expect_equal(length(r2d2_ah_semiglobal[["prior_phi_cpp"]][["a"]]), n_groups_ah_semi)
+  expect_equal(length(r2d2_afix_global[["prior_phi_cpp"]][["b"]]), n_groups_afix_global)
+  expect_equal(length(r2d2_afix_semiglobal[["prior_phi_cpp"]][["b"]]), n_groups_afix_semi)
+  expect_equal(length(r2d2_ah_global[["prior_phi_cpp"]][["b"]]), n_groups_ah_global)
+  expect_equal(length(r2d2_ah_semiglobal[["prior_phi_cpp"]][["b"]]), n_groups_ah_semi)
+  expect_equal(length(r2d2_afix_global[["prior_phi_cpp"]][["c"]]), n_groups_afix_global)
+  expect_equal(length(r2d2_afix_semiglobal[["prior_phi_cpp"]][["c"]]), n_groups_afix_semi)
+  expect_equal(length(r2d2_ah_global[["prior_phi_cpp"]][["c"]]), n_groups_ah_global)
+  expect_equal(length(r2d2_ah_semiglobal[["prior_phi_cpp"]][["c"]]), n_groups_ah_semi)
   # GT_hyper
   expect_true(r2d2_ah_global[["prior_phi_cpp"]][["a_hyper"]])
   expect_true(r2d2_ah_semiglobal[["prior_phi_cpp"]][["a_hyper"]])
@@ -316,34 +318,49 @@ test_that("specify_prior_phi (NG)", {
   ng_afix_global <- specify_prior_phi(M = M, lags = lags, prior = "NG",
                                       NG_a = a_fix, NG_b = b_fix, NG_c = c_fix,
                                       global_grouping = "global")
+  n_groups_afix_global <- length(ng_afix_global[["prior_phi_cpp"]][["groups"]])
+  
   # NG, a random, global
   ng_ah_global <- specify_prior_phi(M = M, lags = lags, prior = "NG",
                                     NG_a = a_mat, NG_b = b_fix, NG_c = c_fix,
                                     global_grouping = "global")
+  n_groups_ah_global <- length(ng_ah_global[["prior_phi_cpp"]][["groups"]])
+  
   # NG, a fixed, semi_global
   ng_afix_semiglobal <- specify_prior_phi(M = M, lags = lags, prior = "NG",
                                           NG_a = a_fix, NG_b = b_fix, NG_c = c_fix,
                                           global_grouping = "olcl-lagwise")
+  n_groups_afix_semiglobal <- length(ng_afix_semiglobal[["prior_phi_cpp"]][["groups"]])
+  
   # NG, a random, semi-global
   ng_ah_semiglobal <- specify_prior_phi(M = M, lags = lags, prior = "NG",
                                         NG_a = a_mat, NG_b = b_fix, NG_c = c_fix,
                                         global_grouping = "olcl-lagwise")
+  n_groups_ah_semiglobal <- length(ng_ah_semiglobal[["prior_phi_cpp"]][["groups"]])
+  
   # NG, a fixed, global, c_rel_a
   ng_afix_global_crela <- specify_prior_phi(M = M, lags = lags, prior = "NG",
                                             NG_a = a_fix, NG_b = b_fix, NG_c = c_rel_a,
                                             global_grouping = "global")
+  n_groups_afix_global_crela <- length(ng_afix_global_crela[["prior_phi_cpp"]][["groups"]])
+  
   # NG, a random, global, c_rel_a
   ng_ah_global_crela <- specify_prior_phi(M = M, lags = lags, prior = "NG",
                                           NG_a = a_mat, NG_b = b_fix, NG_c = c_rel_a,
                                           global_grouping = "global")
+  n_groups_ah_global_crela <- length(ng_ah_global_crela[["prior_phi_cpp"]][["groups"]])
+  
   # NG, a fixed, semi_global, c_rel_a
   ng_afix_semiglobal_crela <- specify_prior_phi(M = M, lags = lags, prior = "NG",
                                                 NG_a = a_fix, NG_b = b_fix, NG_c = c_rel_a,
                                                 global_grouping = "olcl-lagwise")
+  n_groups_afix_semiglobal_crela <- length(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["groups"]])
+  
   # NG, a random, semi-global, c_rel_a
   ng_ah_semiglobal_c_rel_a <- specify_prior_phi(M = M, lags = lags, prior = "NG",
                                                 NG_a = a_mat, NG_b = b_fix, NG_c = c_rel_a,
                                                 global_grouping = "olcl-lagwise")
+  n_groups_ah_semiglobal_c_rel_a <- length(ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["groups"]])
   
   # GT_vs == 1
   expect_equal(ng_afix_global[["prior_phi_cpp"]][["GT_vs"]], 1)
@@ -365,18 +382,18 @@ test_that("specify_prior_phi (NG)", {
   expect_identical(ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["GT_priorkernel"]], "normal")
   # a = a_fix
   expect_equal(ng_afix_global[["prior_phi_cpp"]][["a"]], a_fix)
-  expect_equal(ng_afix_semiglobal[["prior_phi_cpp"]][["a"]], rep(a_fix,ng_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]]))
+  expect_equal(ng_afix_semiglobal[["prior_phi_cpp"]][["a"]], rep(a_fix,n_groups_afix_semiglobal))
   expect_equal(ng_afix_global_crela[["prior_phi_cpp"]][["a"]], a_fix)
-  expect_equal(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["a"]], rep(a_fix,ng_afix_semiglobal_crela[["prior_phi_cpp"]][["n_groups"]]))
+  expect_equal(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["a"]], rep(a_fix,n_groups_afix_semiglobal_crela))
   # b = b_fix
   expect_equal(ng_afix_global[["prior_phi_cpp"]][["b"]], b_fix)
-  expect_equal(ng_afix_semiglobal[["prior_phi_cpp"]][["b"]], rep(b_fix,ng_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]]))
+  expect_equal(ng_afix_semiglobal[["prior_phi_cpp"]][["b"]], rep(b_fix,n_groups_afix_semiglobal))
   expect_equal(ng_afix_global[["prior_phi_cpp"]][["b"]], b_fix)
-  expect_equal(ng_afix_semiglobal[["prior_phi_cpp"]][["b"]], rep(b_fix,ng_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]]))
+  expect_equal(ng_afix_semiglobal[["prior_phi_cpp"]][["b"]], rep(b_fix,n_groups_afix_semiglobal))
   expect_equal(ng_afix_global_crela[["prior_phi_cpp"]][["b"]], b_fix)
-  expect_equal(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["b"]], rep(b_fix,ng_afix_semiglobal_crela[["prior_phi_cpp"]][["n_groups"]]))
+  expect_equal(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["b"]], rep(b_fix,n_groups_afix_semiglobal_crela))
   expect_equal(ng_afix_global_crela[["prior_phi_cpp"]][["b"]], b_fix)
-  expect_equal(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["b"]], rep(b_fix,ng_afix_semiglobal_crela[["prior_phi_cpp"]][["n_groups"]]))
+  expect_equal(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["b"]], rep(b_fix,n_groups_afix_semiglobal_crela))
   # c_rel_a == TRUE
   expect_false(ng_afix_global[["prior_phi_cpp"]][["c_rel_a"]])
   expect_false(ng_afix_semiglobal[["prior_phi_cpp"]][["c_rel_a"]])
@@ -396,34 +413,34 @@ test_that("specify_prior_phi (NG)", {
   expect_equal(ng_ah_global_crela[["prior_phi_cpp"]][["c_vec"]], q*ng_ah_global_crela[["prior_phi_cpp"]][["a_vec"]])
   expect_equal(ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["c_vec"]], q*ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["a_vec"]])
   # a,b,c for each group
-  expect_equal(ng_afix_global[["prior_phi_cpp"]][["n_groups"]], 1L)
-  expect_equal(ng_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]], length(ng_afix_semiglobal[["prior_phi_cpp"]][["groups"]]))
-  expect_equal(ng_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]], length(unique(as.vector(ng_afix_semiglobal[["general_settings"]][["i_mat"]]))))
-  expect_equal(length(ng_afix_global[["prior_phi_cpp"]][["a"]]), ng_afix_global[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_afix_semiglobal[["prior_phi_cpp"]][["a"]]), ng_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_ah_global[["prior_phi_cpp"]][["a"]]), ng_ah_global[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_ah_semiglobal[["prior_phi_cpp"]][["a"]]), ng_ah_semiglobal[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_afix_global[["prior_phi_cpp"]][["b"]]), ng_afix_global[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_afix_semiglobal[["prior_phi_cpp"]][["b"]]), ng_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_ah_global[["prior_phi_cpp"]][["b"]]), ng_ah_global[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_ah_semiglobal[["prior_phi_cpp"]][["b"]]), ng_ah_semiglobal[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_afix_global[["prior_phi_cpp"]][["c"]]), ng_afix_global[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_afix_semiglobal[["prior_phi_cpp"]][["c"]]), ng_afix_semiglobal[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_ah_global[["prior_phi_cpp"]][["c"]]), ng_ah_global[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_ah_semiglobal[["prior_phi_cpp"]][["c"]]), ng_ah_semiglobal[["prior_phi_cpp"]][["n_groups"]])
+  expect_equal(n_groups_afix_global, 1L)
+  expect_equal(n_groups_afix_semiglobal, length(ng_afix_semiglobal[["prior_phi_cpp"]][["groups"]]))
+  expect_equal(n_groups_afix_semiglobal, length(unique(as.vector(ng_afix_semiglobal[["prior_phi_cpp"]][["i_mat"]]))))
+  expect_equal(length(ng_afix_global[["prior_phi_cpp"]][["a"]]), n_groups_afix_global)
+  expect_equal(length(ng_afix_semiglobal[["prior_phi_cpp"]][["a"]]), n_groups_afix_semiglobal)
+  expect_equal(length(ng_ah_global[["prior_phi_cpp"]][["a"]]), n_groups_ah_global)
+  expect_equal(length(ng_ah_semiglobal[["prior_phi_cpp"]][["a"]]), n_groups_ah_semiglobal)
+  expect_equal(length(ng_afix_global[["prior_phi_cpp"]][["b"]]), n_groups_afix_global)
+  expect_equal(length(ng_afix_semiglobal[["prior_phi_cpp"]][["b"]]), n_groups_afix_semiglobal)
+  expect_equal(length(ng_ah_global[["prior_phi_cpp"]][["b"]]), n_groups_ah_global)
+  expect_equal(length(ng_ah_semiglobal[["prior_phi_cpp"]][["b"]]), n_groups_ah_semiglobal)
+  expect_equal(length(ng_afix_global[["prior_phi_cpp"]][["c"]]), n_groups_afix_global)
+  expect_equal(length(ng_afix_semiglobal[["prior_phi_cpp"]][["c"]]), n_groups_afix_semiglobal)
+  expect_equal(length(ng_ah_global[["prior_phi_cpp"]][["c"]]), n_groups_ah_global)
+  expect_equal(length(ng_ah_semiglobal[["prior_phi_cpp"]][["c"]]), n_groups_ah_semiglobal)
   
-  expect_equal(length(ng_afix_global_crela[["prior_phi_cpp"]][["a"]]), ng_afix_global_crela[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["a"]]), ng_afix_semiglobal_crela[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_ah_global_crela[["prior_phi_cpp"]][["a"]]), ng_ah_global_crela[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["a"]]), ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_afix_global_crela[["prior_phi_cpp"]][["b"]]), ng_afix_global_crela[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["b"]]), ng_afix_semiglobal_crela[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_ah_global_crela[["prior_phi_cpp"]][["b"]]), ng_ah_global_crela[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["b"]]), ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_afix_global_crela[["prior_phi_cpp"]][["c"]]), ng_afix_global_crela[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["c"]]), ng_afix_semiglobal_crela[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_ah_global_crela[["prior_phi_cpp"]][["c"]]), ng_ah_global_crela[["prior_phi_cpp"]][["n_groups"]])
-  expect_equal(length(ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["c"]]), ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["n_groups"]])
+  expect_equal(length(ng_afix_global_crela[["prior_phi_cpp"]][["a"]]), n_groups_afix_global_crela)
+  expect_equal(length(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["a"]]), n_groups_afix_semiglobal_crela)
+  expect_equal(length(ng_ah_global_crela[["prior_phi_cpp"]][["a"]]), n_groups_ah_global_crela)
+  expect_equal(length(ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["a"]]), n_groups_ah_semiglobal_c_rel_a)
+  expect_equal(length(ng_afix_global_crela[["prior_phi_cpp"]][["b"]]), n_groups_afix_global_crela)
+  expect_equal(length(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["b"]]), n_groups_afix_semiglobal_crela)
+  expect_equal(length(ng_ah_global_crela[["prior_phi_cpp"]][["b"]]), n_groups_ah_global_crela)
+  expect_equal(length(ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["b"]]), n_groups_ah_semiglobal_c_rel_a)
+  expect_equal(length(ng_afix_global_crela[["prior_phi_cpp"]][["c"]]), n_groups_afix_global_crela)
+  expect_equal(length(ng_afix_semiglobal_crela[["prior_phi_cpp"]][["c"]]), n_groups_afix_semiglobal_crela)
+  expect_equal(length(ng_ah_global_crela[["prior_phi_cpp"]][["c"]]), n_groups_ah_global_crela)
+  expect_equal(length(ng_ah_semiglobal_c_rel_a[["prior_phi_cpp"]][["c"]]), n_groups_ah_semiglobal_c_rel_a)
   #GT_hyper
   expect_true(ng_ah_global[["prior_phi_cpp"]][["a_hyper"]])
   expect_true(ng_ah_global_crela[["prior_phi_cpp"]][["a_hyper"]])
@@ -458,20 +475,29 @@ test_that("specify_prior_phi (DL)", {
   dl_semiglobal <- specify_prior_phi(M = M, lags = lags, prior = "DL",
                                      DL_a = a_fix1,
                                      global_grouping = "olcl-lagwise")
+  n_groups_dl_semi <- length(dl_semiglobal[["prior_phi_cpp"]][["groups"]])
+  
   dl2_semiglobal <- specify_prior_phi(M = M, lags = lags, prior = "DL",
                                       DL_a = a_fix2,
                                       global_grouping = "olcl-lagwise")
+  n_groups_dl2_semi <- length(dl2_semiglobal[["prior_phi_cpp"]][["groups"]])
+  
   dl3_semiglobal <- specify_prior_phi(M = M, lags = lags, prior = "DL",
                                       DL_a = a_fix3,
                                       global_grouping = "olcl-lagwise")
+  n_groups_dl3_semi <- length(dl3_semiglobal[["prior_phi_cpp"]][["groups"]])
+  
   # a random, global
   dl_a <- specify_prior_phi(M = M, lags = lags, prior = "DL",
                             DL_a = a_mat,
                             global_grouping = "global")
+  n_groups_dl_a <- length(dl_a[["prior_phi_cpp"]][["groups"]])
+  
   # a random, semi-global
   dl_a_semi <- specify_prior_phi(M = M, lags = lags, prior = "DL",
                                  DL_a = a_mat,
                                  global_grouping = "olcl-lagwise")
+  n_groups_dl_a_semi <- length(dl_a_semi[["prior_phi_cpp"]][["groups"]])
   
   # a == a_fix, and n_groups (implicitly)
   K <- M*lags
@@ -479,17 +505,17 @@ test_that("specify_prior_phi (DL)", {
   expect_equal(dl$prior_phi_cpp$a, a_fix1)
   expect_equal(dl2$prior_phi_cpp$a, 1/n)
   expect_equal(dl3$prior_phi_cpp$a, 1/K)
-  expect_equal(dl_semiglobal$prior_phi_cpp$a, rep(a_fix1, dl_semiglobal$prior_phi_cpp$n_groups))
-  expect_equal(dl2_semiglobal$prior_phi_cpp$a, rep(1/n, dl2_semiglobal$prior_phi_cpp$n_groups))
-  expect_equal(dl3_semiglobal$prior_phi_cpp$a, rep(1/K, dl3_semiglobal$prior_phi_cpp$n_groups))
+  expect_equal(dl_semiglobal$prior_phi_cpp$a, rep(a_fix1, n_groups_dl_semi))
+  expect_equal(dl2_semiglobal$prior_phi_cpp$a, rep(1/n, n_groups_dl2_semi))
+  expect_equal(dl3_semiglobal$prior_phi_cpp$a, rep(1/K, n_groups_dl3_semi))
   # check support points and weights
   expect_equal(dl_a$prior_phi_cpp$a_vec, a_mat[,1])
   expect_equal(dl_a$prior_phi_cpp$a_weight, a_mat[,2])
   expect_equal(dl_a_semi$prior_phi_cpp$a_vec, a_mat[,1])
   expect_equal(dl_a_semi$prior_phi_cpp$a_weight, a_mat[,2])
   # check n_groups for a random
-  expect_equal(dl_a$prior_phi_cpp$n_groups, length(dl_a$prior_phi_cpp$a))
-  expect_equal(dl_a_semi$prior_phi_cpp$n_groups, length(dl_a_semi$prior_phi_cpp$a))
+  expect_equal(n_groups_dl_a, length(dl_a$prior_phi_cpp$a))
+  expect_equal(n_groups_dl_a_semi, length(dl_a_semi$prior_phi_cpp$a))
   #DL_hyper
   expect_true(dl_a$prior_phi_cpp$a_hyper)
   expect_true(dl_a_semi$prior_phi_cpp$a_hyper)
