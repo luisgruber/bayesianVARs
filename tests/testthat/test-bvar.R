@@ -1,6 +1,5 @@
 test_that("setup mainly PHI", {
-  data("exrates", package = "stochvol")
-  y <- factorstochvol::logret(exrates[1:15, 1:3], demean = TRUE)
+  y <- 100*usmacro_growth[1:15,c("GDPC1","CPIAUCSL","FEDFUNDS")]
   draws <- 27L
   burnin <- 10L
   
@@ -88,8 +87,7 @@ test_that("setup mainly PHI", {
 })
 
 test_that("setup sigma cholesky", {
-  data("exrates", package = "stochvol")
-  y <- factorstochvol::logret(exrates[1:15, 1:3], demean = TRUE)
+  y <- 100*usmacro_growth[1:15,c("GDPC1","CPIAUCSL","FEDFUNDS")]
   draws <- 27L
   burnin <- 10L
   
@@ -163,8 +161,7 @@ test_that("setup sigma cholesky", {
 })
 
 test_that("setup sigma factor", {
-  data("exrates", package = "stochvol")
-  y <- factorstochvol::logret(exrates[1:15, 1:3], demean = TRUE)
+  y <- 100*usmacro_growth[1:15,c("GDPC1","CPIAUCSL","FEDFUNDS")]
   draws <- 27L
   burnin <- 10L
   
