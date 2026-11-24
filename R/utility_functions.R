@@ -2625,6 +2625,7 @@ get_startvals <- function(prior_phi, prior_sigma, intercept,
   
   if(sigma_type == "cholesky") {
     startvals[["sigma"]][["U"]] <- diag(M)
+    startvals[["sigma"]][["U"]][upper.tri(startvals[["sigma"]][["U"]])] <- 1e-10
     cholesky_U_prior <- prior_sigma[["prior_sigma_cpp"]][["cholesky_U_prior"]]
     n_U <- as.integer(0.5*(M^2-M))
     if(cholesky_U_prior %in% c("DL", "GT")){

@@ -51,7 +51,17 @@ List bvar_cpp(const arma::mat& Y,
   
   // PHI_priorvariance holds prior variances of coefficicients without intercept
   // priorIntercept (function argument) holds fixed prior variances of intercept coefficients
-  arma::mat PHI_priorvariance(K, M);
+  arma::mat PHI_priorvariance(K, M, arma::fill::ones);
+  
+  /*
+   !!!!!!!!!!!
+   bvar_single_update() samples both the elements of PHI_priorvariance and 
+   U_priorvariance before PHI and U. This means, results will not depend on 
+   initial values of PHI_priorvariance and U_priorvariance. Concerning 
+   hierarchical shrinkage and iterative use, there is no need to precompute 
+   PHI_priorvariance and U_priorvariance!
+   !!!!!!!!!!!
+   */
   
   if(priorPHI == "normal"){
     NumericMatrix V_i_in = priorPHI_in["V_i"];
@@ -108,22 +118,23 @@ List bvar_cpp(const arma::mat& Y,
   //---- DL prior specific parameters
   // DL_plus (hidden functionality) is true, if DL prior is extended to a full (semi) global local prior
   const bool DL_plus = priorPHI_in["DL_plus"];
-  if(priorPHI == "DL" ){
-    PHI_priorvariance = psi % lambda % lambda;
-  }
+  // if(priorPHI == "DL" ){
+  //   PHI_priorvariance = psi % lambda % lambda;
+  // }
   
   //----GT prior specific parameters  (GT refers to gamma type priors a la NG or R2D2)
   // GT_vs is a scaling parameter of prior variance (for NG GT_vs=1; for R2D2 GT_vs = 0.5)
   const double GT_vs = priorPHI_in["GT_vs"];
   // for NG GT_priorkernel = "normal", for R2D2 GT_priorkernel = "exponential"
   const std::string GT_priorkernel = priorPHI_in["GT_priorkernel"];
-  if(priorPHI == "GT"){
-    PHI_priorvariance = lambda*GT_vs;
-    if(GT_priorkernel == "exponential"){
-      PHI_priorvariance %= psi;
-    }
-  }
+  // if(priorPHI == "GT"){
+  //   PHI_priorvariance = lambda*GT_vs;
+  //   if(GT_priorkernel == "exponential"){
+  //     PHI_priorvariance %= psi;
+  //   }
+  // }
   
+  // correct initialization of c, only important for iterative use!
   if(c_rel_a && a_hyper) {
     for(int g=0; g<n_groups; ++g){
       arma::vec tmp = c_vec.elem(arma::find(a_vec == a(g)));
@@ -135,14 +146,14 @@ List bvar_cpp(const arma::mat& Y,
   // varpi is (semi) global auxiliary scale
   NumericVector varpi_in = phi_startvals["varpi"];
   arma::vec varpi(varpi_in.begin(), varpi_in.length(), false);
-  if(priorPHI == "HS"){
-    int j=0;
-    for(Rcpp::IntegerVector::const_iterator g=groups.begin(); g!=groups.end(); ++g){
-      arma::uvec ind = arma::find(i_mat == *g);
-      PHI_priorvariance(ind) = lambda(ind) * xi(j);
-      j++;
-    }
-  }
+  // if(priorPHI == "HS"){
+  //   int j=0;
+  //   for(Rcpp::IntegerVector::const_iterator g=groups.begin(); g!=groups.end(); ++g){
+  //     arma::uvec ind = arma::find(i_mat == *g);
+  //     PHI_priorvariance(ind) = lambda(ind) * xi(j);
+  //     j++;
+  //   }
+  // }
   
   //---- SSVS specifics
   Rcpp::NumericMatrix tau_0_rcpp = priorPHI_in["SSVS_tau0"];
@@ -151,23 +162,23 @@ List bvar_cpp(const arma::mat& Y,
   arma::mat tau_1(tau_1_rcpp.begin(), tau_1_rcpp.nrow(), tau_1_rcpp.ncol(), false);
   double SSVS_s_a = priorPHI_in["SSVS_s_a"];
   double SSVS_s_b = priorPHI_in["SSVS_s_b"];
-  if(priorPHI == "SSVS"){
-    PHI_priorvariance = arma::square(tau_1%lambda + (lambda-1)%tau_0);
-  }
+  // if(priorPHI == "SSVS"){
+  //   PHI_priorvariance = arma::square(tau_1%lambda + (lambda-1)%tau_0);
+  // }
   
   //---- HMP specifics
   Rcpp::NumericMatrix V_i_prep_in = priorPHI_in["V_i_prep"];
   arma::mat V_i_prep(V_i_prep_in.begin(), V_i_prep_in.nrow(), V_i_prep_in.ncol(), false);
   Rcpp::NumericMatrix HMP_srmat_in = priorPHI_in["HMP_srmat"];
   arma::mat HMP_srmat(HMP_srmat_in.begin(), HMP_srmat_in.nrow(), HMP_srmat_in.ncol(), false);
-  if(priorPHI == "HMP"){
-    int j=0;
-    for(Rcpp::IntegerVector::const_iterator g=groups.begin(); g!=groups.end(); ++g){
-      arma::uvec ind = arma::find(i_mat == *g);
-      PHI_priorvariance(ind) = xi(j) * V_i_prep(ind);
-      j++;
-    }
-  }
+  // if(priorPHI == "HMP"){
+  //   int j=0;
+  //   for(Rcpp::IntegerVector::const_iterator g=groups.begin(); g!=groups.end(); ++g){
+  //     arma::uvec ind = arma::find(i_mat == *g);
+  //     PHI_priorvariance(ind) = xi(j) * V_i_prep(ind);
+  //     j++;
+  //   }
+  // }
   
   // --------------------- Sigma_t
   const std::string sigma_type = priorSigma_in["type"];
@@ -185,7 +196,7 @@ List bvar_cpp(const arma::mat& Y,
   }
   arma::vec u = U(U_upper_indices);
   const arma::uword n_U = u.n_elem;
-  arma::vec U_priorvariance(n_U);
+  arma::vec U_priorvariance(n_U, arma::fill::ones);
   
   if(priorU == "normal"){
     Rcpp::NumericVector V_i_U_in_rcpp = priorSigma_in["cholesky_V_i"];
@@ -216,19 +227,19 @@ List bvar_cpp(const arma::mat& Y,
   
   //---- DL specifics
   const bool DL_plus_U = priorSigma_in["cholesky_DL_plus"];
-  if(priorU == "DL"){
-    U_priorvariance= psi_U % lambda_U % lambda_U;
-  }
+  // if(priorU == "DL"){
+  //   U_priorvariance= psi_U % lambda_U % lambda_U;
+  // }
   
   //----GT specifics
   const double GT_vs_U = priorSigma_in["cholesky_GT_vs"];
   const std::string GT_priorkernel_U = priorSigma_in["cholesky_GT_priorkernel"];
-  if(priorU == "GT"){
-    U_priorvariance = lambda_U*GT_vs_U;
-    if(GT_priorkernel_U == "exponential"){
-      U_priorvariance %= psi_U;
-    }
-  }
+  // if(priorU == "GT"){
+  //   U_priorvariance = lambda_U*GT_vs_U;
+  //   if(GT_priorkernel_U == "exponential"){
+  //     U_priorvariance %= psi_U;
+  //   }
+  // }
   if(c_rel_a_U && a_hyper_U) {
     arma::vec tmp = c_vec_U.elem(arma::find(a_vec_U == a_U));
     c_U = tmp(0);
@@ -236,10 +247,10 @@ List bvar_cpp(const arma::mat& Y,
   
   //---- Horseshoe specifics
   double varpi_U = sigma_startvals["varpi_U"];
-  if(priorU == "HS"){
-    U_priorvariance = lambda_U*xi_U;
-  }
-  
+  // if(priorU == "HS"){
+  //   U_priorvariance = lambda_U*xi_U;
+  // }
+  // 
   //---- SSVS specifics
   Rcpp::NumericVector tau_0_U_rcpp = priorSigma_in["cholesky_SSVS_tau0"];
   arma::vec tau_0_U(tau_0_U_rcpp.begin(), tau_0_U_rcpp.length(), false);
@@ -247,16 +258,16 @@ List bvar_cpp(const arma::mat& Y,
   arma::vec tau_1_U(tau_1_U_rcpp.begin(), tau_1_U_rcpp.length(), false);
   double SSVS_s_a_U = priorSigma_in["cholesky_SSVS_s_a"];
   double SSVS_s_b_U = priorSigma_in["cholesky_SSVS_s_b"];
-  if(priorU == "SSVS"){
-    U_priorvariance = arma::square(tau_1_U%lambda_U + (lambda_U-1)%tau_0_U);
-  }
+  // if(priorU == "SSVS"){
+  //   U_priorvariance = arma::square(tau_1_U%lambda_U + (lambda_U-1)%tau_0_U);
+  // }
   
   //---- HMP specifics
   Rcpp::NumericVector s_r_3_in = priorSigma_in["cholesky_HMP_sr"];
   arma::vec s_r_3(s_r_3_in.begin(), s_r_3_in.length(), false);
-  if(priorU == "HMP"){
-    U_priorvariance.fill(xi_U);
-  }
+  // if(priorU == "HMP"){
+  //   U_priorvariance.fill(xi_U);
+  // }
   //-----------------------factorstochvol----------------------//
   const int factors = priorSigma_in["factor_factors"];
   if(sigma_type == "cholesky" && factors != 0){

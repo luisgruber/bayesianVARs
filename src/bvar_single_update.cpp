@@ -56,7 +56,21 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_priorvariance, arma::vec& a,
                  const Rcpp::NumericVector sv_offset,
                  const double abs_floor, const bool stable, 
                  const double stable_lim
-                 ){
+){
+  
+  //----0) Sample hyperparameters of hierarchical priors (prior variances V_i)
+  
+  arma::mat PHI_diff = PHI.head_rows(K) - PHI_priormean.head_rows(K);  
+  if(priorPHI == "DL" || priorPHI== "R2D2" || priorPHI=="SSVS" ||
+     priorPHI =="HS" || priorPHI== "NG" || priorPHI == "GT" || priorPHI == "HMP"){
+    if(!(priorPHI == "HMP" || (priorPHI == "SSVS" && !a_hyper )) || rep >= 0.1*burnin) {
+      sample_V_i_PHI(PHI_priorvariance, a, c, lambda, psi, xi, varpi, 
+                     priorPHI, PHI_diff, b, a_vec, a_weight, c_vec, c_rel_a, 
+                     a_hyper, norm_consts, GT_vs, GT_priorkernel, tau_0, tau_1, 
+                     SSVS_s_a, SSVS_s_b, HMP_srmat, V_i_prep,  DL_plus, groups, i_mat);
+    }
+  }
+  
   //----1) Draw PHI (reduced form VAR coefficients)
   arma::mat coef_priorvariance(K+isIntercept, M);
   coef_priorvariance.head_rows(K) = PHI_priorvariance;
@@ -78,23 +92,23 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_priorvariance, arma::vec& a,
       Rcpp::stop("non-finite PHI in rep %i.", rep+1);
     }
   }
-
-  //----2) Sample hyperparameters of hierarchical priors (prior variances V_i)
-
-  arma::mat PHI_diff = PHI.head_rows(K) - PHI_priormean.head_rows(K);  
-  if(priorPHI == "DL" || priorPHI== "R2D2" || priorPHI=="SSVS" ||
-     priorPHI =="HS" || priorPHI== "NG" || priorPHI == "GT" || priorPHI == "HMP"){
-    if(!(priorPHI == "HMP" || (priorPHI == "SSVS" && !a_hyper )) || rep >= 0.1*burnin) {
-      sample_V_i_PHI(PHI_priorvariance, a, c, lambda, psi, xi, varpi, 
-                     priorPHI, PHI_diff, b, a_vec, a_weight, c_vec, c_rel_a, 
-                     a_hyper, norm_consts, GT_vs, GT_priorkernel, tau_0, tau_1, 
-                     SSVS_s_a, SSVS_s_b, HMP_srmat, V_i_prep,  DL_plus, groups, i_mat);
-    }
-  }
   
   const arma::mat resid = Y - X*PHI;
   
-  //----3) Draw Sigma_t
+  //----2) Draw Sigma_t
+  if(sigma_type == "cholesky") {
+    // Draw hyperparameters of hierarchical priors
+    u = U(U_upper_indices);
+    if(priorU == "DL" || priorU == "GT" || priorU == "SSVS" || priorU == "HS" ||
+       priorU == "HMP") {
+      sample_V_i_U(U_priorvariance, a_U, c_U, lambda_U, psi_U, xi_U, varpi_U, 
+                   priorU, u, b_U, a_vec_U, a_weight_U, c_vec_U, c_rel_a_U, 
+                   a_hyper_U, norm_consts_U, GT_vs_U, GT_priorkernel_U, tau_0_U, 
+                   tau_1_U, SSVS_s_a_U, SSVS_s_b_U, s_r_3, DL_plus_U,
+                   ind_U); 
+    }
+  }
+  
   try{
     sample_sigma(armafacload, armafac, logvar, logvar0, sv_para, armatau2,
                  armalambda2, mixind, U, sigma_type, resid, factor_facloadtol,
@@ -110,18 +124,5 @@ void single_bvar(arma::mat& PHI, arma::mat& PHI_priorvariance, arma::vec& a,
   } catch (...) {
     Rprintf("\nsample_sigma() failed in run %i. Rethrowing exception:", rep+1);
     throw;
-  }
-  
-  if(sigma_type == "cholesky") {
-    //----3b) Draw hyperparameters of hierarchical priors
-    u = U(U_upper_indices);
-    if(priorU == "DL" || priorU == "GT" || priorU == "SSVS" || priorU == "HS" ||
-       priorU == "HMP") {
-      sample_V_i_U(U_priorvariance, a_U, c_U, lambda_U, psi_U, xi_U, varpi_U, 
-                 priorU, u, b_U, a_vec_U, a_weight_U, c_vec_U, c_rel_a_U, 
-                 a_hyper_U, norm_consts_U, GT_vs_U, GT_priorkernel_U, tau_0_U, 
-                 tau_1_U, SSVS_s_a_U, SSVS_s_b_U, s_r_3, DL_plus_U,
-                 ind_U); 
-    }
   }
 }
