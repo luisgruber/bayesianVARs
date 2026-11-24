@@ -23,7 +23,6 @@ List bvar_cpp(const arma::mat& Y,
               const List priorPHI_in,
               const List priorSigma_in,
               const List Rstartvals_in,
-              const arma::imat& i_mat,
               const bool& progressbar,
               const bool& huge,
               const double& abs_floor){
@@ -51,7 +50,7 @@ List bvar_cpp(const arma::mat& Y,
   }
   
   // PHI_priorvariance holds prior variances of coefficicients without intercept
-  // priorIntercept holds fixed prior variances of intercept coefficients
+  // priorIntercept (function argument) holds fixed prior variances of intercept coefficients
   arma::mat PHI_priorvariance(K, M);
   
   if(priorPHI == "normal"){
@@ -61,31 +60,32 @@ List bvar_cpp(const arma::mat& Y,
     PHI_priorvariance = armaV_i_in;
   }
   
+  // indicator matrix for the semi global groups
+  Rcpp::IntegerMatrix i_mat_in = priorPHI_in["i_mat"];
+  arma::imat i_mat(i_mat_in.begin(), i_mat_in.nrow(), i_mat_in.ncol(), false);
   //  sub-groups for semi-global-local GL priors and SSVS prior
-  const int n_groups = priorPHI_in["n_groups"]; // number of distinct groups
-  IntegerVector groups_in = priorPHI_in["groups"];
-  arma::ivec groups(groups_in.begin(), groups_in.size(),false);
-  
+  const Rcpp::IntegerVector groups = priorPHI_in["groups"];
+  const int n_groups = groups.size(); // number of distinct groups
   // Hyperparameters of DL, GT (NG or R2D2), HS and SSVS
-  // lambda is (primary) local shrinkage scale parameter, in case of SSVS it is 0-1 indicator
+  // lambda: (primary) local shrinkage scale parameter, in case of SSVS it is 0-1 indicator
   NumericMatrix lambda_in = phi_startvals["lambda"];
   arma::mat lambda(lambda_in.begin(), lambda_in.nrow(), lambda_in.ncol(), false);
-  // psi is auxiliary local shrinkage scale
+  // psi: auxiliary local shrinkage scale
   NumericMatrix psi_in = phi_startvals["psi"];
   arma::mat psi(psi_in.begin(), psi_in.nrow(), psi_in.ncol(), false);
-  // xi is (semi) global shrinkage scale parameter
+  // xi: (semi) global shrinkage scale parameter(s), in case of 'HMP' vector of length 2, one for own-lags, one for cross-lags
   NumericVector xi_in = phi_startvals["xi"];
   arma::vec xi(xi_in.begin(), xi_in.length(), false);
   NumericVector a_in = phi_startvals["a"];
-  // a is either (semi) global concentration parameter that determines degree of shrinkage, or
+  // a: either (semi) global concentration parameter that determines degree of shrinkage, or
   // in case of SSVS prior inclusion probability
   arma::vec a(a_in.begin(), a_in.length(), false);
   //a_hyper is true if a discrete prior is placed on a
   const bool a_hyper = priorPHI_in["a_hyper"];
-  // b is shape parameter of InverseGamma prior on (semi global) local scales (NG and R2D2 only)
+  // b: shape parameter of InverseGamma prior on (semi global) local scales (NG and R2D2 only)
   NumericVector b_in = priorPHI_in["b"];
   arma::vec b(b_in.begin(), b_in.length(), false);
-  // c is scale parameter of InverseGamma prior on (semi global) local scales (NG only, for R2D2 c=0.5*a)
+  // c: scale parameter of InverseGamma prior on (semi global) local scales (NG only, for R2D2 c=0.5*a)
   NumericVector c_in = priorPHI_in["c"];
   arma::vec c(c_in.begin(), c_in.length(), false);
   
@@ -96,10 +96,10 @@ List bvar_cpp(const arma::mat& Y,
   NumericVector a_weight_in = priorPHI_in["a_weight"]; 
   arma::vec a_weight(a_weight_in.begin(), a_weight_in.size(), false);
   // norm_consts holds pre-computed evaluations of the Gamma function 
-  // (needed for the computation of full condtional posterior of discrete prior)
+  // (needed for the computation of full conditional posterior of discrete prior)
   NumericVector norm_consts_in = priorPHI_in["norm_consts"];
   arma::vec norm_consts(norm_consts_in.begin(), norm_consts_in.size(), false);
-  // c_vec holds support points of c if c is specified as a proportion of a
+  // c_vec holds support points of c, if c is specified as a proportion of a, e.g. R2D2 assumes c=0.5a
   NumericVector c_vec_in = priorPHI_in["c_vec"];
   arma::vec c_vec(c_vec_in.begin(), c_vec_in.size(), false); 
   // c_rel_a is true if c is specified as a proportion of a, e.g. R2D2 assumes c=0.5a
@@ -136,9 +136,8 @@ List bvar_cpp(const arma::mat& Y,
   NumericVector varpi_in = phi_startvals["varpi"];
   arma::vec varpi(varpi_in.begin(), varpi_in.length(), false);
   if(priorPHI == "HS"){
-    arma::ivec::iterator g;
     int j=0;
-    for(g=groups.begin(); g!=groups.end(); ++g){
+    for(Rcpp::IntegerVector::const_iterator g=groups.begin(); g!=groups.end(); ++g){
       arma::uvec ind = arma::find(i_mat == *g);
       PHI_priorvariance(ind) = lambda(ind) * xi(j);
       j++;
@@ -157,19 +156,17 @@ List bvar_cpp(const arma::mat& Y,
   }
   
   //---- HMP specifics
-  // indicators for cross-/own-lags 
-  const arma::uvec i_ol = arma::find(i_mat > 0);
-  const arma::uvec i_cl = arma::find(i_mat < 0);
-  const int n_ol = i_ol.size(); // nr. of ownlags
-  const int n_cl = i_cl.size(); // nr. of crosslags
-  double lambda_1= phi_startvals["lambda_1"];//0.04;
-  double lambda_2= phi_startvals["lambda_2"];//0.0016;
-  arma::mat V_i_prep = priorPHI_in["V_i_prep"];
-  arma::vec s_r_1 = priorPHI_in["lambda_1"];
-  arma::vec s_r_2 = priorPHI_in["lambda_2"];
+  Rcpp::NumericMatrix V_i_prep_in = priorPHI_in["V_i_prep"];
+  arma::mat V_i_prep(V_i_prep_in.begin(), V_i_prep_in.nrow(), V_i_prep_in.ncol(), false);
+  Rcpp::NumericMatrix HMP_srmat_in = priorPHI_in["HMP_srmat"];
+  arma::mat HMP_srmat(HMP_srmat_in.begin(), HMP_srmat_in.nrow(), HMP_srmat_in.ncol(), false);
   if(priorPHI == "HMP"){
-    PHI_priorvariance(i_ol) = lambda_1*V_i_prep(i_ol);
-    PHI_priorvariance(i_cl) = lambda_2*V_i_prep(i_cl);
+    int j=0;
+    for(Rcpp::IntegerVector::const_iterator g=groups.begin(); g!=groups.end(); ++g){
+      arma::uvec ind = arma::find(i_mat == *g);
+      PHI_priorvariance(ind) = xi(j) * V_i_prep(ind);
+      j++;
+    }
   }
   
   // --------------------- Sigma_t
@@ -255,10 +252,10 @@ List bvar_cpp(const arma::mat& Y,
   }
   
   //---- HMP specifics
-  double lambda_3 = sigma_startvals["lambda_3"];//0.001;
-  NumericVector s_r_3 = priorSigma_in["cholesky_lambda_3"];
+  Rcpp::NumericVector s_r_3_in = priorSigma_in["cholesky_HMP_sr"];
+  arma::vec s_r_3(s_r_3_in.begin(), s_r_3_in.length(), false);
   if(priorU == "HMP"){
-    U_priorvariance.fill(lambda_3);
+    U_priorvariance.fill(xi_U);
   }
   //-----------------------factorstochvol----------------------//
   const int factors = priorSigma_in["factor_factors"];
@@ -424,7 +421,7 @@ List bvar_cpp(const arma::mat& Y,
   psi_draws_rcpp.attr("dim") = Rcpp::Dimension(psi_in.nrow()*isPsi, psi_in.ncol()*isPsi, nsave*isPsi);
   arma::cube psi_draws(psi_draws_rcpp.begin(), psi_in.nrow()*isPsi, psi_in.ncol()*isPsi, nsave*isPsi, false);
   
-  const bool isXi = priorPHI == "GT" || (priorPHI == "DL" && DL_plus) || priorPHI == "HS";
+  const bool isXi = priorPHI == "GT" || (priorPHI == "DL" && DL_plus) || priorPHI == "HS" || priorPHI == "HMP";
   Rcpp::NumericMatrix xi_draws_rcpp(xi_in.length()*isXi, nsave*isXi);
   arma::mat xi_draws(xi_draws_rcpp.begin(), xi_draws_rcpp.nrow(), xi_draws_rcpp.ncol(), false);
   
@@ -436,10 +433,6 @@ List bvar_cpp(const arma::mat& Y,
   Rcpp::NumericMatrix varpi_draws_rcpp(varpi_in.length()*isVarpi, nsave*isVarpi);
   arma::mat varpi_draws(varpi_draws_rcpp.begin(), varpi_draws_rcpp.nrow(), varpi_draws_rcpp.ncol(), false);
   
-  const bool isHMP = priorPHI == "HMP";
-  Rcpp::NumericVector lambda_1_draws_rcpp(nsave*isHMP);
-  Rcpp::NumericVector lambda_2_draws_rcpp(nsave*isHMP);
-  
   const bool isLambda_U = (priorU == "DL" || priorU == "GT" || priorU == "HS" || priorU == "SSVS") && sigma_type == "cholesky";
   Rcpp::NumericMatrix lambda_U_draws_rcpp(lambda_U_in.length()*isLambda_U, nsave*isLambda_U);
   arma::mat lambda_U_draws(lambda_U_draws_rcpp.begin(), lambda_U_draws_rcpp.nrow(), lambda_U_draws_rcpp.ncol(), false);
@@ -448,7 +441,7 @@ List bvar_cpp(const arma::mat& Y,
   Rcpp::NumericMatrix psi_U_draws_rcpp(psi_U_in.length()*isPsi_U, nsave*isPsi_U);
   arma::mat psi_U_draws(psi_U_draws_rcpp.begin(), psi_U_draws_rcpp.nrow(), psi_U_draws_rcpp.ncol(), false);
   
-  const bool isXi_U = priorU == "GT" || (priorU == "DL" && DL_plus_U) || priorU == "HS";
+  const bool isXi_U = priorU == "GT" || (priorU == "DL" && DL_plus_U) || priorU == "HS" || priorU == "HMP";
   Rcpp::NumericVector xi_U_draws_rcpp(nsave*isXi_U);
   
   const bool isA_U = (priorU == "DL" && a_hyper_U) || (priorU == "GT" && a_hyper_U)  || (priorU == "SSVS" && a_hyper_U);
@@ -456,9 +449,6 @@ List bvar_cpp(const arma::mat& Y,
   
   const bool isVarpi_U = priorU == "HS";
   Rcpp::NumericVector varpi_U_draws_rcpp(nsave*isVarpi_U);
-  
-  const bool isHMP_U = priorU == "HMP";
-  Rcpp::NumericVector lambda_3_draws_rcpp(nsave*isHMP_U);
   
   const bool isFsvNg = sigma_type == "factor" && ngprior;
   Rcpp::NumericMatrix factor_lambda2_rcpp(armalambda2.n_elem*isFsvNg, nsave*isFsvNg);
@@ -491,25 +481,23 @@ List bvar_cpp(const arma::mat& Y,
               printwidth, rep, printwidth, tot, 100.*rep/tot);
     }
 
-    single_bvar(PHI, PHI_priorvariance, a, c, psi, lambda, xi, 
-                varpi, lambda_1, lambda_2,
-                U, u, U_priorvariance, a_U, b_U, c_U, psi_U, lambda_U, xi_U, 
-                lambda_3, varpi_U, armafacload, 
-                armafac, armatau2, armalambda2, logvar, logvar0, sv_para, mixind,
-                rep, burnin, Y, X, K, T, M, n_ol, n_cl, i_mat,
-                i_ol, i_cl, groups, PHI_priormean, priorPHI, intercept, priorIntercept, a_hyper, 
-                DL_plus, b, a_vec, a_weight, norm_consts, c_vec, 
-                c_rel_a, GT_priorkernel, GT_vs, tau_0, tau_1, SSVS_s_a, SSVS_s_b, 
-                s_r_1, s_r_2, V_i_prep, huge, sigma_type, U_upper_indices,
-                ind_U, priorU, a_hyper_U, DL_plus_U,
-                a_vec_U, a_weight_U, norm_consts_U, c_vec_U, c_rel_a_U, GT_priorkernel_U, 
-                GT_vs_U, tau_0_U, tau_1_U, SSVS_s_a_U, SSVS_s_b_U, 
-                s_r_3, aShrink, cShrink, dShrink, factor_facloadtol, factor_armarestr, 
+    single_bvar(PHI, PHI_priorvariance, a, c, psi, lambda, xi, varpi, U, u, 
+                U_priorvariance, a_U, b_U, c_U, psi_U, lambda_U, xi_U, varpi_U, 
+                armafacload, armafac, armatau2, armalambda2, logvar, logvar0, 
+                sv_para, mixind, rep, burnin, Y, X, K, T, M, i_mat, groups, 
+                PHI_priormean, priorPHI, intercept, priorIntercept, a_hyper, 
+                DL_plus, b, a_vec, a_weight, norm_consts, c_vec, c_rel_a, 
+                GT_priorkernel, GT_vs, tau_0, tau_1, SSVS_s_a, SSVS_s_b, 
+                HMP_srmat, V_i_prep, huge, sigma_type, U_upper_indices, ind_U, 
+                priorU, a_hyper_U, DL_plus_U, a_vec_U, a_weight_U, norm_consts_U, 
+                c_vec_U, c_rel_a_U, GT_priorkernel_U,  GT_vs_U, tau_0_U, 
+                tau_1_U, SSVS_s_a_U, SSVS_s_b_U,  s_r_3, aShrink, cShrink, 
+                dShrink, factor_facloadtol, factor_armarestr, 
                 armafacloadtunrestrictedelements, nonzerospercol, nonzerosperrow,
-                sv_priorh0, ngprior, columnwise, factor_homoskedastic, factor_offset,
-                heteroscedastic, factor_interweaving, expert_sv, expert_fac,
-                prior_specs, B011inv, priorHomoscedastic, sv_offset, abs_floor, stable,
-                stable_lim);
+                sv_priorh0, ngprior, columnwise, factor_homoskedastic, 
+                factor_offset, heteroscedastic, factor_interweaving, expert_sv, 
+                expert_fac, prior_specs, B011inv, priorHomoscedastic, sv_offset, 
+                abs_floor, stable, stable_lim);
 
     //-------Store draws after burnin
     if(rep >= burnin && ( (rep+1-burnin) % thin == 0 )){
@@ -534,10 +522,6 @@ List bvar_cpp(const arma::mat& Y,
       if(isVarpi) {
         varpi_draws.col(nthsave) = varpi;
       }
-      if(isHMP) {
-        lambda_1_draws_rcpp(nthsave) = lambda_1;
-        lambda_2_draws_rcpp(nthsave) = lambda_2;
-      }
 
       if(sigma_type == "cholesky"){
         U_draws.col(nthsave) = u;
@@ -555,9 +539,6 @@ List bvar_cpp(const arma::mat& Y,
         }
         if(isVarpi_U) {
           varpi_U_draws_rcpp(nthsave) = varpi_U;
-        }
-        if(isHMP_U) {
-          lambda_3_draws_rcpp(nthsave) = lambda_3;
         }
       }else if(sigma_type == "factor" && factors > 0){
         facload_draws.slice(nthsave) = armafacload;
@@ -584,9 +565,7 @@ List bvar_cpp(const arma::mat& Y,
       Rcpp::Named("psi") = psi_draws_rcpp,
       Rcpp::Named("a") = a_draws_rcpp,
       Rcpp::Named("xi") = xi_draws_rcpp,
-      Rcpp::Named("varpi") = varpi_draws_rcpp,
-      Rcpp::Named("lambda_1") = lambda_1_draws_rcpp,
-      Rcpp::Named("lambda_2") = lambda_2_draws_rcpp
+      Rcpp::Named("varpi") = varpi_draws_rcpp
     ),
     Named("sigma_para") =  Rcpp::List::create(
       Rcpp::Named("U") = Rcpp::List::create(
@@ -594,8 +573,7 @@ List bvar_cpp(const arma::mat& Y,
         Rcpp::Named("psi") = psi_U_draws_rcpp,
         Rcpp::Named("a") = a_U_draws_rcpp,
         Rcpp::Named("xi") = xi_U_draws_rcpp,
-        Rcpp::Named("varpi") = varpi_U_draws_rcpp,
-        Rcpp::Named("lambda_3") = lambda_3_draws_rcpp
+        Rcpp::Named("varpi") = varpi_U_draws_rcpp
       ),
       Rcpp::Named("facload") = Rcpp::List::create(
         Rcpp::Named("tau2") = factor_tau2_rcpp,
@@ -612,9 +590,7 @@ List bvar_cpp(const arma::mat& Y,
         Named("psi") = psi_in,
         Named("xi") = xi_in,
         Named("a") = a_in,
-        Named("varpi") = varpi_in,
-        Named("lambda_1") = lambda_1,
-        Named("lambda_2") = lambda_2 
+        Named("varpi") = varpi_in 
       ),
       Named("sigma") = List::create(
         Named("U") = U_in,
@@ -623,7 +599,6 @@ List bvar_cpp(const arma::mat& Y,
         Named("xi_U") = xi_U,
         Named("a_U") = a_U,
         Named("varpi_U") = varpi_U,
-        Named("lambda_3") = lambda_3,
         Named("facload") = facload,
         Named("fac") = fac,
         Named("tau2") = tau2,

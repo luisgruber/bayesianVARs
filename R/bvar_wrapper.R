@@ -371,7 +371,6 @@ bvar <- function(data,
                                        prior_phi[["prior_phi_cpp"]],
                                        prior_sigma[["prior_sigma_cpp"]],
                                        startvals,
-                                       prior_phi[["general_settings"]][["i_mat"]],
                                        !quiet,
                                        expert_huge,
                                        abs_floor

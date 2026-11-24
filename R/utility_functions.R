@@ -398,7 +398,7 @@ new_baysesianVARs_prior_sigma_cpp <- function(){
               cholesky_SSVS_tau1 = numeric(1L),
               cholesky_SSVS_s_a = numeric(1L),
               cholesky_SSVS_s_b = numeric(1L),
-              cholesky_lambda_3 = numeric(1L),
+              cholesky_HMP_sr = numeric(1L),
               cholesky_priorhomoscedastic = matrix(0, 1, 1),
               cholesky_sv_offset = numeric(1L),
               factor_factors = integer(1L),
@@ -559,11 +559,11 @@ validate_baysesianVARs_prior_sigma_cpp <- function(x){ # nocov start
       stop("x[['cholesky_SSVS_s_b']] must be a numeric vector")
     }
   }
-  if(!exists("cholesky_lambda_3", x)){
-    stop("x must be subsettable with x[['cholesky_lambda_3']]")
+  if(!exists("cholesky_HMP_sr", x)){
+    stop("x must be subsettable with x[['cholesky_HMP_sr']]")
   }else{
-    if(!is.numeric(x[["cholesky_lambda_3"]])){
-      stop("x[['cholesky_lambda_3']] must be a numeric vector")
+    if(!is.numeric(x[["cholesky_HMP_sr"]])){
+      stop("x[['cholesky_HMP_sr']] must be a numeric vector")
     }
   }
   if(!exists("cholesky_priorhomoscedastic", x)){
@@ -1523,7 +1523,7 @@ specify_prior_sigma <- function(data=NULL,
 
     }else if(cholesky_U_prior == "HMP"){
 
-      prior_sigma_cpp[["cholesky_lambda_3"]] <- cholesky_HMP_lambda3
+      prior_sigma_cpp[["cholesky_HMP_sr"]] <- cholesky_HMP_lambda3
 
     }
 
@@ -1571,7 +1571,7 @@ new_baysesianVARs_prior_phi_cpp <- function(){
   # constructor, bvar_cpp.cpp expects a list with following elements
   out <- list(prior = character(1L),
               V_i = matrix(0, 1L, 1L),
-              n_groups = integer(1L),
+              i_mat = matrix(1L, 1L, 1L),
               groups = integer(1L),
               a = numeric(1L),
               b = numeric(1L),
@@ -1590,8 +1590,7 @@ new_baysesianVARs_prior_phi_cpp <- function(){
               SSVS_s_a = numeric(1L),
               SSVS_s_b = numeric(1L),
               V_i_prep = matrix(0, 1L, 1L),
-              lambda_1 = numeric(1L),
-              lambda_2 = numeric(1L),
+              HMP_srmat = matrix(0, 1L, 1L),
               stable = logical(1L),
               stable_lim = numeric(1L)
   )
@@ -1618,11 +1617,11 @@ validate_baysesianVARs_prior_phi_cpp <- function(x){ # nocov start
       stop("x[['V_i']] must be a numeric matrix")
     }
   }
-  if(!exists("n_groups", x)){
-    stop("x must be subsettable with x[['n_groups']]")
-  }else{
-    if(!is.integer(x[["n_groups"]])){
-      stop("x[['n_groups']] must be an integer vector")
+  if(!exists("i_mat", x)) {
+    stop("x must be subsettable with x[['i_mat']]")
+  } else {
+    if(!is.integer(x[["i_mat"]]) | !is.matrix(x[["i_mat"]])) {
+      stop("x[['i_mat']] must be an integer matrix")
     }
   }
   if(!exists("groups", x)){
@@ -1751,18 +1750,11 @@ validate_baysesianVARs_prior_phi_cpp <- function(x){ # nocov start
       stop("x[['V_i_prep']] must be a numeric matrix")
     }
   }
-  if(!exists("lambda_1", x)){
-    stop("x must be subsettable with x[['lambda_1']]")
+  if(!exists("HMP_srmat", x)){
+    stop("x must be subsettable with x[['HMP_srmat']]")
   }else{
-    if(!is.numeric(x[["lambda_1"]])){
-      stop("x[['lambda_1']] must be a numeric vector")
-    }
-  }
-  if(!exists("lambda_2", x)){
-    stop("x must be subsettable with x[['lambda_2']]")
-  }else{
-    if(!is.numeric(x[["lambda_2"]]) ){
-      stop("x[['lambda_2']] must be a numeric vector")
+    if(!is.numeric(x[["HMP_srmat"]]) | !is.matrix(x[["HMP_srmat"]])){
+      stop("x[['HMP_srmat']] must be a numeric matrix")
     }
   }
   if(!exists("stable", x)) {
@@ -1811,13 +1803,6 @@ validate_baysesianVARs_prior_phi <- function(x) {
      } else {
        if(!is.numeric(x[["general_settings"]][["PHI0"]]) | !is.matrix(x[["general_settings"]][["PHI0"]])) {
          stop("x[['general_settings']][['PHI0']] must be a numeric matrix")
-       }
-     }
-     if(!exists("i_mat", x[["general_settings"]])) {
-       stop("x must be subsettable with x[['general_settings']][['i_mat']]")
-     } else {
-       if(!is.integer(x[["general_settings"]][["i_mat"]]) | !is.matrix(x[["general_settings"]][["i_mat"]])) {
-         stop("x[['general_settings']][['i_mat']] must be an integer matrix")
        }
      }
      if(!exists("SSVS_semiautomatic", x[["general_settings"]])) {
@@ -2055,9 +2040,8 @@ specify_prior_phi <- function(data = NULL,
   K <- lags*M
   n <- K*M
   
-  general_settings <- list(M = M, lags = lags, PHI0 = matrix(0,0,M), 
-                           # global_grouping = character(1L), 
-                           i_mat = matrix(0L,0,M), SSVS_semiautomatic = logical(1L),
+  general_settings <- list(M = M, lags = lags, PHI0 = matrix(0,0,M),
+                           SSVS_semiautomatic = logical(1L),
                            SSVS_c1 = numeric(1L), SSVS_c0 = numeric(1L))
   prior_phi_cpp[["stable"]] <- stable
   if(stable_lim>1 | stable_lim < 0) {
@@ -2086,16 +2070,16 @@ specify_prior_phi <- function(data = NULL,
         if(!(identical(dim(i_mat), as.integer(c(K,M))) & all(is.numeric(i_mat))) )
           stop("Argument 'global_grouping' is not of dimension 'c(lags*M,M)'!")
       }else if(global_grouping=="global"){
-        i_mat <- matrix(1, K, M)
+        i_mat <- matrix(1L, K, M)
       }else if(global_grouping=="fol"){
-        i_mat <- matrix(1, K, M)
-        diag(i_mat[1:M,1:M]) <- 2
+        i_mat <- matrix(1L, K, M)
+        diag(i_mat[1:M,1:M]) <- 2L
       }else if(global_grouping=="olcl-lagwise"){
-        i_mat <- matrix(1, K, M)
-        diag(i_mat[1:M,1:M]) <- 2
+        i_mat <- matrix(1L, K, M)
+        diag(i_mat[1:M,1:M]) <- 2L
         if(lags>1){
           for (j in 1:(lags-1)) {
-            i_mat[(j*M+1):((j+1)*M),] <- i_mat[((j-1)*M+1):(j*M),] + 2
+            i_mat[(j*M+1):((j+1)*M),] <- i_mat[((j-1)*M+1):(j*M),] + 2L
           }
         }
       }else if(global_grouping == "equation-wise"){
@@ -2112,19 +2096,23 @@ specify_prior_phi <- function(data = NULL,
       }else {
         stop("Something went wrong specifying 'global_grouping'.")
       }
-      prior_phi_cpp[["groups"]] <- as.integer(unique(as.vector(i_mat)))
-      prior_phi_cpp[["n_groups"]] <- length(prior_phi_cpp[["groups"]])
-      
-    }else{
+      mode(i_mat) <- "integer"
+      prior_phi_cpp[["i_mat"]] <- i_mat
+    }else if(prior == "HMP"){
       i_mat_1 <- diag(M)
       i_mat_1[upper.tri(i_mat_1)] <-
-        i_mat_1[lower.tri(i_mat_1)] <- -1
+        i_mat_1[lower.tri(i_mat_1)] <- 2
       i_mat <- NULL
       for (j in seq_len(lags)) {
-        i_mat <- rbind(i_mat, i_mat_1 * j)
+        i_mat <- rbind(i_mat, i_mat_1)
       }
+      mode(i_mat) <- "integer"
+      prior_phi_cpp[["i_mat"]] <- i_mat
     }
-    mode(i_mat) <- "integer"
+    prior_phi_cpp[["groups"]] <- as.integer(unique(as.vector(prior_phi_cpp[["i_mat"]])))
+    n_groups <- length(prior_phi_cpp[["groups"]])
+    # mode(i_mat) <- "integer"
+    # prior_phi_cpp[["i_mat"]] <- i_mat
     
     if(any(priormean<0)){
       stop("At least one element in 'priormean' is negative!")
@@ -2153,7 +2141,7 @@ specify_prior_phi <- function(data = NULL,
     #                          i_mat = i_mat,
     #                          SSVS_semiautomatic = logical(1L))
     general_settings[["PHI0"]] <- PHI0
-    general_settings[["i_mat"]] <- i_mat
+    # general_settings[["i_mat"]] <- i_mat
     
     if(prior == "DL"){
       
@@ -2185,20 +2173,20 @@ specify_prior_phi <- function(data = NULL,
       
       if(all(is.numeric(prior_phi_cpp[["a"]]))&is.null(dim(prior_phi_cpp[["a"]]))){
         prior_phi_cpp[["a_hyper"]] <- FALSE
-        prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a"]], prior_phi_cpp[["n_groups"]])
+        prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a"]], n_groups)
       }else if(is.matrix(prior_phi_cpp[["a"]])){
         prior_phi_cpp[["a_hyper"]] <- TRUE
         prior_phi_cpp[["a_vec"]] <- prior_phi_cpp[["a"]][,1]
         prior_phi_cpp[["a_weight"]] <- prior_phi_cpp[["a"]][,2]
         prior_phi_cpp[["norm_consts"]] <- lgamma(prior_phi_cpp[["a_vec"]])
-        prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a_vec"]][1], prior_phi_cpp[["n_groups"]])
+        prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a_vec"]][1], n_groups)
       }else if(any(c("1/K", "1/n") %in% prior_phi_cpp[["a"]]) &
                length(prior_phi_cpp[["a"]]) == 1){
         prior_phi_cpp[["a_hyper"]] <- FALSE
         if(prior_phi_cpp[["a"]] == "1/K") {
-          prior_phi_cpp[["a"]] <- rep(1/K, prior_phi_cpp[["n_groups"]])
+          prior_phi_cpp[["a"]] <- rep(1/K, n_groups)
         }else if(prior_phi_cpp[["a"]] == "1/n") {
-          prior_phi_cpp[["a"]] <- rep(1/n, prior_phi_cpp[["n_groups"]])
+          prior_phi_cpp[["a"]] <- rep(1/n, n_groups)
         }
       }else{
         stop("Something went wrong specifying DL_a!")
@@ -2211,9 +2199,9 @@ specify_prior_phi <- function(data = NULL,
         prior_phi_cpp[["DL_plus"]] <- dots[["DL_plus"]]
         if(prior_phi_cpp[["DL_plus"]]){
           if(!exists("DL_b", dots)){
-            prior_phi_cpp[["b"]] <- rep_len(0.5, prior_phi_cpp[["n_groups"]])
+            prior_phi_cpp[["b"]] <- rep_len(0.5, n_groups)
           }else{
-            prior_phi_cpp[["b"]] <- rep_len(dots[["DL_b"]], prior_phi_cpp[["n_groups"]])
+            prior_phi_cpp[["b"]] <- rep_len(dots[["DL_b"]], n_groups)
           }
           if(!exists("DL_c", dots)){
             prior_phi_cpp[["c"]] <- 0.5*prior_phi_cpp[["a"]]
@@ -2226,15 +2214,15 @@ specify_prior_phi <- function(data = NULL,
               # Note: somewhat inconsistent, because if not specified, then c_rel_a by default
               stop("If you specify DL_c for model DL_plus, then it must be numeric!")
             }
-            prior_phi_cpp[["c"]] <- rep_len(dots[["DL_c"]], prior_phi_cpp[["n_groups"]])
+            prior_phi_cpp[["c"]] <- rep_len(dots[["DL_c"]], n_groups)
             prior_phi_cpp[["c_rel_a"]] <- FALSE
             
           }
         }
       }else if(!exists("DL_plus", dots) ){
         prior_phi_cpp[["DL_plus"]] <- FALSE
-        prior_phi_cpp[["b"]] <- rep_len(0, prior_phi_cpp[["n_groups"]])
-        prior_phi_cpp[["c"]] <- rep_len(0, prior_phi_cpp[["n_groups"]])
+        prior_phi_cpp[["b"]] <- rep_len(0, n_groups)
+        prior_phi_cpp[["c"]] <- rep_len(0, n_groups)
       } # nocov end
       
     }else if(prior == "R2D2"){
@@ -2251,7 +2239,7 @@ specify_prior_phi <- function(data = NULL,
       
       prior_phi_cpp[["prior"]] <- "GT"
       prior_phi_cpp[["a"]] <- R2D2_a
-      prior_phi_cpp[["b"]] <- rep_len(R2D2_b, prior_phi_cpp[["n_groups"]])
+      prior_phi_cpp[["b"]] <- rep_len(R2D2_b, n_groups)
       prior_phi_cpp[["c"]] <- "0.5*a"
       prior_phi_cpp[["GT_vs"]] <- 1/2
       prior_phi_cpp[["GT_priorkernel"]] <- "exponential"
@@ -2263,10 +2251,10 @@ specify_prior_phi <- function(data = NULL,
       if(length(SSVS_a)==2L){
         prior_phi_cpp[["SSVS_s_a"]] <- SSVS_a[1]
         prior_phi_cpp[["SSVS_s_b"]] <- SSVS_a[2]
-        prior_phi_cpp[["a"]] <- rep_len(0.5, prior_phi_cpp[["n_groups"]]) # initial value --> move to get startvals?
+        prior_phi_cpp[["a"]] <- rep_len(0.5, n_groups) # initial value --> move to get startvals?
         prior_phi_cpp[["a_hyper"]] <- TRUE
       }else if(length(SSVS_a)==1L){
-        prior_phi_cpp[["a"]] <- rep_len(SSVS_a, prior_phi_cpp[["n_groups"]])
+        prior_phi_cpp[["a"]] <- rep_len(SSVS_a, n_groups)
         prior_phi_cpp[["SSVS_s_a"]] <- prior_phi_cpp[["SSVS_s_b"]] <- as.numeric(NA)
         prior_phi_cpp[["a_hyper"]] <- FALSE
       }else{
@@ -2289,8 +2277,9 @@ specify_prior_phi <- function(data = NULL,
       # note to myself: bvar expects variances!
       prior_phi_cpp[["V_i"]] <- matrix(rep_len(normal_sds^2, n), K, M)
     }else if(prior == "HMP"){
-      prior_phi_cpp[["lambda_1"]] <- HMP_lambda1
-      prior_phi_cpp[["lambda_2"]] <- HMP_lambda2
+      # prior_phi_cpp[["lambda_1"]] <- HMP_lambda1
+      # prior_phi_cpp[["lambda_2"]] <- HMP_lambda2
+      prior_phi_cpp[["HMP_srmat"]] <- cbind(HMP_lambda1, HMP_lambda2)
     }else if(prior == "HS"){
       if(is.character(global_grouping)){
         if(!(global_grouping %in% c("global", "equation-wise", "covariate-wise", "fol", "olcl-lagwise"))){
@@ -2307,7 +2296,7 @@ specify_prior_phi <- function(data = NULL,
       }
       prior_phi_cpp[["prior"]] <- "GT"
       prior_phi_cpp[["a"]] <- NG_a
-      prior_phi_cpp[["b"]] <- rep_len(NG_b, prior_phi_cpp[["n_groups"]])
+      prior_phi_cpp[["b"]] <- rep_len(NG_b, n_groups)
       prior_phi_cpp[["c"]] <- NG_c
       prior_phi_cpp[["GT_vs"]] <- 1
       prior_phi_cpp[["GT_priorkernel"]] <- "normal"
@@ -2332,9 +2321,9 @@ specify_prior_phi <- function(data = NULL,
         prior_phi_cpp[["a_vec"]] <- prior_phi_cpp[["a"]][,1]
         prior_phi_cpp[["a_weight"]] <- prior_phi_cpp[["a"]][,2]
         prior_phi_cpp[["norm_consts"]] <- lgamma(prior_phi_cpp[["a_vec"]])
-        prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a_vec"]][1], prior_phi_cpp[["n_groups"]]) #sample(prior_phi_cpp[["a_vec"]], prior_phi_cpp[["n_groups"]], replace = TRUE, prob = prior_phi_cpp[["a_weight"]]) # initialize a
+        prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a_vec"]][1], n_groups) #sample(prior_phi_cpp[["a_vec"]], prior_phi_cpp[["n_groups"]], replace = TRUE, prob = prior_phi_cpp[["a_weight"]]) # initialize a
       }else{
-        prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a"]], prior_phi_cpp[["n_groups"]])
+        prior_phi_cpp[["a"]] <- rep_len(prior_phi_cpp[["a"]], n_groups)
       }
       
       if(is.character(prior_phi_cpp[["c"]])){
@@ -2349,7 +2338,7 @@ specify_prior_phi <- function(data = NULL,
         prior_phi_cpp[["c"]] <- eval(str2lang(myc))
       }else if(is.numeric(prior_phi_cpp[["c"]])){
         prior_phi_cpp[["c_rel_a"]] <- FALSE
-        prior_phi_cpp[["c"]] <- rep_len(prior_phi_cpp[["c"]], prior_phi_cpp[["n_groups"]])
+        prior_phi_cpp[["c"]] <- rep_len(prior_phi_cpp[["c"]], n_groups)
       }
     }
   }
@@ -2367,9 +2356,9 @@ new_startvals <- function(){
                psi = matrix(0, 1, 1),
                xi = numeric(1L),
                a = numeric(1L),
-               varpi = numeric(1L),
-               lambda_1 = numeric(1L),
-               lambda_2 = numeric(1L)
+               varpi = numeric(1L)#,
+               # lambda_1 = numeric(1L),
+               # lambda_2 = numeric(1L)
     ),
     sigma = list(U = matrix(0, 1, 1),
                  lambda_U = numeric(1L),
@@ -2377,7 +2366,7 @@ new_startvals <- function(){
                  xi_U = numeric(1L),
                  a_U = numeric(1L),
                  varpi_U = numeric(1L),
-                 lambda_3 = numeric(1L),
+                 # lambda_3 = numeric(1L),
                  facload = matrix(0, 1, 1),
                  fac = matrix(0, 1, 1),
                  tau2 = matrix(0, 1, 1),
@@ -2444,20 +2433,6 @@ validate_bayesianVARs_startvals <- function(x) {
       stop("x[['phi']][['varpi']] must be a numeric vector")
     }
   }
-  if(!exists("lambda_1", x[["phi"]])) {
-    stop("x must be subsettable with x[['phi']][['lambda_1']]")
-  } else {
-    if (!is.numeric(x[["phi"]][["lambda_1"]])) {
-      stop("x[['phi']][['lambda_1']] must be a numeric vector")
-    }
-  }
-  if(!exists("lambda_2", x[["phi"]])) {
-    stop("x must be subsettable with x[['phi']][['lambda_2']]")
-  } else {
-    if (!is.numeric(x[["phi"]][["lambda_2"]])) {
-      stop("x[['phi']][['lambda_2']] must be a numeric vector")
-    }
-  }
   if(!exists("sigma", x)) {
     stop("x must be subsettable with x[['sigma']]")
   } else {
@@ -2505,13 +2480,6 @@ validate_bayesianVARs_startvals <- function(x) {
   } else {
     if (!is.numeric(x[["sigma"]][["varpi_U"]])) {
       stop("x[['sigma']][['varpi_U']] must be a numeric vector")
-    }
-  }
-  if(!exists("lambda_3", x[["sigma"]])) {
-    stop("x must be subsettable with x[['sigma']][['lambda_3']]")
-  } else {
-    if (!is.numeric(x[["sigma"]][["lambda_3"]])) {
-      stop("x[['sigma']][['lambda_3']] must be a numeric vector")
     }
   }
   if(!exists("facload", x[["sigma"]])) {
@@ -2610,7 +2578,7 @@ get_startvals <- function(prior_phi, prior_sigma, intercept,
   M <- prior_phi[["general_settings"]][["M"]]
   K <- p*M
   n <- p*M^2
-  n_groups <- prior_phi$prior_phi_cpp$n_groups
+  n_groups <- length(prior_phi[["prior_phi_cpp"]][["groups"]])
   PHI_start <- matrix(1e-10, p*M+intercept, M)
   # diag(PHI_start) <- 0.5
   startvals[["phi"]][["PHI"]] <- PHI_start
@@ -2633,8 +2601,8 @@ get_startvals <- function(prior_phi, prior_sigma, intercept,
     startvals[["phi"]][["a"]] <- prior_phi[["prior_phi_cpp"]][["a"]]
     startvals[["phi"]][["lambda"]] <- matrix(0, K, M)
   } else if (phi_prior == "HMP") {
-    startvals[["phi"]][["lambda_1"]] <- 0.04
-    startvals[["phi"]][["lambda_2"]] <- 0.0016
+    startvals[["phi"]][["xi"]] <- c(0.04, 0.0016)
+    # startvals[["phi"]][["lambda_2"]] <- 0.0016
   } else if(phi_prior == "normal") {
     # nothing to do
   } 
@@ -2677,7 +2645,7 @@ get_startvals <- function(prior_phi, prior_sigma, intercept,
       startvals[["sigma"]][["a_U"]] <- prior_sigma[["prior_sigma_cpp"]][["cholesky_a"]]
       startvals[["sigma"]][["lambda_U"]] <- rep(0, n_U)
     } else if (cholesky_U_prior == "HMP") {
-      startvals[["sigma"]][["lambda_3"]] <- 0.001
+      startvals[["sigma"]][["xi_U"]] <- 0.001
     } else if(cholesky_U_prior == "normal") {
       # nothing to do
     } 
