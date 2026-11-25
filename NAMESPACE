@@ -35,31 +35,37 @@ export(update_bvar)
 importFrom(GIGrvg,rgig)
 importFrom(MASS,mvrnorm)
 importFrom(Rcpp,sourceCpp)
-importFrom(colorspace,diverge_hcl)
-importFrom(colorspace,sequential_hcl)
+importFrom(colorspace,
+  diverge_hcl,
+  sequential_hcl
+)
 importFrom(factorstochvol,fsvsim)
-importFrom(graphics,abline)
-importFrom(graphics,axis)
-importFrom(graphics,lines)
-importFrom(graphics,mtext)
-importFrom(graphics,pairs)
-importFrom(graphics,par)
-importFrom(graphics,points)
-importFrom(graphics,polygon)
-importFrom(graphics,rect)
-importFrom(graphics,strheight)
-importFrom(graphics,strwidth)
-importFrom(graphics,text)
+importFrom(graphics,
+  abline,
+  axis,
+  lines,
+  mtext,
+  pairs,
+  par,
+  points,
+  polygon,
+  rect,
+  strheight,
+  strwidth,
+  text
+)
 importFrom(scales,alpha)
-importFrom(stats,cor)
-importFrom(stats,dnorm)
-importFrom(stats,embed)
-importFrom(stats,fitted)
-importFrom(stats,quantile)
-importFrom(stats,rgamma)
-importFrom(stats,rnorm)
-importFrom(stats,sd)
-importFrom(stats,ts.plot)
+importFrom(stats,
+  cor,
+  dnorm,
+  embed,
+  fitted,
+  quantile,
+  rgamma,
+  rnorm,
+  sd,
+  ts.plot
+)
 importFrom(stochvol,svsample)
 importFrom(utils,flush.console)
 useDynLib(bayesianVARs, .registration = TRUE)

@@ -30,7 +30,7 @@ inline cube Sigma_chol_t_draws (
 		}
 		build_sigma(Sigma_unused, Sigma_chol, is_factor_model, facload_mat,
 				logvar_T.col(r).as_row(), factor_loadings.n_cols,
-				n_variables, u_vec, true);
+				n_variables, u_vec, /*return_chol=*/true);
 
 		ret.slice(r) = Sigma_chol.t();
 	}
@@ -475,7 +475,8 @@ arma::field<arma::cube> irf_cpp(
 	const arma::mat& logvar_t, //rows: log variances, cols: draws
 	const arma::mat& shocks, //rows: dim shock, cols: shocks
 	const arma::uword ahead, //how far to predict ahead
-	const Rcpp::Nullable<Rcpp::NumericMatrix> rotation_ = R_NilValue //rows: variables, cols: dim shock, slices: draws
+	const Rcpp::Nullable<Rcpp::NumericMatrix> rotation_ = R_NilValue, //rows: variables, cols: dim shock, slices: draws
+	const bool forecast_errors = false //if true, shocks hit the reduced form errors (in units of their std. dev. at t)
 ) {
 	const uword n_shocks = shocks.n_cols;
 	const uword n_variables = coefficients.n_cols;
@@ -494,7 +495,22 @@ arma::field<arma::cube> irf_cpp(
 		
 		//compute the responses to the shocks at t=0
 		mat rotated_shocks = rotation.n_slices > 0 ? rotation.slice(r) * shocks : shocks;
-		if (is_factor_model) {
+		if (forecast_errors) {
+			// scale the shocks by the standard deviations of the forecast errors at t
+			mat Sigma, Sigma_chol_unused, facload_mat;
+			vec u_vec;
+			if (is_factor_model) {
+				facload_mat = factor_loadings.slice(r);
+			} else {
+				u_vec = U_vecs.col(r);
+			}
+			build_sigma(Sigma, Sigma_chol_unused, is_factor_model, facload_mat,
+					logvar_t.col(r).as_row(), factor_loadings.n_cols,
+					n_variables, u_vec, /*return_chol=*/false);
+			rotated_shocks.each_col() %= sqrt(Sigma.diag());
+			irf.slice(0) = rotated_shocks;
+		}
+		else if (is_factor_model) {
 			vec sqrt_V_t = exp(logvar_t.col(r).head(factor_loadings.n_cols) / 2);
 			rotated_shocks.each_col() %= sqrt_V_t;
 			irf.slice(0) = factor_loadings.slice(r) * rotated_shocks;

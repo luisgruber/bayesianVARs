@@ -29,7 +29,7 @@ posterior_heatmap(
 }
 \arguments{
 \item{x}{An array of dimension \eqn{a \times b \times draws}, where \eqn{a
-  \times b} is the dimension of the parameter to visualize and draws is the
+\times b} is the dimension of the parameter to visualize and draws is the
 number of posterior draws.}
 
 \item{FUN}{The summary function to be applied to margins \code{c(1,2)} of x. E.g.
@@ -68,8 +68,8 @@ values for which colors should be plotted. By default this range is
 determined by the maximum of the absolute values of the selected summary.}
 
 \item{colspace}{Optional argument indicating the color palette to be used. If
-not specified, \code{\link[colorspace:hcl_palettes]{colorspace::diverge_hcl()}} will be used, or, if \code{FUN}
-returns only positive values \code{\link[colorspace:hcl_palettes]{colorspace::sequential_hcl()}}. See below for
+not specified, \code{\link[colorspace:diverge_hcl]{colorspace::diverge_hcl()}} will be used, or, if \code{FUN}
+returns only positive values \code{\link[colorspace:sequential_hcl]{colorspace::sequential_hcl()}}. See below for
 a more detailed description of the default usage.}
 
 \item{border_color}{The color of the rectangles borders. If not specified no

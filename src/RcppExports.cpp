@@ -84,8 +84,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // irf_cpp
-arma::field<arma::cube> irf_cpp(const arma::cube& coefficients, const arma::cube& factor_loadings, const arma::mat& U_vecs, const arma::mat& logvar_t, const arma::mat& shocks, const arma::uword ahead, const Rcpp::Nullable<Rcpp::NumericMatrix> rotation_);
-RcppExport SEXP _bayesianVARs_irf_cpp(SEXP coefficientsSEXP, SEXP factor_loadingsSEXP, SEXP U_vecsSEXP, SEXP logvar_tSEXP, SEXP shocksSEXP, SEXP aheadSEXP, SEXP rotation_SEXP) {
+arma::field<arma::cube> irf_cpp(const arma::cube& coefficients, const arma::cube& factor_loadings, const arma::mat& U_vecs, const arma::mat& logvar_t, const arma::mat& shocks, const arma::uword ahead, const Rcpp::Nullable<Rcpp::NumericMatrix> rotation_, const bool forecast_errors);
+RcppExport SEXP _bayesianVARs_irf_cpp(SEXP coefficientsSEXP, SEXP factor_loadingsSEXP, SEXP U_vecsSEXP, SEXP logvar_tSEXP, SEXP shocksSEXP, SEXP aheadSEXP, SEXP rotation_SEXP, SEXP forecast_errorsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -96,7 +96,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::mat& >::type shocks(shocksSEXP);
     Rcpp::traits::input_parameter< const arma::uword >::type ahead(aheadSEXP);
     Rcpp::traits::input_parameter< const Rcpp::Nullable<Rcpp::NumericMatrix> >::type rotation_(rotation_SEXP);
-    rcpp_result_gen = Rcpp::wrap(irf_cpp(coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahead, rotation_));
+    Rcpp::traits::input_parameter< const bool >::type forecast_errors(forecast_errorsSEXP);
+    rcpp_result_gen = Rcpp::wrap(irf_cpp(coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahead, rotation_, forecast_errors));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -240,7 +241,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bayesianVARs_my_gig", (DL_FUNC) &_bayesianVARs_my_gig, 4},
     {"_bayesianVARs_compute_parameter_transformations", (DL_FUNC) &_bayesianVARs_compute_parameter_transformations, 5},
     {"_bayesianVARs_find_rotation_cpp", (DL_FUNC) &_bayesianVARs_find_rotation_cpp, 5},
-    {"_bayesianVARs_irf_cpp", (DL_FUNC) &_bayesianVARs_irf_cpp, 7},
+    {"_bayesianVARs_irf_cpp", (DL_FUNC) &_bayesianVARs_irf_cpp, 8},
     {"_bayesianVARs_irf_bayes_optimal_order", (DL_FUNC) &_bayesianVARs_irf_bayes_optimal_order, 1},
     {"_bayesianVARs_irf_from_true_parameters", (DL_FUNC) &_bayesianVARs_irf_from_true_parameters, 3},
     {"_bayesianVARs_sample_PHI_cholesky", (DL_FUNC) &_bayesianVARs_sample_PHI_cholesky, 10},

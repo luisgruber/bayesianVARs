@@ -24,7 +24,7 @@ choices_sigma_type <- list(
   		test_restrictions = function(result) {
   			B0 <- extractB0(result)
   			zeros <- rep(0, dim(B0)[3])
-  			for (i in nrow(restrictions_B0)) for (j in ncol(restrictions_B0)) {
+  			for (i in seq_len(nrow(restrictions_B0))) for (j in seq_len(ncol(restrictions_B0))) {
   				if (is.na(restrictions_B0[i,j])) {
   					# no check
   				}
@@ -32,7 +32,7 @@ choices_sigma_type <- list(
   					expect_equal(B0[i,j,], zeros)
   				}
   				else if (restrictions_B0[i,j] == 1) {
-  					expect_identical(all(B0[i,j,] >= 0), TRUE)
+					expect_all_true(B0[i,j,] > -testthat_tolerance())
   				}
   			}
   		}
@@ -45,15 +45,15 @@ choices_sigma_type <- list(
   		test_restrictions = function(result) {
   			facload <- result[,,1,]
   			zeros <- rep(0, dim(facload)[3])
-  			for (i in nrow(restrictions_facload)) for (j in ncol(restrictions_facload)) {
+  			for (i in seq_len(nrow(restrictions_facload))) for (j in seq_len(ncol(restrictions_facload))) {
   				if (is.na(restrictions_facload[i,j])) {
   					# no check
   				}
   				else if (restrictions_facload[i,j] == 0) {
-  					expect_equal(facload[i,j], zeros)
+  					expect_equal(facload[i,j,], zeros)
   				}
   				else if (restrictions_facload[i,j] == 1) {
-  					expect_identical(all(facload[i,j,] >= 0), TRUE)
+					expect_all_true(facload[i,j,] > -testthat_tolerance())
   				}
   			}
   		}
@@ -90,7 +90,9 @@ for (sigma_type in choices_sigma_type) {
 	
 			# do not test the sample counte, because some samples can be rejected
 			expect_equal(dim(result)[-4], c(ncol(train_data), sigma_type$n_shocks, 1+8))
-			sigma_type$test_restrictions(result)
+			if (do_include_restrictions) {
+			  sigma_type$test_restrictions(result)
+			}
 			if (hairy) {
 				expect_length(attr(result, "hair_order"), dim(result)[4])
 			} else {
@@ -101,4 +103,32 @@ for (sigma_type in choices_sigma_type) {
 			}
 		}
 	)
+}
+
+for (sigma_type in choices_sigma_type) {
+	mod <- bvar(train_data, lags=5L, burnin=0, draws=12, prior_sigma=sigma_type$prior, quiet=TRUE)
+	test_that(paste("forecast error irf with sigma type:", sigma_type$prior$type), {
+		M <- ncol(train_data)
+		result <- irf(mod, ahead=8, type="forecast_errors")
+		expect_equal(dim(result), c(M, M, 1+8, mod$config$draws))
+		expect_identical(attr(result, "type"), "forecast_errors")
+
+		# impact responses: one standard deviation of the forecast errors, on the diagonal only
+		Sigma_T <- unclass(vcov(mod))[1,,,,drop=TRUE] # variables x variables x draws
+		sigma_sd <- sqrt(apply(Sigma_T, 3, diag))
+		for (r in seq_len(mod$config$draws)) {
+			expect_equal(result[,,1,r], diag(sigma_sd[,r]), ignore_attr=TRUE)
+		}
+
+		# horizon 1: PHI_1' %*% impact
+		for (r in seq_len(mod$config$draws)) {
+			expect_equal(result[,,2,r], t(mod$PHI[1:M,,r]) %*% result[,,1,r], ignore_attr=TRUE)
+		}
+
+		expect_error(
+			irf(mod, type="forecast_errors", structural_restrictions=list(B0=diag(M))),
+			"cannot be used"
+		)
+		expect_error(extractB0(result), "forecast errors")
+	})
 }

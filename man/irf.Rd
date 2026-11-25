@@ -10,6 +10,7 @@ irf(
   structural_restrictions = NULL,
   shocks = NULL,
   hairy = FALSE,
+  type = c("structural", "forecast_errors"),
   ...
 )
 }
@@ -25,11 +26,15 @@ Note that the orthogonal IRFs depend on the ordering of the variables and do not
 correspond to shocks with a meaningful interpretation.}
 
 \item{shocks}{an matrix with r rows, where r is the number of shocks (see 'Details'). Each column specifies a shock.
-Default: \code{diag(r)}, will calculate the responses to all structural (or factor) shocks of one standard deviation.}
+Default: \code{diag(r)}, will calculate the responses to all structural (or factor) shocks
+(or forecast errors, if \code{type="forecast_errors"}) of one standard deviation.}
 
 \item{hairy}{set to \code{TRUE} in order to plot each path seperately.
 To show valid quantiles, an Bayes optimal order of the posterior samples will be calculated which can take a long time
 even for moderately many samples. Default: \code{FALSE}.}
+
+\item{type}{\code{"structural"} (default) for the responses to the structural (or factor) shocks,
+or \code{"forecast_errors"} for the responses to the reduced form errors.}
 
 \item{...}{Following expert arguments can be specified:
 \describe{
@@ -52,6 +57,10 @@ of factors.
 
 If the Cholesky model was used, then the number of shocks is equal to the
 number of variables.
+
+If \code{type="forecast_errors"}, a shock corresponds to one standard deviation of the respective
+forecast error at the last time point. Forecast errors are correlated, so these IRFs
+do not have a structural interpretation.
 }
 \examples{
 train_data <- 100 * usmacro_growth[,c("GDPC1", "GDPCTPI", "GS1", "M2REAL", "CPIAUCSL")]
