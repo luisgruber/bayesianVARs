@@ -1,9 +1,13 @@
 # bayesianVARs (development version)
 
+* new feature: `update_bvar()` updates MCMC-chain from existing `bayesianVARs_bvar`-object.
+* new feature: `specify_prior_phi(..., stable=TRUE)` samples from the posterior under a prior restricted to the 'stable' parameter space.
+* new feature: possibility of estimating a VAR(0) (VAR with zero lags) and of specifying 0 factors for the factor error specification.
+* improved robustness of sampling algorithms, especially the sampling from the full conditional multivariate normal posterior of the coefficients (smarter inversion of precision)
+  * for the rare case that the algorithm still fails, `bvar(..., abs_floor)` can be increased to prevent numerical issues if heave shrinkage is enforced.
 * new tests
-* tidier messages
-* added the possibility of estimating a VAR(0) (VAR with zero lags) and of specifying 0 factors for the factor error specification.
 * improved error handling; among other things replaced Rf_error() with Rcpp::stop().
+* some restructuring of underlying cpp code
 
 # bayesianVARs 0.1.8
 
