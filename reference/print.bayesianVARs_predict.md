@@ -41,8 +41,7 @@ mod <- bvar(train, quiet = TRUE)
 predictions <- predict(mod, ahead = 1L)
 #> 'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
 #>           draws that do not fulfill the stable criterion.
-#> 
-#> 602/1000 stable posterior draws remaining for prediction!
+#> Using the remaining 709 stable posterior draws for prediction!
 print(predictions)
 #> 
 #> Generic functions for bayesianVARs_predict objects:

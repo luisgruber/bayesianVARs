@@ -12,6 +12,8 @@
 - [`fitted(`*`<bayesianVARs_bvar>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/fitted.bayesianVARs_bvar.md)
   : Simulate fitted/predicted historical values for an estimated VAR
   model
+- [`get_startvals()`](https://luisgruber.github.io/bayesianVARs/reference/get_startvals.md)
+  : Specify starting values
 - [`irf()`](https://luisgruber.github.io/bayesianVARs/reference/irf.md)
   : Impulse response functions
 - [`my_gig()`](https://luisgruber.github.io/bayesianVARs/reference/my_gig.md)
@@ -61,6 +63,8 @@
   : Summary statistics for bayesianVARs posterior draws.
 - [`summary(`*`<bayesianVARs_predict>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/summary.bayesianVARs_predict.md)
   : Summary method for bayesianVARs_predict objects
+- [`update_bvar()`](https://luisgruber.github.io/bayesianVARs/reference/update_bvar.md)
+  : Update MCMC-chain obtained via bvar()
 - [`usmacro_growth`](https://luisgruber.github.io/bayesianVARs/reference/usmacro_growth.md)
   : Data from the US-economy
 - [`vcov(`*`<bayesianVARs_bvar>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/vcov.bayesianVARs_bvar.md)

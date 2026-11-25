@@ -17,8 +17,9 @@ bvar(
   prior_sigma = specify_prior_sigma(data = data, type = "factor", quiet = TRUE),
   sv_keep = "last",
   expert_huge = FALSE,
+  abs_floor = 1e-100,
   quiet = FALSE,
-  startvals = list()
+  startvals = get_startvals(prior_phi, prior_sigma, prior_intercept, data)
 )
 ```
 
@@ -78,6 +79,14 @@ bvar(
   VARs. Only possible if a factor structure for the errors is specified.
   See section MCMC algorithm below for more details.
 
+- abs_floor:
+
+  single numeric greater or equal to zero indicating the threshold to
+  that certain parameter draws, e.g. the VAR coefficients, with
+  magnitude below are raised to (preserving the sign if possible). Exact
+  zeros are raised to `abs_floor`. This can prevent numerical issues if
+  heavy shrinkage is enforced.
+
 - quiet:
 
   logical value indicating whether information about the progress during
@@ -85,7 +94,8 @@ bvar(
 
 - startvals:
 
-  optional list with starting values.
+  `bayesianVARs_startvals` object. Best use constructor
+  [`get_startvals()`](https://luisgruber.github.io/bayesianVARs/reference/get_startvals.md).
 
 ## Value
 
@@ -290,27 +300,27 @@ summary(mod)
 #> 
 #> Posterior median of reduced-form coefficients:
 #>              GDPC1 CPIAUCSL FEDFUNDS
-#> GDPC1.l1     0.156   -0.006    0.024
-#> CPIAUCSL.l1 -0.156    0.595    0.000
-#> FEDFUNDS.l1  0.022    0.046    1.001
-#> intercept    0.007    0.001    0.000
+#> GDPC1.l1     0.253    0.009    0.029
+#> CPIAUCSL.l1 -0.103    0.610   -0.001
+#> FEDFUNDS.l1  0.022    0.038    1.000
+#> intercept    0.005    0.001    0.000
 #> 
 #> Posterior interquartile range of of reduced-form coefficients:
 #>             GDPC1 CPIAUCSL FEDFUNDS
-#> GDPC1.l1    0.110    0.029    0.022
-#> CPIAUCSL.l1 0.161    0.089    0.029
-#> FEDFUNDS.l1 0.022    0.014    0.007
-#> intercept   0.001    0.001    0.000
+#> GDPC1.l1    0.035    0.030    0.026
+#> CPIAUCSL.l1 0.057    0.091    0.014
+#> FEDFUNDS.l1 0.006    0.014    0.007
+#> intercept   0.000    0.001    0.000
 #> 
 #> Posterior median of factor loadings:
 #>          factor1
-#> GDPC1      0.001
+#> GDPC1      0.006
 #> CPIAUCSL   0.000
-#> FEDFUNDS   0.003
+#> FEDFUNDS   0.000
 #> 
 #> Posterior interquartile range of factor loadings:
 #>          factor1
-#> GDPC1      0.000
+#> GDPC1      0.001
 #> CPIAUCSL   0.000
-#> FEDFUNDS   0.002
+#> FEDFUNDS   0.000
 ```

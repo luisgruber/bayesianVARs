@@ -26,7 +26,6 @@ specify_prior_sigma(
   factor_priorhomoskedastic = NA,
   factor_interweaving = 4,
   cholesky_U_prior = c("HS", "DL", "R2D2", "NG", "SSVS", "normal", "HMP"),
-  cholesky_U_tol = 1e-18,
   cholesky_heteroscedastic = TRUE,
   cholesky_priormu = c(0, 100),
   cholesky_priorphi = c(20, 1.5),
@@ -34,17 +33,14 @@ specify_prior_sigma(
   cholesky_priorh0 = "stationary",
   cholesky_priorhomoscedastic = as.numeric(NA),
   cholesky_DL_a = "1/n",
-  cholesky_DL_tol = 0,
   cholesky_R2D2_a = 0.4,
   cholesky_R2D2_b = 0.5,
-  cholesky_R2D2_tol = 0,
   cholesky_NG_a = 0.5,
   cholesky_NG_b = 0.5,
   cholesky_NG_c = 0.5,
-  cholesky_NG_tol = 0,
   cholesky_SSVS_c0 = 0.001,
   cholesky_SSVS_c1 = 1,
-  cholesky_SSVS_p = 0.5,
+  cholesky_SSVS_a = 0.5,
   cholesky_HMP_lambda3 = c(0.01, 0.01),
   cholesky_normal_sds = 10,
   expert_sv_offset = 0,
@@ -246,13 +242,6 @@ specify_prior_sigma(
   character, one of `"HS"`, `"R2D2"`, `"NG"`, `"DL"`, `"SSVS"`, `"HMP"`
   or `"normal"`. Only required if `type="cholesky"`.
 
-- cholesky_U_tol:
-
-  Minimum number that the absolute value of an free off-diagonal element
-  of an \\U\\-draw can take. Prevents numerical issues that can appear
-  when strong shrinkage is enforced if chosen to be greater than zero.
-  Only required if `type="cholesky"`.
-
 - cholesky_heteroscedastic:
 
   single logical indicating whether time-varying
@@ -311,14 +300,6 @@ specify_prior_sigma(
   second column contains the associated prior probabilities.
   `cholesky_DL_a` has only to be specified if `cholesky_U_prior="DL"`.
 
-- cholesky_DL_tol:
-
-  Minimum number that a parameter draw of one of the shrinking
-  parameters of the Dirichlet Laplace prior can take. Prevents numerical
-  issues that can appear when strong shrinkage is enforced if chosen to
-  be greater than zero. `DL_tol` has only to be specified if
-  `cholesky_U_prior="DL"`.
-
 - cholesky_R2D2_a:
 
   (Single) positive real number. The value is interpreted as the
@@ -332,14 +313,6 @@ specify_prior_sigma(
 
   single positive number, where greater values indicate heavier
   regularization. `cholesky_R2D2_b` has only to be specified if
-  `cholesky_U_prior="R2D2"`.
-
-- cholesky_R2D2_tol:
-
-  Minimum number that a parameter draw of one of the shrinking
-  parameters of the R2D2 prior can take. Prevents numerical issues that
-  can appear when strong shrinkage is enforced if chosen to be greater
-  than zero. `cholesky_R2D2_tol` has only to be specified if
   `cholesky_U_prior="R2D2"`.
 
 - cholesky_NG_a:
@@ -367,14 +340,6 @@ specify_prior_sigma(
   input!). `cholesky_NG_c` has only to be specified if
   `cholesky_U_prior="NG"`.
 
-- cholesky_NG_tol:
-
-  Minimum number that a parameter draw of one of the shrinking
-  parameters of the normal-gamma prior can take. Prevents numerical
-  issues that can appear when strong shrinkage is enforced if chosen to
-  be greater than zero. `cholesky_NG_tol` has only to be specified if
-  `cholesky_U_prior="NG"`.
-
 - cholesky_SSVS_c0:
 
   single positive number indicating the (unscaled) standard deviation of
@@ -389,13 +354,13 @@ specify_prior_sigma(
   `choleksy_U_prior="SSVS"`. It should be that \\SSVS\_{c0} \ll
   SSVS\_{c1}\\!
 
-- cholesky_SSVS_p:
+- cholesky_SSVS_a:
 
   Either a single positive number in the range `(0,1)` indicating the
   (fixed) prior inclusion probability of each coefficient. Or numeric
   vector of length 2 with positive entries indicating the shape
   parameters of the Beta distribution. In that case a Beta hyperprior is
-  placed on the prior inclusion probability. `cholesky_SSVS_p` has only
+  placed on the prior inclusion probability. `cholesky_SSVS_a` has only
   to be specified if `choleksy_U_prior="SSVS"`.
 
 - cholesky_HMP_lambda3:
@@ -481,14 +446,12 @@ data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 # factor-decomposition with 2 factors and colwise normal-gamma prior on the loadings
 sigma_factor_cng_sv <- specify_prior_sigma(data = data, type = "factor",
 factor_factors = 2L, factor_priorfacloadtype = "colwiseng", factor_heteroskedastic = TRUE)
-#> 
-#> Since argument 'type' is specified with 'factor', all arguments starting with 'cholesky_' are being ignored.
+#> 'type=factor': Arguments starting with 'cholesky_' are being ignored.
 
 # cholesky-decomposition with Dirichlet-Laplace prior on U
 sigma_cholesky_dl_sv <- specify_prior_sigma(data = data, type = "cholesky",
 cholesky_U_prior = "DL", cholesky_DL_a = 0.5, cholesky_heteroscedastic = TRUE)
-#> 
-#> Since argument 'type' is specified with 'cholesky', all arguments starting with 'factor_' are being ignored.
+#> 'type=cholesky': Arguments starting with 'factor_' are being ignored.
 
 # examples without stochastic volatility (homoscedasticity) ----------------
 # factor-decomposition with 2 factors and colwise normal-gamma prior on the loadings
@@ -496,17 +459,13 @@ sigma_factor_cng <- specify_prior_sigma(data = data, type = "factor",
 factor_factors = 2L, factor_priorfacloadtype = "colwiseng",
 factor_heteroskedastic = FALSE, factor_priorhomoskedastic = matrix(c(0.5,0.5),
 ncol(data), 2))
-#> 
-#> Since argument 'type' is specified with 'factor', all arguments starting with 'cholesky_' are being ignored.
-#> 
+#> 'type=factor': Arguments starting with 'cholesky_' are being ignored.
 #> Cannot do deep factor_interweaving if (some) factor_factors are homoskedastic. Setting 'factor_interweaving' to 3.
 
 # cholesky-decomposition with Horseshoe prior on U
 sigma_cholesky_dl <- specify_prior_sigma(data = data, type = "cholesky",
 cholesky_U_prior = "HS", cholesky_heteroscedastic = FALSE)
-#> 
-#> Since argument 'type' is specified with 'cholesky', all arguments starting with 'factor_' are being ignored.
-#> 
+#> 'type=cholesky': Arguments starting with 'factor_' are being ignored.
 #> Argument 'cholesky_priorhomoscedastic' not specified. Setting both shape and rate of inverse gamma prior equal to 0.01.
 
 # \donttest{

@@ -82,8 +82,7 @@ mod <- bvar(data, sv_keep = "all", quiet = TRUE)
 predictions <- predict(mod, ahead = 1:3)
 #> 'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
 #>           draws that do not fulfill the stable criterion.
-#> 
-#> 543/1000 stable posterior draws remaining for prediction!
+#> Using the remaining 464 stable posterior draws for prediction!
 
 # Visualize
 plot(predictions, vars = 1:3, ahead = 1:3)

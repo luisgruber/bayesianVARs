@@ -11,24 +11,22 @@ specify_prior_phi(
   lags = 1L,
   prior = "HS",
   priormean = 0,
-  PHI_tol = 1e-18,
+  stable = FALSE,
   DL_a = "1/K",
-  DL_tol = 0,
   R2D2_a = 0.1,
   R2D2_b = 0.5,
-  R2D2_tol = 0,
   NG_a = 0.1,
   NG_b = 1,
   NG_c = 1,
-  NG_tol = 0,
   SSVS_c0 = 0.01,
   SSVS_c1 = 100,
   SSVS_semiautomatic = TRUE,
-  SSVS_p = 0.5,
+  SSVS_a = 0.5,
   HMP_lambda1 = c(0.01, 0.01),
   HMP_lambda2 = c(0.01, 0.01),
   normal_sds = 10,
   global_grouping = "global",
+  stable_lim = 1,
   ...
 )
 ```
@@ -65,11 +63,12 @@ specify_prior_phi(
   assumed to contain `lags*M` prior means for the VAR coefficients of
   the respective VAR equations.
 
-- PHI_tol:
+- stable:
 
-  Minimum number that the absolute value of a VAR coefficient draw can
-  take. Prevents numerical issues that can appear when strong shrinkage
-  is enforced if chosen to be greater than zero.
+  logical indicating whether the prior is restricted to the 'stable'
+  parameter space, see 'Details'. If `stable=TRUE`, the prior assigns
+  zero support to parameter values that fail the stability criterion,
+  and corresponding draws are rejected.
 
 - DL_a:
 
@@ -81,14 +80,6 @@ specify_prior_phi(
   `c(s,2)` specifies a discrete hyperprior, where the first column
   contains `s` support points and the second column contains the
   associated prior probabilities. `DL_a` has only to be specified if
-  `prior="DL"`.
-
-- DL_tol:
-
-  Minimum number that a parameter draw of one of the shrinking
-  parameters of the Dirichlet Laplace prior can take. Prevents numerical
-  issues that can appear when strong shrinkage is enforced if chosen to
-  be greater than zero. `DL_tol` has only to be specified if
   `prior="DL"`.
 
 - R2D2_a:
@@ -111,13 +102,6 @@ specify_prior_phi(
   be a numeric vector of length `k` and the elements determine the shape
   parameter in each group. `R2D2_b` has only to be specified if
   `prior="R2D2"`.
-
-- R2D2_tol:
-
-  Minimum number that a parameter draw of one of the shrinking
-  parameters of the R2D2 prior can take. Prevents numerical issues that
-  can appear when strong shrinkage is enforced if chosen to be greater
-  than zero. `R2D2_tol` has only to be specified if `prior="R2D2"`.
 
 - NG_a:
 
@@ -152,14 +136,6 @@ specify_prior_phi(
   `0.2` is achieved by setting `NG_c="0.2*a"` (character input!). `NG_c`
   has only to be specified if `prior="NG"`.
 
-- NG_tol:
-
-  Minimum number that a parameter draw of one of the shrinking
-  parameters of the normal-gamma prior can take. Prevents numerical
-  issues that can appear when strong shrinkage is enforced if chosen to
-  be greater than zero. `NG_tol` has only to be specified if
-  `prior="NG"`.
-
 - SSVS_c0:
 
   single positive number indicating the (unscaled) standard deviation of
@@ -180,13 +156,13 @@ specify_prior_phi(
   conjugate (dependent Normal-Wishart prior). `SSVS_semiautomatic` has
   only to be specified if `prior="SSVS"`.
 
-- SSVS_p:
+- SSVS_a:
 
   Either a single positive number in the range `(0,1)` indicating the
   (fixed) prior inclusion probability of each coefficient. Or numeric
   vector of length 2 with positive entries indicating the shape
   parameters of the Beta distribution. In that case a Beta hyperprior is
-  placed on the prior inclusion probability. `SSVS_p` has only to be
+  placed on the prior inclusion probability. `SSVS_a` has only to be
   specified if `prior="SSVS"`.
 
 - HMP_lambda1:
@@ -219,6 +195,12 @@ specify_prior_phi(
   `c(lags*M,M)`. Only relevant if `prior="HS"`, `prior="DL"`,
   `prior="R2D2"`, `prior="NG"` or `prior="SSVS"`.
 
+- stable_lim:
+
+  positive numerical less-than or equal to 1. Only those posterior draws
+  for which all eigenvalues of the companion form matrix have modulus
+  less than `lim` are accepted. Only relevant if `stable=TRUE`
+
 - ...:
 
   Do not use!
@@ -244,12 +226,22 @@ Semi-global shrinkage, i.e. group-specific shrinkage for pre-specified
 subgroups of the coefficients, can be achieved through the argument
 `global_grouping`.
 
+Regarding `stable=TRUE`: A VAR(p) model is considered as stable only if
+all eigenvalues of the companion form matrix lie inside the unit circle,
+i.e. have modulus less than 1, see Lütkepohl (2005).
+
 ## References
 
 Gruber, L. and Kastner, G. (2025). Forecasting macroeconomic data with
 Bayesian VARs: Sparse or dense? It depends! *International Journal of
 Forecasting*.
 [doi:10.1016/j.ijforecast.2025.02.001](https://doi.org/10.1016/j.ijforecast.2025.02.001)
+.
+
+Lütkepohl, H. (2005). Stable Vector Autoregressive Processes. In: New
+Introduction to Multiple Time Series Analysis. Springer, Berlin,
+Heidelberg.
+[doi:doi.org/10.1007/978-3-540-27752-1_2](https://doi.org/doi.org/10.1007/978-3-540-27752-1_2)
 .
 
 ## Examples

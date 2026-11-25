@@ -7,7 +7,7 @@ Implements several modern hierarchical shrinkage priors and their
 semi-global refinements allowing for structured shrinkage. Amongst them
 Dirichlet-Laplace prior (DL), hierarchical Minnesota prior (HM),
 Horseshoe prior (HS), normal-gamma prior (NG),
-$R^{2}$-induced-Dirichlet-decomposition prior (R2D2) and stochastic
+$`R^2`$-induced-Dirichlet-decomposition prior (R2D2) and stochastic
 search variable selection prior (SSVS).
 
 Concerning the error-term, the user can either specify an
@@ -18,12 +18,14 @@ order-invariant factor structure or an order-variant cholesky structure.
 Install [CRAN](https://cran.r-project.org/package=bayesianVARs) version:
 
 ``` r
+
 install.packages("bayesianVARs")
 ```
 
 Install latest development version directly from GitHub:
 
 ``` r
+
 devtools::install_github("luisgruber/bayesianVARs")
 ```
 
@@ -54,6 +56,7 @@ Some features:
 # Demonstration
 
 ``` r
+
 set.seed(537)
 # load package
 library(bayesianVARs)
@@ -75,6 +78,7 @@ plot(mod, predictions = pred)
 # Documentation
 
 ``` r
+
 browseVignettes(package = "bayesianVARs")
 # If installing directly from GitHub, one has to explicitely request vignettes, e.g. with
 # devtools::install_github("luisgruber/bayesianVARs", dependencies = TRUE, build_vignettes = TRUE)

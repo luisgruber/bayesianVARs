@@ -96,9 +96,7 @@ Stefan Haan <sthaan@edu.aau.at>
 ``` r
 train_data <- 100 * usmacro_growth[,c("GDPC1", "GDPCTPI", "GS1", "M2REAL", "CPIAUCSL")]
 prior_sigma <- specify_prior_sigma(train_data, type="cholesky", cholesky_heteroscedastic=FALSE)
-#> 
-#> Since argument 'type' is specified with 'cholesky', all arguments starting with 'factor_' are being ignored.
-#> 
+#> 'type=cholesky': Arguments starting with 'factor_' are being ignored.
 #> Argument 'cholesky_priorhomoscedastic' not specified. Setting both shape and rate of inverse gamma prior equal to 0.01.
 mod <- bvar(train_data, lags=5L, prior_sigma=prior_sigma, quiet=TRUE)
 

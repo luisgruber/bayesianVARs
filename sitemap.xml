@@ -11,6 +11,7 @@
 <url><loc>https://luisgruber.github.io/bayesianVARs/reference/coef.html</loc></url>
 <url><loc>https://luisgruber.github.io/bayesianVARs/reference/extractB0.html</loc></url>
 <url><loc>https://luisgruber.github.io/bayesianVARs/reference/fitted.bayesianVARs_bvar.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/get_startvals.html</loc></url>
 <url><loc>https://luisgruber.github.io/bayesianVARs/reference/index.html</loc></url>
 <url><loc>https://luisgruber.github.io/bayesianVARs/reference/irf.html</loc></url>
 <url><loc>https://luisgruber.github.io/bayesianVARs/reference/my_gig.html</loc></url>
@@ -36,6 +37,7 @@
 <url><loc>https://luisgruber.github.io/bayesianVARs/reference/summary.bayesianVARs_bvar.html</loc></url>
 <url><loc>https://luisgruber.github.io/bayesianVARs/reference/summary.bayesianVARs_draws.html</loc></url>
 <url><loc>https://luisgruber.github.io/bayesianVARs/reference/summary.bayesianVARs_predict.html</loc></url>
+<url><loc>https://luisgruber.github.io/bayesianVARs/reference/update_bvar.html</loc></url>
 <url><loc>https://luisgruber.github.io/bayesianVARs/reference/usmacro_growth.html</loc></url>
 <url><loc>https://luisgruber.github.io/bayesianVARs/reference/vcov.bayesianVARs_bvar.html</loc></url>
 </urlset>

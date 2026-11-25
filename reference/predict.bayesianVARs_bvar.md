@@ -15,10 +15,12 @@ predict(
   ahead = 1L,
   each = 1L,
   stable = TRUE,
+  stable_lim = 1,
   simulate_predictive = TRUE,
   LPL = FALSE,
   Y_obs = NA,
   LPL_VoI = NA,
+  quiet = FALSE,
   ...
 )
 ```
@@ -46,6 +48,14 @@ predict(
   logical indicating whether to consider only those draws from the
   posterior that fulfill the 'stable' criterion. Default is `TRUE`.
 
+- stable_lim:
+
+  postive numerical less-than or equal to 1. Only those posterior draws
+  are used for prediction for which all eigenvalues of the companion
+  form matrix have modulus less than `stable_lim`, see
+  [`stable_bvar()`](https://luisgruber.github.io/bayesianVARs/reference/stable_bvar.md).
+  Only used if `stable=TRUE`.
+
 - simulate_predictive:
 
   logical, indicating whether the posterior predictive distribution
@@ -68,6 +78,10 @@ predict(
   either integer vector or character vector of column-names indicating
   for which subgroup of time-series in `object$Yraw` a joint log
   predictive likelihood shall be computed.
+
+- quiet:
+
+  logical indicating whether informative output should be omitted.
 
 - ...:
 
@@ -131,44 +145,43 @@ mod <- bvar(train, quiet = TRUE)
 predictions <- predict(mod, ahead = 1:4, LPL = TRUE, Y_obs = test)
 #> 'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
 #>           draws that do not fulfill the stable criterion.
-#> 
-#> 490/1000 stable posterior draws remaining for prediction!
+#> Using the remaining 542 stable posterior draws for prediction!
 
 # Summary
 summary(predictions)
 #> 
 #> LPL:
 #>   t+1   t+2   t+3   t+4 
-#> 3.295 8.963 8.848 6.618 
+#> 2.964 8.977 8.829 6.499 
 #> 
 #> Marginal univariate LPLs:
-#>      GDPC1 CPIAUCSL FEDFUNDS
-#> t+1 -1.208   0.4945    3.705
-#> t+2  2.811   2.7032    3.380
-#> t+3  2.986   2.5687    3.225
-#> t+4  3.086   0.4691    3.077
+#>       GDPC1 CPIAUCSL FEDFUNDS
+#> t+1 -0.9551   0.4695    3.702
+#> t+2  2.7591   2.7089    3.396
+#> t+3  2.9269   2.5829    3.229
+#> t+4  3.0538   0.4387    3.081
 #> 
 #> Prediction quantiles:
 #> , , GDPC1
 #> 
-#>          t+1        t+2       t+3       t+4
-#> 5%  -0.06271 -0.0358741 -0.025896 -0.021977
-#> 50% -0.01847  0.0003222  0.007422  0.007056
-#> 95%  0.03786  0.0396699  0.042156  0.041783
+#>          t+1       t+2       t+3       t+4
+#> 5%  -0.06967 -0.048658 -0.036069 -0.025065
+#> 50% -0.02097  0.001588  0.007057  0.009054
+#> 95%  0.03566  0.039089  0.046252  0.041513
 #> 
 #> , , CPIAUCSL
 #> 
 #>           t+1       t+2       t+3       t+4
-#> 5%  -0.018501 -0.018386 -0.016577 -0.013903
-#> 50% -0.008211 -0.005274 -0.002744 -0.001245
-#> 95%  0.003095  0.006904  0.010319  0.010655
+#> 5%  -0.019291 -0.017333 -0.016687 -0.013098
+#> 50% -0.008315 -0.005376 -0.003321 -0.001078
+#> 95%  0.002702  0.007175  0.010066  0.012650
 #> 
 #> , , FEDFUNDS
 #> 
 #>           t+1       t+2       t+3       t+4
-#> 5%  -0.017187 -0.029766 -0.035690 -0.046158
-#> 50% -0.002658 -0.003953 -0.004949 -0.005525
-#> 95%  0.014293  0.020864  0.026225  0.028602
+#> 5%  -0.020487 -0.027833 -0.035777 -0.040580
+#> 50% -0.003742 -0.004332 -0.005792 -0.004706
+#> 95%  0.014443  0.022497  0.023405  0.036294
 #> 
 
 # Visualize via fan-charts
@@ -181,10 +194,9 @@ plot(predictions)
 predictions <- predict(mod, ahead = 1:4, LPL = TRUE, Y_obs = test, LPL_VoI = c("GDPC1","FEDFUNDS"))
 #> 'stable=TRUE': Calling 'stable_bvar()' to discard those posterior
 #>           draws that do not fulfill the stable criterion.
-#> 
-#> 490/1000 stable posterior draws remaining for prediction!
+#> Using the remaining 542 stable posterior draws for prediction!
 predictions$LPL_VoI
 #>      t+1      t+2      t+3      t+4 
-#> 2.405161 6.277865 6.228728 6.194043 
+#> 2.612975 6.185825 6.148418 6.127385 
 # }
 ```

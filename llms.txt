@@ -7,7 +7,7 @@ Implements several modern hierarchical shrinkage priors and their
 semi-global refinements allowing for structured shrinkage. Amongst them
 Dirichlet-Laplace prior (DL), hierarchical Minnesota prior (HM),
 Horseshoe prior (HS), normal-gamma prior (NG),
-$R^{2}$-induced-Dirichlet-decomposition prior (R2D2) and stochastic
+$`R^2`$-induced-Dirichlet-decomposition prior (R2D2) and stochastic
 search variable selection prior (SSVS).
 
 Concerning the error-term, the user can either specify an
@@ -18,12 +18,14 @@ order-invariant factor structure or an order-variant cholesky structure.
 Install [CRAN](https://cran.r-project.org/package=bayesianVARs) version:
 
 ``` r
+
 install.packages("bayesianVARs")
 ```
 
 Install latest development version directly from GitHub:
 
 ``` r
+
 devtools::install_github("luisgruber/bayesianVARs")
 ```
 
@@ -54,6 +56,7 @@ Some features:
 # Demonstration
 
 ``` r
+
 set.seed(537)
 # load package
 library(bayesianVARs)
@@ -75,6 +78,7 @@ plot(mod, predictions = pred)
 # Documentation
 
 ``` r
+
 browseVignettes(package = "bayesianVARs")
 # If installing directly from GitHub, one has to explicitely request vignettes, e.g. with
 # devtools::install_github("luisgruber/bayesianVARs", dependencies = TRUE, build_vignettes = TRUE)
@@ -94,6 +98,8 @@ browseVignettes(package = "bayesianVARs")
 - [`fitted(`*`<bayesianVARs_bvar>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/fitted.bayesianVARs_bvar.md)
   : Simulate fitted/predicted historical values for an estimated VAR
   model
+- [`get_startvals()`](https://luisgruber.github.io/bayesianVARs/reference/get_startvals.md)
+  : Specify starting values
 - [`irf()`](https://luisgruber.github.io/bayesianVARs/reference/irf.md)
   : Impulse response functions
 - [`my_gig()`](https://luisgruber.github.io/bayesianVARs/reference/my_gig.md)
@@ -143,6 +149,8 @@ browseVignettes(package = "bayesianVARs")
   : Summary statistics for bayesianVARs posterior draws.
 - [`summary(`*`<bayesianVARs_predict>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/summary.bayesianVARs_predict.md)
   : Summary method for bayesianVARs_predict objects
+- [`update_bvar()`](https://luisgruber.github.io/bayesianVARs/reference/update_bvar.md)
+  : Update MCMC-chain obtained via bvar()
 - [`usmacro_growth`](https://luisgruber.github.io/bayesianVARs/reference/usmacro_growth.md)
   : Data from the US-economy
 - [`vcov(`*`<bayesianVARs_bvar>`*`)`](https://luisgruber.github.io/bayesianVARs/reference/vcov.bayesianVARs_bvar.md)

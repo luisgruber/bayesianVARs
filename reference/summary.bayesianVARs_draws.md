@@ -46,6 +46,7 @@ Available extractors:
 ## Examples
 
 ``` r
+
 # Access a subset of the usmacro_growth dataset
 data <- usmacro_growth[,c("GDPC1", "CPIAUCSL", "FEDFUNDS")]
 # Estimate a model
@@ -62,5 +63,5 @@ summary_stats <- summary(mod$PHI)
 
 # Test which list elements of 'mod' are of class 'bayesianVARs_draws'.
 names(mod)[sapply(names(mod), function(x) inherits(mod[[x]], "bayesianVARs_draws"))]
-#> [1] "PHI"     "U"       "logvar"  "sv_para" "facload" "fac"    
+#> [1] "PHI"     "U"       "logvar"  "facload" "fac"    
 ```

@@ -1,6 +1,7 @@
 # Scalability of bayesianVARs
 
 ``` r
+
 library(bayesianVARs)
 ```
 
@@ -12,11 +13,18 @@ bayesianVARs’
 [`bvar()`](https://luisgruber.github.io/bayesianVARs/reference/bvar.md)
 implements state of the art Markov Chain Monte Carlo (MCMC) algorithms
 for posterior estimation of Bayesian vectorautoregressions (VARs). The
-computational complexity of those algorithms depends on the
-configuration of the error variance-covariance matrix which is specified
-through the function argument `prior_sigma`. This argument expects a
-`bayesianVARs_prior_sigma` object which can be conveniently created
-using the helper function
+computational complexity is mainly driven by the computation of the
+covariance-matrix of the full conditional posterior of the coefficients,
+which boils down to inverting a possibly huge matrix. Naively inverting
+the covariance-matrix of the full conditional posterior of the
+coefficients as a whole is of complexity $`O(M^6p^3)`$, where $`M`$ is
+the number of time series and $`p`$ the number of lags. This complexity
+can be reduced to $`O(M^4p^3)`$ or $`O(pM^2n^2)`$, where $`n`$ is the
+number of observations, by exploiting the structure of the error
+variance-covariance matrix. The configuration of the error
+variance-covariance matrix is specified through the function argument
+`prior_sigma`. This argument expects a `bayesianVARs_prior_sigma` object
+which can be conveniently created using the helper function
 [`specify_prior_sigma()`](https://luisgruber.github.io/bayesianVARs/reference/specify_prior_sigma.md).
 
 ## Factor specification
@@ -28,6 +36,7 @@ working example of estimating a VAR featuring stochastic volatility with
 a factor structure on the errors.
 
 ``` r
+
 set.seed(321)
 # Simulate data
 n <- 50L # number of observations
@@ -43,14 +52,13 @@ mod_f1 <- bvar(Y, draws = 50L, burnin = 5L, prior_sigma = prior_sigma_f,
 For the factor specification bayesianVARs implements the conditional
 equation per equation algorithm described in Kastner and Huber
 ([2020](#ref-kastner_sparse_2020)). Using default settings, **this
-algorithm is of complexity $O\left( M^{4}p^{3} \right)$**, where $M$ is
-the number of time series and $p$ the number of lags.
+algorithms’ complexity of inversion is of $`O(M^4p^3)`$**.
 
 ## Factor specifcation in huge dimensions
 
 In the aforementioned paper it is also demonstrated that for VARs in
 huge dimensions, within the conditional equation per equation algorithm,
-the algorithm of Bhattacharya, Chakraborty, and Mallick
+the algorithm of Bhattacharya et al.
 ([2016](#ref-bhattacharyaFastSamplingGaussian2016)) for sampling from
 high-dimensional Gaussian distributions can be exploited to further
 speed up computations. This feature is invoked by setting
@@ -58,16 +66,16 @@ speed up computations. This feature is invoked by setting
 argument `expert_huge = TRUE`.
 
 ``` r
+
 mod_f2 <- bvar(Y, draws = 50L, burnin = 5L, prior_sigma = prior_sigma_f,
                expert_huge = TRUE, quiet = TRUE)
 ```
 
-Using this sampler-configuration, **the algorithm is of complexity
-$O\left( pM^{2}n^{2} \right)$**, where $n$ is the number of
-observations. Therefore, it can be expected that setting
-`expert_huge = TRUE` **only speeds up computations in scenarios where
-$pM > n$**, i.e. the number of VAR coefficients per equations exceeds
-the number of observations.
+Using this sampler-configuration, **the complexity of inversion is of
+$`O(pM^2n^2)`$**, where $`n`$ is the number of observations. Therefore,
+it can be expected that setting `expert_huge = TRUE` **only speeds up
+computations in scenarios where $`pM > n`$**, i.e. the number of VAR
+coefficients per equations exceeds the number of observations.
 
 ## Cholesky specification
 
@@ -78,6 +86,7 @@ working example of estimating a VAR featuring stochastic volatility with
 a Cholesky structure on the errors.
 
 ``` r
+
 # Estimate a VAR with a Cholesky structure on the errors
 prior_sigma_c <- specify_prior_sigma(Y, type = "cholesky")
 mod_c <- bvar(Y, draws = 50L, burnin = 5L, prior_sigma = prior_sigma_c,
@@ -86,21 +95,29 @@ mod_c <- bvar(Y, draws = 50L, burnin = 5L, prior_sigma = prior_sigma_c,
 
 For the Cholesky specification bayesianVARs implements the correct
 triangular algorithm described in Carriero et al.
-([2022](#ref-carrieroCorrigendumLargeBayesian2022)). **This algorithm is
-of complexity $O\left( M^{4}p^{3} \right)$**, i.e. it has the same
+([2022](#ref-carrieroCorrigendumLargeBayesian2022)). **This algorithms’
+complexity of inversion is of $`O(M^4p^3)`$**, i.e. it has the same
 complexity like the standard conditional equation per equation algorithm
 for the factor specification, see [Factor
-specification](#factor-specification).
+specification](#factor-specification). However, compared to algorithm
+for the factor specification which updates the VAR coefficients in one
+block using a sequence of $`M`$ equations, it a) scales less favorable
+with respect to $`n`$, because it uses a sequence of $`M`$ systems of
+$`M-j+1`$ equations for $`j=1\dots,M`$, and b) blocks the update of the
+coefficients equation by equation implying potentially slower mixing
+(for more details, see [Carriero et al.
+2022](#ref-carrieroCorrigendumLargeBayesian2022)).
 
 ## Empirical demonstration
 
 The following code chunk runs the posterior sampling algorithm and
 records computation times for all sampling algorithms considering all
-combinations of $M = 50$, $n = 100$,
-$stochastic$$volatility \in \{ TRUE,FALSE\}$, and
-$p \in \{ 1,\ldots,5\}$.
+combinations of $`M=50`$, $`n=100`$,
+$`stochastic`$$`volatility \in \{TRUE, FALSE\}`$, and
+$`p \in \{1,\dots,5\}`$.
 
 ``` r
+
 set.seed(123)
 ps <- 1:5 # lags
 M <- 50L # number time series
@@ -159,6 +176,7 @@ moving from a model with 1 factor to a model with 50 factors, appears to
 be negligible.
 
 ``` r
+
 for(type0 in c("factor", "cholesky")){
   tmp <- subset(all_combinations, type == type0 & sv == TRUE)
   plot(0,0, xlim = range(tmp$p), ylim = range(tmp$user_time),

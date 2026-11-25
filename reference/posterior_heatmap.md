@@ -97,9 +97,9 @@ posterior_heatmap(
 
   Optional argument indicating the color palette to be used. If not
   specified,
-  [`colorspace::diverge_hcl()`](https://colorspace.R-Forge.R-project.org/reference/hcl_palettes.html)
+  [`colorspace::diverge_hcl()`](https://zeileis.codeberg.page/colorspace/reference/hcl_palettes.html)
   will be used, or, if `FUN` returns only positive values
-  [`colorspace::sequential_hcl()`](https://colorspace.R-Forge.R-project.org/reference/hcl_palettes.html).
+  [`colorspace::sequential_hcl()`](https://zeileis.codeberg.page/colorspace/reference/hcl_palettes.html).
   See below for a more detailed description of the default usage.
 
 - border_color:
