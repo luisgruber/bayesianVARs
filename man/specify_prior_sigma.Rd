@@ -145,9 +145,9 @@ stationary distribution, i.e. h0 is assumed to be Gaussian with mean 0 and
 variance \eqn{sigma^2/(1-phi^2)}.}
 
 \item{factor_heteroskedastic}{Vector of length 1, 2, or \code{M +
- factor_factors}, containing logical values indicating whether time-varying
+factor_factors}, containing logical values indicating whether time-varying
 (\code{factor_heteroskedastic = TRUE}) or constant (\code{factor_heteroskedastic =
-  FALSE}) variance should be estimated. If \code{factor_heteroskedastic} is of
+ FALSE}) variance should be estimated. If \code{factor_heteroskedastic} is of
 length 2 it will be recycled accordingly, whereby the first element is used
 for all idiosyncratic variances and the second element is used for all
 factor variances. Only required if \code{type="factor"}.}
@@ -255,7 +255,7 @@ input!). \code{cholesky_NG_c} has only to be specified if
 standard deviation of the spike component. \code{cholesky_SSVS_c0} has only
 to be specified if \code{choleksy_U_prior="SSVS"}.
 It should be that \eqn{SSVS_{c0}
-  \ll SSVS_{c1}}!}
+ \ll SSVS_{c1}}!}
 
 \item{cholesky_SSVS_c1}{single positive number indicating the (unscaled)
 standard deviation of the slab component. \code{cholesky_SSVS_c1} has only

@@ -31,8 +31,8 @@ find_rotation_cpp <- function(parameter_transformations, restriction_specs, solv
     .Call(`_bayesianVARs_find_rotation_cpp`, parameter_transformations, restriction_specs, solver_option, randomized_max_rotations_per_sample, tol)
 }
 
-irf_cpp <- function(coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahead, rotation_ = NULL) {
-    .Call(`_bayesianVARs_irf_cpp`, coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahead, rotation_)
+irf_cpp <- function(coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahead, rotation_ = NULL, forecast_errors = FALSE) {
+    .Call(`_bayesianVARs_irf_cpp`, coefficients, factor_loadings, U_vecs, logvar_t, shocks, ahead, rotation_, forecast_errors)
 }
 
 irf_bayes_optimal_order <- function(irf) {

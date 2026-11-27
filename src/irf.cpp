@@ -30,7 +30,7 @@ inline cube Sigma_chol_t_draws (
 		}
 		build_sigma(Sigma_unused, Sigma_chol, is_factor_model, facload_mat,
 				logvar_T.col(r).as_row(), factor_loadings.n_cols,
-				n_variables, u_vec, true);
+				n_variables, u_vec, /*return_chol=*/true);
 
 		ret.slice(r) = Sigma_chol.t();
 	}
@@ -190,20 +190,16 @@ class LPSolver : public Solver {
 	ivec x_cols;
 	ivec U_cols;
 	ivec y_cols;
-	int n_initial_rows;
 
-	public:
-	LPSolver(const uword dim_x) : n(dim_x) {
+	// Builds the LP with the variables, objective and the initial constraints, but
+	// without any constraints added by `add_constraints`.
+	void build() {
 		lp = (*make_lp)(0, 3*n);
 		if (lp == NULL) throw std::bad_alloc();
 		
 		setverbose(lp, IMPORTANT);
 		setmaxim(lp);
 		
-		// we have variables x_i, U_i, y_i for i=1...n
-		x_cols = regspace<ivec>(1, n);
-		U_cols = x_cols + n;
-		y_cols = U_cols + n;
 		for (uword j = 0; j < n; j++) {
 			std::string col_name("x");
 			col_name += std::to_string(j+1);
@@ -238,9 +234,15 @@ class LPSolver : public Solver {
 			addconstraintex(lp, cols.size(), left_constraint.data(), cols.data(), LE, 0);
 			addconstraintex(lp, cols.size(), right_constraint.data(), cols.data(), LE, bigM);
 		}
-		
-		//recycling will remove all constraints added by `add_constraint`
-		n_initial_rows = getNrows(lp);
+	}
+
+	public:
+	LPSolver(const uword dim_x) : n(dim_x) {
+		// we have variables x_i, U_i, y_i for i=1...n
+		x_cols = regspace<ivec>(1, n);
+		U_cols = x_cols + n;
+		y_cols = U_cols + n;
+		build();
 	}
 	
 	void add_constraints(mat& constraints, int constr_type, double rhs) override {
@@ -265,9 +267,12 @@ class LPSolver : public Solver {
 	}
 	
 	void recycle() override {
-		// delete all non-initial constraints
-		resizelp(lp, n_initial_rows, getNcolumns(lp));
-		setadd_rowmode(lp, TRUE);
+		// Start over with a new LP instead of deleting the added constraints from the
+		// old one: lp_solve keeps state between solves (the basis to warm-start from and
+		// the scaling factors computed in the first solve), which does not fit the new
+		// constraints and can cause NUMERIC FAILURE, a wrong INFEASIBLE or a zero solution.
+		deletelp(lp);
+		build();
 	}
 	
 	void print() override {
@@ -322,7 +327,7 @@ class RandomizedSolver : public Solver {
 		y = normalise(y);
 		
 		const vec q_candidate = zero_restrictions_solution_space*y;
-		if (all(sign_restrictions * q_candidate >= 0-tol)) {
+		if (all(sign_restrictions * q_candidate > 0.0)) {
 			return q_candidate;
 		}
 		else if (sign_restrictions.n_rows == 1) {
@@ -425,9 +430,9 @@ Rcpp::List find_rotation_cpp(
 				}
 			}
 			
-			const vec p_j = solver->solve().clean(tol);
+			const vec p_j = solver->solve();
 			solver->recycle();
-			if (p_j.is_zero()) {
+			if (p_j.is_zero(tol)) {
 				//zero was the optimal solution
 				//reject this draw.
 				reject_draw = true;
@@ -475,7 +480,8 @@ arma::field<arma::cube> irf_cpp(
 	const arma::mat& logvar_t, //rows: log variances, cols: draws
 	const arma::mat& shocks, //rows: dim shock, cols: shocks
 	const arma::uword ahead, //how far to predict ahead
-	const Rcpp::Nullable<Rcpp::NumericMatrix> rotation_ = R_NilValue //rows: variables, cols: dim shock, slices: draws
+	const Rcpp::Nullable<Rcpp::NumericMatrix> rotation_ = R_NilValue, //rows: variables, cols: dim shock, slices: draws
+	const bool forecast_errors = false //if true, shocks hit the reduced form errors (in units of their std. dev. at t)
 ) {
 	const uword n_shocks = shocks.n_cols;
 	const uword n_variables = coefficients.n_cols;
@@ -494,7 +500,22 @@ arma::field<arma::cube> irf_cpp(
 		
 		//compute the responses to the shocks at t=0
 		mat rotated_shocks = rotation.n_slices > 0 ? rotation.slice(r) * shocks : shocks;
-		if (is_factor_model) {
+		if (forecast_errors) {
+			// scale the shocks by the standard deviations of the forecast errors at t
+			mat Sigma, Sigma_chol_unused, facload_mat;
+			vec u_vec;
+			if (is_factor_model) {
+				facload_mat = factor_loadings.slice(r);
+			} else {
+				u_vec = U_vecs.col(r);
+			}
+			build_sigma(Sigma, Sigma_chol_unused, is_factor_model, facload_mat,
+					logvar_t.col(r).as_row(), factor_loadings.n_cols,
+					n_variables, u_vec, /*return_chol=*/false);
+			rotated_shocks.each_col() %= sqrt(Sigma.diag());
+			irf.slice(0) = rotated_shocks;
+		}
+		else if (is_factor_model) {
 			vec sqrt_V_t = exp(logvar_t.col(r).head(factor_loadings.n_cols) / 2);
 			rotated_shocks.each_col() %= sqrt_V_t;
 			irf.slice(0) = factor_loadings.slice(r) * rotated_shocks;
