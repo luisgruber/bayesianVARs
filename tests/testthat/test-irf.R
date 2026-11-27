@@ -1,3 +1,4 @@
+set.seed(116)
 train_data <- 100 * usmacro_growth[,c("GDPC1", "GDPCTPI", "GS1", "M2REAL", "CPIAUCSL")]
 
 restrictions_B0 <- rbind(
@@ -32,7 +33,7 @@ choices_sigma_type <- list(
   					expect_equal(B0[i,j,], zeros)
   				}
   				else if (restrictions_B0[i,j] == 1) {
-					expect_all_true(B0[i,j,] > -testthat_tolerance())
+					expect_gte(min(B0[i,j,]), -testthat_tolerance())
   				}
   			}
   		}
@@ -53,7 +54,7 @@ choices_sigma_type <- list(
   					expect_equal(facload[i,j,], zeros)
   				}
   				else if (restrictions_facload[i,j] == 1) {
-					expect_all_true(facload[i,j,] > -testthat_tolerance())
+					expect_gte(min(facload[i,j,]), -testthat_tolerance())
   				}
   			}
   		}
@@ -61,7 +62,7 @@ choices_sigma_type <- list(
 )
 
 for (sigma_type in choices_sigma_type) {
-	mod <- bvar(train_data, lags=5L, burnin=0, draws=12, prior_sigma=sigma_type$prior, quiet=TRUE)
+	mod <- bvar(train_data, lags=5L, burnin=100L, draws=12, prior_sigma=sigma_type$prior, quiet=TRUE)
 	for (do_include_restrictions in c(FALSE, TRUE))
 	for (hairy in c(FALSE, TRUE))
 	for (solver in c("randomized", "lp"))
@@ -106,7 +107,7 @@ for (sigma_type in choices_sigma_type) {
 }
 
 for (sigma_type in choices_sigma_type) {
-	mod <- bvar(train_data, lags=5L, burnin=0, draws=12, prior_sigma=sigma_type$prior, quiet=TRUE)
+	mod <- bvar(train_data, lags=5L, burnin=100L, draws=12, prior_sigma=sigma_type$prior, quiet=TRUE)
 	test_that(paste("forecast error irf with sigma type:", sigma_type$prior$type), {
 		M <- ncol(train_data)
 		result <- irf(mod, ahead=8, type="forecast_errors")

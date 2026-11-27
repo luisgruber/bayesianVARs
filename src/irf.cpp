@@ -190,20 +190,16 @@ class LPSolver : public Solver {
 	ivec x_cols;
 	ivec U_cols;
 	ivec y_cols;
-	int n_initial_rows;
 
-	public:
-	LPSolver(const uword dim_x) : n(dim_x) {
+	// Builds the LP with the variables, objective and the initial constraints, but
+	// without any constraints added by `add_constraints`.
+	void build() {
 		lp = (*make_lp)(0, 3*n);
 		if (lp == NULL) throw std::bad_alloc();
 		
 		setverbose(lp, IMPORTANT);
 		setmaxim(lp);
 		
-		// we have variables x_i, U_i, y_i for i=1...n
-		x_cols = regspace<ivec>(1, n);
-		U_cols = x_cols + n;
-		y_cols = U_cols + n;
 		for (uword j = 0; j < n; j++) {
 			std::string col_name("x");
 			col_name += std::to_string(j+1);
@@ -238,9 +234,15 @@ class LPSolver : public Solver {
 			addconstraintex(lp, cols.size(), left_constraint.data(), cols.data(), LE, 0);
 			addconstraintex(lp, cols.size(), right_constraint.data(), cols.data(), LE, bigM);
 		}
-		
-		//recycling will remove all constraints added by `add_constraint`
-		n_initial_rows = getNrows(lp);
+	}
+
+	public:
+	LPSolver(const uword dim_x) : n(dim_x) {
+		// we have variables x_i, U_i, y_i for i=1...n
+		x_cols = regspace<ivec>(1, n);
+		U_cols = x_cols + n;
+		y_cols = U_cols + n;
+		build();
 	}
 	
 	void add_constraints(mat& constraints, int constr_type, double rhs) override {
@@ -265,9 +267,12 @@ class LPSolver : public Solver {
 	}
 	
 	void recycle() override {
-		// delete all non-initial constraints
-		resizelp(lp, n_initial_rows, getNcolumns(lp));
-		setadd_rowmode(lp, TRUE);
+		// Start over with a new LP instead of deleting the added constraints from the
+		// old one: lp_solve keeps state between solves (the basis to warm-start from and
+		// the scaling factors computed in the first solve), which does not fit the new
+		// constraints and can cause NUMERIC FAILURE, a wrong INFEASIBLE or a zero solution.
+		deletelp(lp);
+		build();
 	}
 	
 	void print() override {
@@ -322,7 +327,7 @@ class RandomizedSolver : public Solver {
 		y = normalise(y);
 		
 		const vec q_candidate = zero_restrictions_solution_space*y;
-		if (all(sign_restrictions * q_candidate >= 0-tol)) {
+		if (all(sign_restrictions * q_candidate > 0.0)) {
 			return q_candidate;
 		}
 		else if (sign_restrictions.n_rows == 1) {
@@ -425,9 +430,9 @@ Rcpp::List find_rotation_cpp(
 				}
 			}
 			
-			const vec p_j = solver->solve().clean(tol);
+			const vec p_j = solver->solve();
 			solver->recycle();
-			if (p_j.is_zero()) {
+			if (p_j.is_zero(tol)) {
 				//zero was the optimal solution
 				//reject this draw.
 				reject_draw = true;
